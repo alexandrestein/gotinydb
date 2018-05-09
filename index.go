@@ -9,21 +9,58 @@ import (
 	"github.com/emirpasic/gods/trees/btree"
 )
 
-func NewIndex(path string) *Index {
-	b := new(Index)
-	b.tree = btree.NewWithStringComparator(10)
-	b.path = path
+func NewStringIndex(path string) *StringIndex {
+	i := &StringIndex{
+		NewStructIndex(path),
+	}
+	i.tree = btree.NewWithStringComparator(treeOrder)
+	i.indexType = StringIndexType
 
-	return b
+	return i
 }
 
-func (b *Index) Save() error {
-	treeAsBytes, jsonErr := b.tree.ToJSON()
+func NewIntIndex(path string) *IntIndex {
+	i := &IntIndex{
+		NewStructIndex(path),
+	}
+	i.tree = btree.NewWithIntComparator(treeOrder)
+	i.indexType = IntIndexType
+
+	return i
+}
+
+func NewStructIndex(path string) *StructIndex {
+	return &StructIndex{
+		path: path,
+	}
+}
+
+func (i *StructIndex) Get(key interface{}) (interface{}, bool) {
+	return i.tree.Get(key)
+}
+func (i *StructIndex) Put(key interface{}, value interface{}) {
+	i.tree.Put(key, value)
+}
+
+func (i *StructIndex) GetPath() string {
+	return i.path
+}
+
+func (i *StructIndex) GetTree() *btree.Tree {
+	return i.tree
+}
+
+func (i *StructIndex) Type() IndexType {
+	return i.indexType
+}
+
+func (i *StructIndex) Save() error {
+	treeAsBytes, jsonErr := i.tree.ToJSON()
 	if jsonErr != nil {
 		return fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
 	}
 
-	file, fileErr := os.OpenFile(b.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, filePermission)
+	file, fileErr := os.OpenFile(i.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, filePermission)
 	if fileErr != nil {
 		return fmt.Errorf("opening file: %s", fileErr.Error())
 	}
@@ -39,8 +76,8 @@ func (b *Index) Save() error {
 	return nil
 }
 
-func (b *Index) Load() error {
-	file, fileErr := os.OpenFile(b.path, os.O_RDONLY, filePermission)
+func (i *StructIndex) Load() error {
+	file, fileErr := os.OpenFile(i.path, os.O_RDONLY, filePermission)
 	if fileErr != nil {
 		return fmt.Errorf("opening file: %s", fileErr.Error())
 	}
@@ -61,7 +98,8 @@ func (b *Index) Load() error {
 		buf.Write(tmpBuf)
 	}
 
-	err := b.tree.FromJSON(buf.Bytes())
+	fmt.Println(buf.String())
+	err := i.tree.FromJSON(buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("parsing block: %s", err.Error())
 	}
