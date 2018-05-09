@@ -4,17 +4,21 @@ import (
 	"github.com/emirpasic/gods/trees/btree"
 )
 
+const (
+	blockSize = 1024 * 1024 * 50
+)
+
 type (
-	DB struct {
-		Store *Store
-	}
-
 	Store struct {
-		Blocks []*Block
+		Path string
 	}
 
-	Block struct {
-		Path string
-		Tree *btree.Tree
+	Collection struct {
+		Indexes map[string]*Index
+	}
+
+	Index struct {
+		tree *btree.Tree
+		path string
 	}
 )
