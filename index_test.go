@@ -14,8 +14,8 @@ func getGoodList(i Index) [][]interface{} {
 	switch i.Type() {
 	case StringIndexType:
 		return testStringList()
-	case IntIndexType:
-		return testIntList()
+		// case IntIndexType:
+		// 	return testIntList()
 	}
 	return nil
 }
@@ -70,14 +70,14 @@ func TestStringIndex(t *testing.T) {
 	testLoadIndex(t, i)
 }
 
-func TestIntIndex(t *testing.T) {
-	i := NewIntIndex(path)
-	testSaveIndex(t, i)
-
-	i = nil
-	i = NewIntIndex(path)
-	testLoadIndex(t, i)
-}
+// func TestIntIndex(t *testing.T) {
+// 	i := NewIntIndex(path)
+// 	testSaveIndex(t, i)
+//
+// 	i = nil
+// 	i = NewIntIndex(path)
+// 	testLoadIndex(t, i)
+// }
 
 func testStringList() [][]interface{} {
 	return [][]interface{}{
@@ -86,9 +86,9 @@ func testStringList() [][]interface{} {
 	}
 }
 
-func testIntList() [][]interface{} {
-	return [][]interface{}{
-		[]interface{}{1, "id1"},
-		[]interface{}{2, "id2"},
-	}
-}
+// func testIntList() [][]interface{} {
+// 	return [][]interface{}{
+// 		[]interface{}{1, "id1"},
+// 		[]interface{}{2, "id2"},
+// 	}
+// }
