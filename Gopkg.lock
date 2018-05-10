@@ -13,9 +13,21 @@
   revision = "b546bb88fea76b25a300bbfe6f0e9b1366e0bc77"
   source = "github.com/alexandreStein/gods"
 
+[[projects]]
+  branch = "master"
+  name = "github.com/minio/highwayhash"
+  packages = ["."]
+  revision = "85fc8a2dacad36a6beb2865793cd81363a496696"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["cpu"]
+  revision = "7dfd1290c7917b7ba22824b9d24954ab3002fe24"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "39a5f2b1e6cb31272cfa04b40e970aeeaef786adfb9d14531b272bea1820f544"
+  inputs-digest = "2142ded0d9f118b8b53eb41147779d78557450292d1117ffd1d31a801758cb24"
   solver-name = "gps-cdcl"
   solver-version = 1

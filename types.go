@@ -10,6 +10,15 @@ const (
 	blockSize      = 1024 * 1024 * 10 // 10MB
 	filePermission = 0740             // u -> rwx | g -> r-- | o -> ---
 	treeOrder      = 10
+
+	indexesDirName = "indexes"
+	recordsDirName = "records"
+	objectsDirName = "json"
+	binsDirName    = "bin"
+	lockFileName   = "lock"
+
+	getFlags = os.O_RDONLY
+	putFlags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
 )
 
 const (
@@ -56,9 +65,7 @@ type (
 	RecordType int
 
 	MetaData struct{}
-)
 
-type (
 	Index interface {
 		Get(interface{}) (interface{}, bool)
 		Put(interface{}, interface{})

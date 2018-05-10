@@ -1,8 +1,10 @@
 package db
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 )
 
 func NewCollection(path string) *Collection {
@@ -12,81 +14,69 @@ func NewCollection(path string) *Collection {
 	return c
 }
 
-func (c *Collection) save() error {
-	return nil
-}
-
-func (c *Collection) load() error {
-	if checkErr := c.checkDir(); checkErr != nil {
-		return fmt.Errorf("directory is not usable: %s", checkErr.Error())
+func (c *Collection) Put(id string, value interface{}) error {
+	isBin := false
+	binAsBytes := []byte{}
+	if bytes, ok := value.([]byte); ok {
+		isBin = true
+		binAsBytes = bytes
 	}
 
-	return nil
+	file, openErr := c.openDoc(id, isBin, putFlags)
+	if openErr != nil {
+		return fmt.Errorf("opening record: %s", openErr.Error())
+	}
+
+	if isBin {
+		return c.putBin(file, binAsBytes)
+	}
+
+	return c.putObject(file, value)
 }
 
-func (c *Collection) Put() error {
-	return nil
-}
+func (c *Collection) Get(id string, value interface{}) error {
+	isBin := false
 
-func (c *Collection) Get() error {
+	file, openErr := c.openDoc(id, false, getFlags)
+	if openErr != nil {
+		file, openErr = c.openDoc(id, true, getFlags)
+		if openErr != nil {
+			return fmt.Errorf("opening record: %s", openErr.Error())
+		}
+		isBin = true
+	}
+
+	ret := []byte{}
+	readOffSet := int64(0)
+	for {
+		buf := make([]byte, blockSize)
+		n, readErr := file.ReadAt(buf, readOffSet)
+		if readErr != nil {
+			if readErr == io.EOF {
+				buf = buf[:n]
+				ret = append(ret, buf...)
+				break
+			}
+			return fmt.Errorf("reading record: %s", readErr.Error())
+		}
+		readOffSet = readOffSet + int64(n)
+		ret = append(ret, buf...)
+	}
+
+	if isBin {
+		if givenBuffer, ok := value.(*bytes.Buffer); ok {
+			givenBuffer.Write(ret)
+			return nil
+		}
+		return fmt.Errorf("reciever is not a bytes.Buffer pointer")
+	}
+	if umarshalErr := json.Unmarshal(ret, value); umarshalErr != nil {
+		return fmt.Errorf("umarshaling record: %s", umarshalErr.Error())
+	}
+
 	return nil
 }
 
 func (c *Collection) SetIndex(target string) error {
 	return nil
-}
-
-func (c *Collection) checkDir() error {
-	if _, err := os.Stat(c.path); os.IsNotExist(err) {
-		return c.buildDir()
-	}
-
-	dirToCheck := []string{
-		c.path + "/indexes",
-		c.path + "/records/bin",
-		c.path + "/records/json",
-	}
-
-	for _, dir := range dirToCheck {
-		if !isDirOK(dir) {
-			return fmt.Errorf("directory %q is not a good", dir)
-		}
-	}
-
-	return nil
-}
-
-func (c *Collection) buildDir() error {
-	if addDirErr := os.MkdirAll(c.path+"/indexes", filePermission); addDirErr != nil {
-		return fmt.Errorf("building the index directory: %s", addDirErr.Error())
-	}
-
-	if addDirErr := os.MkdirAll(c.path+"/records/bin", filePermission); addDirErr != nil {
-		return fmt.Errorf("building the record directory: %s", addDirErr.Error())
-	}
-	if addDirErr := os.MkdirAll(c.path+"/records/json", filePermission); addDirErr != nil {
-		return fmt.Errorf("building the record directory: %s", addDirErr.Error())
-	}
-
-	return nil
-}
-
-func isDirOK(givenPath string) bool {
-	dirFile, dirFileErr := os.OpenFile(givenPath, os.O_RDONLY, filePermission)
-	if dirFileErr != nil {
-		if os.IsNotExist(dirFileErr) {
-		}
-		return false
-	}
-
-	rootStats, rootStatsErr := dirFile.Stat()
-	if rootStatsErr != nil {
-		return false
-	}
-
-	if !rootStats.IsDir() {
-		return false
-	}
-
-	return true
 }

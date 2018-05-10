@@ -15,7 +15,7 @@ func New(path string) (*DB, error) {
 		return nil, fmt.Errorf("initializing DB: %s", err.Error())
 	}
 
-	lockFile, addLockErr := os.OpenFile(path+"/lock", os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermission)
+	lockFile, addLockErr := os.OpenFile(d.path+"/"+lockFileName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermission)
 	if addLockErr != nil {
 		return nil, fmt.Errorf("setting lock: %s", addLockErr.Error())
 	}
@@ -39,6 +39,10 @@ func (d *DB) Use(colName string) (*Collection, error) {
 	}
 
 	return col, nil
+}
+
+func (d *DB) Close() {
+	os.Remove(d.path + "/" + lockFileName)
 }
 
 func (d *DB) getPathFor(colName string) string {
