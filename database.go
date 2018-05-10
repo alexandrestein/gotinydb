@@ -41,6 +41,7 @@ func (d *DB) Use(colName string) (*Collection, error) {
 	return col, nil
 }
 
+// Close removes the lock file
 func (d *DB) Close() {
 	os.Remove(d.path + "/" + lockFileName)
 }

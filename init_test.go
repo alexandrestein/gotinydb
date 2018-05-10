@@ -23,9 +23,10 @@ type (
 )
 
 func getUsersExample() []*UserTest {
+	// Time is truncate because the JSON format do not support nanosecondes
 	return []*UserTest{
-		&UserTest{"ID_USER_1", "mister 1", "pass 1", time.Now()},
-		&UserTest{"ID_USER_2", "mister 2", "pass 2", time.Now().Add(time.Hour * 3600)},
+		&UserTest{"ID_USER_1", "mister 1", "pass 1", time.Now().Truncate(time.Millisecond)},
+		&UserTest{"ID_USER_2", "mister 2", "pass 2", time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
 	}
 }
 

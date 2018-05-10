@@ -7,6 +7,7 @@ import (
 	"io"
 )
 
+// NewCollection builds a new Collection pointer. It is called internaly by DB
 func NewCollection(path string) *Collection {
 	c := new(Collection)
 	c.path = path
@@ -14,6 +15,8 @@ func NewCollection(path string) *Collection {
 	return c
 }
 
+// Put saves the given element into the given ID.
+// If record already exists this update it.
 func (c *Collection) Put(id string, value interface{}) error {
 	isBin := false
 	binAsBytes := []byte{}
@@ -34,6 +37,8 @@ func (c *Collection) Put(id string, value interface{}) error {
 	return c.putObject(file, value)
 }
 
+// Get fillups the given value from the given ID. If you want to get binary
+// content you must give a bytes.Buffer pointer.
 func (c *Collection) Get(id string, value interface{}) error {
 	isBin := false
 
@@ -77,6 +82,7 @@ func (c *Collection) Get(id string, value interface{}) error {
 	return nil
 }
 
+// SetIndex adds new index to the collection
 func (c *Collection) SetIndex(target string) error {
 	return nil
 }
