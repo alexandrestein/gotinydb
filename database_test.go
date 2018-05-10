@@ -7,7 +7,10 @@ import (
 	"testing"
 )
 
-func TestDB(t *testing.T) {
+func TestSimplePutGet(t *testing.T) {
+	os.RemoveAll(path)
+	defer os.RemoveAll(path)
+
 	db, initErr := New(path)
 	if initErr != nil {
 		t.Error(initErr.Error())
@@ -47,21 +50,13 @@ func TestDB(t *testing.T) {
 			return
 		}
 	}
-}
 
-func TestExistingDB(t *testing.T) {
-	defer os.RemoveAll(path)
-
-	db, initErr := New(path)
-	if initErr != nil {
-		t.Error(initErr.Error())
-		return
-	}
-	defer db.Close()
-
-	_, col1Err := db.Use("col1")
+	// Closes the collection
+	db.CloseCollection("col1")
+	// Reopen it to get thought the directory checking
+	_, col1Err = db.Use("col1")
 	if col1Err != nil {
-		t.Errorf("openning test collection: %s", col1Err.Error())
+		t.Errorf("openning the collection again, this should not return any error: %s", col1Err.Error())
 		return
 	}
 }

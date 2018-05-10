@@ -10,6 +10,7 @@ import (
 // be located in the directory.
 func New(path string) (*DB, error) {
 	d := new(DB)
+	d.Collections = map[string]*Collection{}
 	d.path = path
 	if err := d.buildRootDir(); err != nil {
 		return nil, fmt.Errorf("initializing DB: %s", err.Error())
@@ -38,12 +39,20 @@ func (d *DB) Use(colName string) (*Collection, error) {
 		return nil, fmt.Errorf("loading collection: %s", err.Error())
 	}
 
+	// Save the collection in memory
+	d.Collections[colName] = col
+
 	return col, nil
 }
 
 // Close removes the lock file
 func (d *DB) Close() {
 	os.Remove(d.path + "/" + lockFileName)
+}
+
+// CloseCollection clean the collection slice of the object of the collection
+func (d *DB) CloseCollection(colName string) {
+	delete(d.Collections, colName)
 }
 
 func (d *DB) getPathFor(colName string) string {
