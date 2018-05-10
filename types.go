@@ -1,12 +1,14 @@
 package db
 
 import (
+	"os"
+
 	"github.com/emirpasic/gods/trees/btree"
 )
 
 const (
 	blockSize      = 1024 * 1024 * 10 // 10MB
-	filePermission = 0666             // u -> rw
+	filePermission = 0740             // u -> rwx | g -> r-- | o -> ---
 	treeOrder      = 10
 )
 
@@ -20,11 +22,12 @@ type (
 	DB struct {
 		Collections map[string]*Collection
 		path        string
+		lockFile    *os.File
 	}
 
 	Collection struct {
 		Indexes map[string]Index
-		Meta    *Index
+		Meta    *MetaData
 		path    string
 	}
 
@@ -38,11 +41,21 @@ type (
 
 	StructIndex struct {
 		tree      *btree.Tree
+		selector  []interface{}
 		path      string
 		indexType IndexType
 	}
 
-	IndexType int
+	Record struct {
+		Type RecordType
+		Size int
+		Data interface{}
+	}
+
+	IndexType  int
+	RecordType int
+
+	MetaData struct{}
 )
 
 type (
