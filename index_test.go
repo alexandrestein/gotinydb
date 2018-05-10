@@ -14,8 +14,8 @@ func getGoodList(i Index) [][]interface{} {
 	switch i.Type() {
 	case StringIndexType:
 		return testStringList()
-		// case IntIndexType:
-		// 	return testIntList()
+	case IntIndexType:
+		return testIntList()
 	}
 	return nil
 }
@@ -40,6 +40,7 @@ func testSaveIndex(t *testing.T, index Index) {
 
 func testLoadIndex(t *testing.T, index Index) {
 	defer os.RemoveAll(path)
+	list := getGoodList(index)
 
 	loadErr := index.Load()
 	if loadErr != nil {
@@ -47,7 +48,7 @@ func testLoadIndex(t *testing.T, index Index) {
 		return
 	}
 
-	for _, val := range testStringList() {
+	for _, val := range list {
 		savedID, found := index.Get(val[0])
 		if !found {
 			t.Errorf("ID %q is not found", val[0])
@@ -70,14 +71,15 @@ func TestStringIndex(t *testing.T) {
 	testLoadIndex(t, i)
 }
 
-// func TestIntIndex(t *testing.T) {
-// 	i := NewIntIndex(path)
-// 	testSaveIndex(t, i)
-//
-// 	i = nil
-// 	i = NewIntIndex(path)
-// 	testLoadIndex(t, i)
-// }
+func TestIntIndex(t *testing.T) {
+	i := NewIntIndex(path)
+	testSaveIndex(t, i)
+
+	i.tree.Clear()
+
+	i = NewIntIndex(path)
+	testLoadIndex(t, i)
+}
 
 func testStringList() [][]interface{} {
 	return [][]interface{}{
@@ -86,9 +88,9 @@ func testStringList() [][]interface{} {
 	}
 }
 
-// func testIntList() [][]interface{} {
-// 	return [][]interface{}{
-// 		[]interface{}{1, "id1"},
-// 		[]interface{}{2, "id2"},
-// 	}
-// }
+func testIntList() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{1, "id1"},
+		[]interface{}{2, "id2"},
+	}
+}

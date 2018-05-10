@@ -26,8 +26,10 @@
 
 
 [[constraint]]
+  branch = "myUpdates"
+  source = "github.com/alexandreStein/gods"
   name = "github.com/emirpasic/gods"
-  version = "1.9.0"
+  # version = "1.9.0"
 
 [prune]
   go-tests = true

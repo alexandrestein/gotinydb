@@ -2,6 +2,7 @@
 
 
 [[projects]]
+  branch = "myUpdates"
   name = "github.com/emirpasic/gods"
   packages = [
     "containers",
@@ -9,12 +10,12 @@
     "trees/btree",
     "utils"
   ]
-  revision = "f6c17b524822278a87e3b3bd809fec33b51f5b46"
-  version = "v1.9.0"
+  revision = "b546bb88fea76b25a300bbfe6f0e9b1366e0bc77"
+  source = "github.com/alexandreStein/gods"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "65a323757f5e6bc417a6e209849b751f3d4eae75bc4b0fcfa83ed0717130f2f7"
+  inputs-digest = "39a5f2b1e6cb31272cfa04b40e970aeeaef786adfb9d14531b272bea1820f544"
   solver-name = "gps-cdcl"
   solver-version = 1

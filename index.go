@@ -19,15 +19,15 @@ func NewStringIndex(path string) *StringIndex {
 	return i
 }
 
-// func NewIntIndex(path string) *IntIndex {
-// 	i := &IntIndex{
-// 		NewStructIndex(path),
-// 	}
-// 	i.tree = btree.NewWithIntComparator(treeOrder)
-// 	i.indexType = IntIndexType
-//
-// 	return i
-// }
+func NewIntIndex(path string) *IntIndex {
+	i := &IntIndex{
+		NewStructIndex(path),
+	}
+	i.tree = btree.NewWithIntComparator(treeOrder)
+	i.indexType = IntIndexType
+
+	return i
+}
 
 func NewStructIndex(path string) *StructIndex {
 	return &StructIndex{
