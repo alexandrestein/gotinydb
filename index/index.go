@@ -36,15 +36,21 @@ func NewStructIndex(path string) *StructIndex {
 	}
 }
 
-func (i *StructIndex) Get(key interface{}) (interface{}, bool) {
-	return i.tree.Get(key)
+func (i *StructIndex) Get(indexedValue interface{}) (string, bool) {
+	idAsInterface, found := i.tree.Get(indexedValue)
+	objectID, ok := idAsInterface.(string)
+	if !ok {
+		return "", false
+	}
+
+	return objectID, found
 }
-func (i *StructIndex) Put(key interface{}, value interface{}) {
-	i.tree.Put(key, value)
+func (i *StructIndex) Put(indexedValue interface{}, objectID string) {
+	i.tree.Put(indexedValue, objectID)
 }
 
 // GetNeighbours returns values interface and true if founded.
-func (i *StructIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (keys []interface{}, values []interface{}, found bool) {
+func (i *StructIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool) {
 	iterator := i.tree.IteratorAt(key)
 	// iterator2 := *iterator
 
@@ -67,10 +73,17 @@ func (i *StructIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (keys 
 		if !iterator.Next() {
 			break
 		}
-		keys = append(keys, iterator.Key())
-		values = append(values, iterator.Value())
-	}
 
+		idAsInterface, ok := iterator.Value().(string)
+		// If the values is not an object ID it is not append.
+		if !ok {
+			continue
+		}
+
+		indexedValues = append(indexedValues, iterator.Key())
+		objectIDs = append(objectIDs, idAsInterface)
+
+	}
 	return
 }
 
@@ -133,6 +146,23 @@ func (i *StructIndex) Load() error {
 	err := i.tree.FromJSON(buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("parsing block: %s", err.Error())
+	}
+
+	return nil
+}
+
+func (i *StructIndex) RemoveId(id string) error {
+	iter := i.tree.Iterator()
+
+	for iter.Next() {
+		savedID, ok := iter.Value().(string)
+		if !ok {
+			continue
+		}
+
+		if savedID == id {
+			i.tree.Remove(id)
+		}
 	}
 
 	return nil

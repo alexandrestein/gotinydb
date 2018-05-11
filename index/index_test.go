@@ -24,7 +24,7 @@ func getGoodList(i Index) [][]interface{} {
 func testSaveIndex(t *testing.T, index Index) {
 	list := getGoodList(index)
 	for _, val := range list {
-		index.Put(val[0], val[1])
+		index.Put(val[0], val[1].(string))
 	}
 
 	if listLen := len(list); listLen != index.getTree().Size() {
@@ -86,7 +86,7 @@ func TestNeighboursWithString(t *testing.T) {
 	i := NewStringIndex(path)
 	list := testStringList()
 	for _, val := range list {
-		i.Put(val[0], val[1])
+		i.Put(val[0], val[1].(string))
 	}
 
 	testNeighbours(t, i, "indexed field value m", 5, 11, true)

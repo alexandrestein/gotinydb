@@ -29,9 +29,10 @@ type (
 	IndexType int
 
 	Index interface {
-		Get(interface{}) (interface{}, bool)
-		GetNeighbours(key interface{}, nBefore, nAfter int) (keys []interface{}, values []interface{}, found bool)
-		Put(interface{}, interface{})
+		Get(indexedValue interface{}) (objectID string, found bool)
+		GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool)
+		Put(indexedValue interface{}, objectID string)
+		RemoveId(objectID string) error
 
 		Save() error
 		Load() error

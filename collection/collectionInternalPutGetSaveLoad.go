@@ -26,6 +26,8 @@ func (c *Collection) putObject(file *os.File, value interface{}) error {
 		return fmt.Errorf("marshaling record: %s", marshalErr.Error())
 	}
 
+	c.updateIndex(value, file.Name())
+
 	return c.putToFile(file, buf)
 }
 func (c *Collection) putBin(file *os.File, value []byte) error {
@@ -74,6 +76,20 @@ func (c *Collection) checkDir() error {
 	}
 
 	return nil
+}
+
+func (c *Collection) getFile(id string) (file *os.File, isBin bool, err error) {
+	file, err = c.openDoc(id, false, vars.GetFlags)
+	if err != nil {
+		file, err = c.openDoc(id, true, vars.GetFlags)
+		if err != nil {
+			err = fmt.Errorf("opening record: %s", err.Error())
+			return
+		}
+		isBin = true
+	}
+
+	return
 }
 
 func (c *Collection) buildDir() error {

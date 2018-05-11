@@ -1,13 +1,15 @@
+// Package vars provides some of the global elements of the database.
 package vars
 
 import (
 	"os"
 )
 
+// The values
 const (
 	BlockSize      = 1024 * 1024 * 10 // 10MB
 	FilePermission = 0740             // u -> rwx | g -> r-- | o -> ---
-	TreeOrder      = 3
+	TreeOrder      = 10
 
 	IndexesDirName = "indexes"
 	RecordsDirName = "records"

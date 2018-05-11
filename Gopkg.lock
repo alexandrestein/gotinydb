@@ -13,9 +13,15 @@
   revision = "1527dbeb5a91bc09c3cd6f2e5e082c4473edcfb3"
   source = "github.com/alexandreStein/gods"
 
+[[projects]]
+  name = "github.com/fatih/structs"
+  packages = ["."]
+  revision = "a720dfa8df582c51dee1b36feabb906bde1588bd"
+  version = "v1.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "39a5f2b1e6cb31272cfa04b40e970aeeaef786adfb9d14531b272bea1820f544"
+  inputs-digest = "c89e88e6ac77e8e7a6a5a190d58082adccdb25c1df25145e40ef3a94fa9df2e4"
   solver-name = "gps-cdcl"
   solver-version = 1

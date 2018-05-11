@@ -38,3 +38,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/minio/highwayhash"
+
+[[constraint]]
+  name = "github.com/fatih/structs"
+  version = "1.0.0"

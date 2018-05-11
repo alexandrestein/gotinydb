@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
+	"gitea.interlab-net.com/alexandre/db/index"
 	"gitea.interlab-net.com/alexandre/db/vars"
 )
 
@@ -46,15 +48,9 @@ func (c *Collection) Put(id string, value interface{}) error {
 // Get fillups the given value from the given ID. If you want to get binary
 // content you must give a bytes.Buffer pointer.
 func (c *Collection) Get(id string, value interface{}) error {
-	isBin := false
-
-	file, openErr := c.openDoc(id, false, vars.GetFlags)
+	file, isBin, openErr := c.getFile(id)
 	if openErr != nil {
-		file, openErr = c.openDoc(id, true, vars.GetFlags)
-		if openErr != nil {
-			return fmt.Errorf("opening record: %s", openErr.Error())
-		}
-		isBin = true
+		return openErr
 	}
 
 	ret := []byte{}
@@ -88,7 +84,25 @@ func (c *Collection) Get(id string, value interface{}) error {
 	return nil
 }
 
+func (c *Collection) Delete(id string) error {
+	if rmObjErr := os.Remove(c.getRecordPath(id, false)); rmObjErr != nil {
+		if rmBinErr := os.Remove(c.getRecordPath(id, true)); rmBinErr != nil {
+			return fmt.Errorf("the object do not exist")
+		}
+	}
+
+	if err := c.updateIndexAfterDelete(id); err != nil {
+		return fmt.Errorf("updating index: %s", err.Error())
+	}
+
+	return nil
+}
+
 // SetIndex adds new index to the collection
 func (c *Collection) SetIndex(target string) error {
 	return nil
+}
+
+func (c *Collection) Query(q *index.Query) {
+
 }
