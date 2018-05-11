@@ -1,9 +1,13 @@
-package db
+package index
 
 import (
 	"os"
 	"reflect"
 	"testing"
+)
+
+var (
+	path = os.TempDir() + "/dbTest"
 )
 
 func getGoodList(i Index) [][]interface{} {
@@ -58,24 +62,24 @@ func testLoadIndex(t *testing.T, index Index) {
 	}
 }
 
-// func TestStringIndex(t *testing.T) {
-// 	i := NewStringIndex(path)
-// 	testSaveIndex(t, i)
-//
-// 	i.tree = nil
-// 	i = NewStringIndex(path)
-// 	testLoadIndex(t, i)
-// }
-//
-// func TestIntIndex(t *testing.T) {
-// 	i := NewIntIndex(path)
-// 	testSaveIndex(t, i)
-//
-// 	i.tree.Clear()
-//
-// 	i = NewIntIndex(path)
-// 	testLoadIndex(t, i)
-// }
+func TestStringIndex(t *testing.T) {
+	i := NewStringIndex(path)
+	testSaveIndex(t, i)
+
+	i.tree = nil
+	i = NewStringIndex(path)
+	testLoadIndex(t, i)
+}
+
+func TestIntIndex(t *testing.T) {
+	i := NewIntIndex(path)
+	testSaveIndex(t, i)
+
+	i.tree.Clear()
+
+	i = NewIntIndex(path)
+	testLoadIndex(t, i)
+}
 
 func testStringList() [][]interface{} {
 	return [][]interface{}{

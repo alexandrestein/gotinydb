@@ -3,6 +3,9 @@ package db
 import (
 	"fmt"
 	"os"
+
+	"gitea.interlab-net.com/alexandre/db/collection"
+	"gitea.interlab-net.com/alexandre/db/vars"
 )
 
 // New builds a new DB object with the given root path. It must be a directory.
@@ -15,7 +18,7 @@ func New(path string) (*DB, error) {
 		return nil, fmt.Errorf("initializing DB: %s", err.Error())
 	}
 
-	lockFile, addLockErr := os.OpenFile(d.path+"/"+lockFileName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filePermission)
+	lockFile, addLockErr := os.OpenFile(d.path+"/"+vars.LockFileName, vars.OpenDBFlags, vars.FilePermission)
 	if addLockErr != nil {
 		return nil, fmt.Errorf("setting lock: %s", addLockErr.Error())
 	}
@@ -26,16 +29,16 @@ func New(path string) (*DB, error) {
 
 // Use will try to get the collection from active ones. If not active it loads
 // it from drive and if not existing it builds it.
-func (d *DB) Use(colName string) (*Collection, error) {
+func (d *DB) Use(colName string) (*collection.Collection, error) {
 	// Gets from in memory
 	if activeCol, found := d.Collections[colName]; found {
 		return activeCol, nil
 	}
 
 	// Gets from drive
-	col := NewCollection(d.getPathFor(colName))
-	if err := col.load(); err != nil {
-		return nil, fmt.Errorf("loading collection: %s", err.Error())
+	col, openColErr := collection.NewCollection(d.getPathFor(colName))
+	if openColErr != nil {
+		return nil, fmt.Errorf("loading collection: %s", openColErr.Error())
 	}
 
 	return col, nil
@@ -43,7 +46,7 @@ func (d *DB) Use(colName string) (*Collection, error) {
 
 // Close removes the lock file
 func (d *DB) Close() {
-	os.Remove(d.path + "/" + lockFileName)
+	os.Remove(d.path + "/" + vars.LockFileName)
 }
 
 func (d *DB) getPathFor(colName string) string {
@@ -51,7 +54,7 @@ func (d *DB) getPathFor(colName string) string {
 }
 
 func (d *DB) buildRootDir() error {
-	if makeRootDirErr := os.MkdirAll(d.path, filePermission); makeRootDirErr != nil {
+	if makeRootDirErr := os.MkdirAll(d.path, vars.FilePermission); makeRootDirErr != nil {
 		if os.IsExist(makeRootDirErr) {
 			return nil
 		}

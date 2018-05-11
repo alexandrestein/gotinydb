@@ -1,18 +1,24 @@
-package db
+package collection
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"gitea.interlab-net.com/alexandre/db/vars"
 )
 
 // NewCollection builds a new Collection pointer. It is called internaly by DB
-func NewCollection(path string) *Collection {
+func NewCollection(path string) (*Collection, error) {
 	c := new(Collection)
 	c.path = path
 
-	return c
+	if err := c.load(); err != nil {
+		return nil, fmt.Errorf("loading DB: %s", err.Error())
+	}
+
+	return c, nil
 }
 
 // Put saves the given element into the given ID.
@@ -25,7 +31,7 @@ func (c *Collection) Put(id string, value interface{}) error {
 		binAsBytes = bytes
 	}
 
-	file, openErr := c.openDoc(id, isBin, putFlags)
+	file, openErr := c.openDoc(id, isBin, vars.PutFlags)
 	if openErr != nil {
 		return fmt.Errorf("opening record: %s", openErr.Error())
 	}
@@ -42,9 +48,9 @@ func (c *Collection) Put(id string, value interface{}) error {
 func (c *Collection) Get(id string, value interface{}) error {
 	isBin := false
 
-	file, openErr := c.openDoc(id, false, getFlags)
+	file, openErr := c.openDoc(id, false, vars.GetFlags)
 	if openErr != nil {
-		file, openErr = c.openDoc(id, true, getFlags)
+		file, openErr = c.openDoc(id, true, vars.GetFlags)
 		if openErr != nil {
 			return fmt.Errorf("opening record: %s", openErr.Error())
 		}
@@ -54,7 +60,7 @@ func (c *Collection) Get(id string, value interface{}) error {
 	ret := []byte{}
 	readOffSet := int64(0)
 	for {
-		buf := make([]byte, blockSize)
+		buf := make([]byte, vars.BlockSize)
 		n, readErr := file.ReadAt(buf, readOffSet)
 		if readErr != nil {
 			if readErr == io.EOF {

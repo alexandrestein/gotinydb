@@ -1,4 +1,4 @@
-package db
+package index
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"gitea.interlab-net.com/alexandre/db/vars"
 	"github.com/emirpasic/gods/trees/btree"
 )
 
@@ -13,7 +14,7 @@ func NewStringIndex(path string) *StringIndex {
 	i := &StringIndex{
 		NewStructIndex(path),
 	}
-	i.tree = btree.NewWithStringComparator(treeOrder)
+	i.tree = btree.NewWithStringComparator(vars.TreeOrder)
 	i.indexType = StringIndexType
 
 	return i
@@ -23,7 +24,7 @@ func NewIntIndex(path string) *IntIndex {
 	i := &IntIndex{
 		NewStructIndex(path),
 	}
-	i.tree = btree.NewWithIntComparator(treeOrder)
+	i.tree = btree.NewWithIntComparator(vars.TreeOrder)
 	i.indexType = IntIndexType
 
 	return i
@@ -60,7 +61,7 @@ func (i *StructIndex) Save() error {
 		return fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
 	}
 
-	file, fileErr := os.OpenFile(i.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, filePermission)
+	file, fileErr := os.OpenFile(i.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, vars.FilePermission)
 	if fileErr != nil {
 		return fmt.Errorf("opening file: %s", fileErr.Error())
 	}
@@ -77,7 +78,7 @@ func (i *StructIndex) Save() error {
 }
 
 func (i *StructIndex) Load() error {
-	file, fileErr := os.OpenFile(i.path, os.O_RDONLY, filePermission)
+	file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
 	if fileErr != nil {
 		return fmt.Errorf("opening file: %s", fileErr.Error())
 	}
@@ -85,7 +86,7 @@ func (i *StructIndex) Load() error {
 	buf := bytes.NewBuffer(nil)
 	at := int64(0)
 	for {
-		tmpBuf := make([]byte, blockSize)
+		tmpBuf := make([]byte, vars.BlockSize)
 		n, readErr := file.ReadAt(tmpBuf, at)
 		if readErr != nil {
 			if io.EOF == readErr {
