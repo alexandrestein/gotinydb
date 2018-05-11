@@ -43,11 +43,11 @@ func (i *StructIndex) Put(key interface{}, value interface{}) {
 	i.tree.Put(key, value)
 }
 
-func (i *StructIndex) GetPath() string {
+func (i *StructIndex) getPath() string {
 	return i.path
 }
 
-func (i *StructIndex) GetTree() *btree.Tree {
+func (i *StructIndex) getTree() *btree.Tree {
 	return i.tree
 }
 

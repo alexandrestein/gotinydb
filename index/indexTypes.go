@@ -35,8 +35,8 @@ type (
 		Save() error
 		Load() error
 
-		GetPath() string
-		GetTree() *btree.Tree
+		getPath() string
+		getTree() *btree.Tree
 
 		Type() IndexType
 	}

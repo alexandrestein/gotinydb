@@ -26,14 +26,14 @@ func testSaveIndex(t *testing.T, index Index) {
 		index.Put(val[0], val[1])
 	}
 
-	if listLen := len(list); listLen != index.GetTree().Size() {
-		t.Errorf("the tree has %d element(s) but the list is %d", index.GetTree().Size(), listLen)
+	if listLen := len(list); listLen != index.getTree().Size() {
+		t.Errorf("the tree has %d element(s) but the list is %d", index.getTree().Size(), listLen)
 		return
 	}
 
 	saveErr := index.Save()
 	if saveErr != nil {
-		t.Errorf("save in %q err: %s", index.GetPath(), saveErr.Error())
+		t.Errorf("save in %q err: %s", index.getPath(), saveErr.Error())
 		return
 	}
 }
