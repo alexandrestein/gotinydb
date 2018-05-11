@@ -7,7 +7,7 @@ import (
 const (
 	BlockSize      = 1024 * 1024 * 10 // 10MB
 	FilePermission = 0740             // u -> rwx | g -> r-- | o -> ---
-	TreeOrder      = 10
+	TreeOrder      = 3
 
 	IndexesDirName = "indexes"
 	RecordsDirName = "records"

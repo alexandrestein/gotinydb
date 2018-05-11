@@ -30,6 +30,7 @@ type (
 
 	Index interface {
 		Get(interface{}) (interface{}, bool)
+		GetNeighbours(key interface{}, nBefore, nAfter int) (keys []interface{}, values []interface{}, found bool)
 		Put(interface{}, interface{})
 
 		Save() error

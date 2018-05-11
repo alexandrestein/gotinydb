@@ -56,7 +56,7 @@ func (i *StructIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (keys 
 	}
 
 	// Go to the right place
-	for i := 0; i < nBefore; i++ {
+	for i := 0; i <= nBefore; i++ {
 		if !iterator.Prev() {
 			nBefore = i
 			break
