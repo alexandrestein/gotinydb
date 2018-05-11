@@ -43,6 +43,37 @@ func (i *StructIndex) Put(key interface{}, value interface{}) {
 	i.tree.Put(key, value)
 }
 
+// GetNeighbours returns values interface and true if founded.
+func (i *StructIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (keys []interface{}, values []interface{}, found bool) {
+	iterator := i.tree.IteratorAt(key)
+	// iterator2 := *iterator
+
+	nToAdd := 0
+
+	if iterator.Key() == key {
+		found = true
+		nToAdd++
+	}
+
+	// Go to the right place
+	for i := 0; i < nBefore; i++ {
+		if !iterator.Prev() {
+			nBefore = i
+			break
+		}
+	}
+
+	for i := 0; i < nToAdd+nBefore+nAfter; i++ {
+		if !iterator.Next() {
+			break
+		}
+		keys = append(keys, iterator.Key())
+		values = append(values, iterator.Value())
+	}
+
+	return
+}
+
 func (i *StructIndex) getPath() string {
 	return i.path
 }
