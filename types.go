@@ -3,56 +3,14 @@ package db
 import (
 	"os"
 
-	"github.com/emirpasic/gods/trees/btree"
-)
-
-const (
-	blockSize      = 1024 * 1024 * 10 // 10MB
-	filePermission = 0740             // u -> rwx | g -> r-- | o -> ---
-	treeOrder      = 10
-
-	indexesDirName = "indexes"
-	recordsDirName = "records"
-	objectsDirName = "json"
-	binsDirName    = "bin"
-	lockFileName   = "lock"
-
-	getFlags = os.O_RDONLY
-	putFlags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-)
-
-const (
-	StringIndexType IndexType = iota
-	IntIndexType
-	CustomIndexType
+	"gitea.interlab-net.com/alexandre/db/collection"
 )
 
 type (
 	DB struct {
-		Collections map[string]*Collection
+		Collections map[string]*collection.Collection
 		path        string
 		lockFile    *os.File
-	}
-
-	Collection struct {
-		Indexes map[string]Index
-		Meta    *MetaData
-		path    string
-	}
-
-	StringIndex struct {
-		*StructIndex
-	}
-
-	IntIndex struct {
-		*StructIndex
-	}
-
-	StructIndex struct {
-		tree      *btree.Tree
-		selector  []interface{}
-		path      string
-		indexType IndexType
 	}
 
 	Record struct {
@@ -63,19 +21,4 @@ type (
 
 	IndexType  int
 	RecordType int
-
-	MetaData struct{}
-
-	Index interface {
-		Get(interface{}) (interface{}, bool)
-		Put(interface{}, interface{})
-
-		Save() error
-		Load() error
-
-		GetPath() string
-		GetTree() *btree.Tree
-
-		Type() IndexType
-	}
 )

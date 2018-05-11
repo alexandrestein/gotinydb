@@ -1,9 +1,11 @@
-package db
+package collection
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"gitea.interlab-net.com/alexandre/db/vars"
 )
 
 func (c *Collection) save() error {
@@ -43,14 +45,14 @@ func (c *Collection) putToFile(file *os.File, value []byte) error {
 }
 
 func (c *Collection) openDoc(id string, bin bool, flags int) (*os.File, error) {
-	return os.OpenFile(c.getRecordPath(id, bin), flags, filePermission)
+	return os.OpenFile(c.getRecordPath(id, bin), flags, vars.FilePermission)
 }
 
 func (c *Collection) getRecordPath(id string, bin bool) string {
 	if bin {
-		return fmt.Sprintf("%s/%s/%s/%s", c.path, recordsDirName, binsDirName, id)
+		return fmt.Sprintf("%s/%s/%s/%s", c.path, vars.RecordsDirName, vars.BinsDirName, id)
 	}
-	return fmt.Sprintf("%s/%s/%s/%s", c.path, recordsDirName, objectsDirName, id)
+	return fmt.Sprintf("%s/%s/%s/%s", c.path, vars.RecordsDirName, vars.ObjectsDirName, id)
 }
 
 func (c *Collection) checkDir() error {
@@ -59,10 +61,10 @@ func (c *Collection) checkDir() error {
 	}
 
 	dirToCheck := []string{
-		c.path + "/" + indexesDirName,
-		c.path + "/" + recordsDirName,
-		c.path + "/" + recordsDirName + "/" + binsDirName,
-		c.path + "/" + recordsDirName + "/" + objectsDirName,
+		c.path + "/" + vars.IndexesDirName,
+		c.path + "/" + vars.RecordsDirName,
+		c.path + "/" + vars.RecordsDirName + "/" + vars.BinsDirName,
+		c.path + "/" + vars.RecordsDirName + "/" + vars.ObjectsDirName,
 	}
 
 	for _, dir := range dirToCheck {
@@ -75,14 +77,14 @@ func (c *Collection) checkDir() error {
 }
 
 func (c *Collection) buildDir() error {
-	if addDirErr := os.MkdirAll(c.path+"/"+indexesDirName, filePermission); addDirErr != nil {
+	if addDirErr := os.MkdirAll(c.path+"/"+vars.IndexesDirName, vars.FilePermission); addDirErr != nil {
 		return fmt.Errorf("building the index directory: %s", addDirErr.Error())
 	}
 
-	if addDirErr := os.MkdirAll(c.path+"/"+recordsDirName+"/"+binsDirName, filePermission); addDirErr != nil {
+	if addDirErr := os.MkdirAll(c.path+"/"+vars.RecordsDirName+"/"+vars.BinsDirName, vars.FilePermission); addDirErr != nil {
 		return fmt.Errorf("building the record directory: %s", addDirErr.Error())
 	}
-	if addDirErr := os.MkdirAll(c.path+"/"+recordsDirName+"/"+objectsDirName, filePermission); addDirErr != nil {
+	if addDirErr := os.MkdirAll(c.path+"/"+vars.RecordsDirName+"/"+vars.ObjectsDirName, vars.FilePermission); addDirErr != nil {
 		return fmt.Errorf("building the record directory: %s", addDirErr.Error())
 	}
 
@@ -90,7 +92,7 @@ func (c *Collection) buildDir() error {
 }
 
 func isDirOK(givenPath string) bool {
-	dirFile, dirFileErr := os.OpenFile(givenPath, os.O_RDONLY, filePermission)
+	dirFile, dirFileErr := os.OpenFile(givenPath, os.O_RDONLY, vars.FilePermission)
 	if dirFileErr != nil {
 		if os.IsNotExist(dirFileErr) {
 		}

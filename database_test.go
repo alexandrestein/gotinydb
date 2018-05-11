@@ -2,9 +2,15 @@ package db
 
 import (
 	"bytes"
+	"crypto/rand"
 	"os"
 	"reflect"
 	"testing"
+	"time"
+)
+
+var (
+	path = os.TempDir() + "/dbTest"
 )
 
 func TestSimplePutGet(t *testing.T) {
@@ -59,4 +65,37 @@ func TestSimplePutGet(t *testing.T) {
 		t.Errorf("openning the collection again, this should not return any error: %s", col1Err.Error())
 		return
 	}
+}
+
+type (
+	UserTest struct {
+		ID, UserName, Password string
+		Creation               time.Time
+	}
+
+	RawTest struct {
+		ID      string
+		Content []byte
+	}
+)
+
+func getUsersExample() []*UserTest {
+	// Time is truncate because the JSON format do not support nanosecondes
+	return []*UserTest{
+		&UserTest{"ID_USER_1", "mister 1", "pass 1", time.Now().Truncate(time.Millisecond)},
+		&UserTest{"ID_USER_2", "mister 2", "pass 2", time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
+	}
+}
+
+func getRawExample() []*RawTest {
+	return []*RawTest{
+		&RawTest{"ID_RAW_1", genRand(1024)},
+		&RawTest{"ID_RAW_2", genRand(1024 * 1024 * 30)},
+	}
+}
+
+func genRand(size int) []byte {
+	buf := make([]byte, size)
+	rand.Read(buf)
+	return buf
 }
