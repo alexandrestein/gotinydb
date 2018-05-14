@@ -6,7 +6,7 @@ func (c *Collection) updateIndex(inputInterface interface{}, id string) error {
 	input := structs.New(inputInterface).Map()
 
 	for _, index := range c.Indexes {
-		index.Update(input, id)
+		go index.Update(input, id)
 	}
 
 	return nil
