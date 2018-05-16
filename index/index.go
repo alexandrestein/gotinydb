@@ -39,10 +39,6 @@ func newStructIndex(path string) *structIndex {
 }
 
 func (i *structIndex) Get(indexedValue interface{}) ([]string, bool) {
-	return i.getIdsAsString(indexedValue)
-}
-
-func (i *structIndex) getIdsAsString(indexedValue interface{}) ([]string, bool) {
 	// Trys to get the list of ids for the given indexed value.
 	idsAsInterface, found := i.tree.Get(indexedValue)
 	if found {
@@ -73,7 +69,7 @@ func (i *structIndex) getIdsAsString(indexedValue interface{}) ([]string, bool) 
 }
 
 func (i *structIndex) Put(indexedValue interface{}, objectID string) {
-	objectIDs, found := i.getIdsAsString(indexedValue)
+	objectIDs, found := i.Get(indexedValue)
 	if found {
 		// Check that the given id is not allredy in the list
 		for _, savedID := range objectIDs {
@@ -190,44 +186,60 @@ func (i *structIndex) Load() error {
 	return nil
 }
 
-func (i *structIndex) RemoveID(id string) error {
-	// Build new iterator at the start of the tree
-	iter := i.tree.Iterator()
+func (i *structIndex) RemoveID(value interface{}, objectID string) error {
+	savedIDs, found := i.Get(value)
+	if !found {
+		return fmt.Errorf(NotFoundString)
+	}
 
-	// Loop every keys of the tree
-	for iter.Next() {
-		// Convert the interface into a list of ids as strings
-		savedIDs, ok := iter.Value().([]string)
-		// If can't convert pass
-		if !ok {
-			continue
+	// newSavedIDs will take the updated list of ids
+	newSavedIDs := []string{}
+	for _, savedID := range savedIDs {
+		if savedID != objectID {
+			newSavedIDs = append(newSavedIDs, savedID)
 		}
+	}
 
-		// newSavedIDs will take the updated list of ids
-		newSavedIDs := []string{}
-		for _, savedID := range savedIDs {
-			if savedID != id {
-				newSavedIDs = append(newSavedIDs, savedID)
-			}
-		}
+	// If the new list of ids is empty the key value pair is delete
+	if len(newSavedIDs) <= 0 {
+		i.tree.Remove(value)
+		return nil
+	}
 
-		// If the new list of ids is empty the key value pair is delete
-		if len(newSavedIDs) <= 0 {
-			i.tree.Remove(iter.Key())
-			return nil
-		}
-
-		// Save the ids if the size as changed
-		if len(newSavedIDs) != len(savedIDs) {
-			i.tree.Put(iter.Key(), newSavedIDs)
-		}
+	// Save the ids if the size as changed
+	if len(newSavedIDs) != len(savedIDs) {
+		i.tree.Put(value, newSavedIDs)
 	}
 
 	return nil
 }
 
-func (i *structIndex) Update(oldValue, newValue interface{}, id string) error {
+func (i *structIndex) RemoveIDFromAll(id string) error {
+	// Build new iterator at the start of the tree
+	iter := i.tree.Iterator()
 
+	// Loop every keys of the tree
+	for iter.Next() {
+		rmErr := i.RemoveID(iter.Key(), id)
+		if rmErr != nil {
+			if rmErr.Error() == NotFoundString {
+				continue
+			}
+			return rmErr
+		}
+	}
+	return nil
+}
+
+func (i *structIndex) Update(oldValue, newValue interface{}, id string) error {
+	rmErr := i.RemoveID(oldValue, id)
+	if rmErr != nil {
+		return fmt.Errorf("trying to delete the ID: %q from the given value %v: %s",
+			id, oldValue, rmErr.Error(),
+		)
+	}
+
+	i.Put(newValue, id)
 	return nil
 }
 

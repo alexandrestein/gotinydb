@@ -24,8 +24,8 @@ func testSaveIndex(t *testing.T, index Index) {
 		index.Put(val[0], val[1].(string))
 	}
 
-	lenBeforeDuplicateInsert := index.getTree().Size()
 	// Try to add the value twice this should do nothing
+	lenBeforeDuplicateInsert := index.getTree().Size()
 	index.Put(list[0][0], list[0][1].(string))
 	if lenBeforeDuplicateInsert != index.getTree().Size() {
 		t.Errorf("insertion of same id at the same place should be baned")
@@ -70,6 +70,7 @@ func testLoadIndex(t *testing.T, index Index) {
 
 func TestStringIndex(t *testing.T) {
 	i := NewStringIndex(internalTesting.Path)
+	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
@@ -80,6 +81,7 @@ func TestStringIndex(t *testing.T) {
 
 func TestIntIndex(t *testing.T) {
 	i := NewIntIndex(internalTesting.Path)
+	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
@@ -90,6 +92,7 @@ func TestIntIndex(t *testing.T) {
 
 func TestNeighboursWithString(t *testing.T) {
 	i := NewStringIndex(internalTesting.Path)
+	i.getTree().Clear()
 	list := testStringList()
 	for _, val := range list {
 		i.Put(val[0], val[1].(string))
@@ -127,8 +130,9 @@ func testNeighbours(t *testing.T, i Index, key interface{}, nbToTry, nbToGet int
 	}
 }
 
-func TestRemoveId(t *testing.T) {
+func TestRemoveIdFromAll(t *testing.T) {
 	i := NewStringIndex(internalTesting.Path)
+	i.getTree().Clear()
 	list := testStringList()
 
 	list = append(list, testSameValueStringList()...)
@@ -138,7 +142,7 @@ func TestRemoveId(t *testing.T) {
 	}
 
 	for _, val := range list {
-		rmErr := i.RemoveID(val[1].(string))
+		rmErr := i.RemoveIDFromAll(val[1].(string))
 		if rmErr != nil {
 			t.Errorf("removing id %s: %s", val[1], rmErr.Error())
 			return
@@ -147,6 +151,40 @@ func TestRemoveId(t *testing.T) {
 
 	if size := i.getTree().Size(); size != 0 {
 		t.Errorf("size must be 0 and has %d", size)
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	i := NewStringIndex(internalTesting.Path)
+	i.getTree().Clear()
+
+	// Insert for the first time
+	for _, val := range testStringList() {
+		i.Put(val[0], val[1].(string))
+	}
+	for _, val := range testSameValueStringList() {
+		i.Put(val[0], val[1].(string))
+	}
+
+	// Update with the oposite values
+	for y, val := range testStringList() {
+		i.Update(val[0], testStringList()[len(testStringList())-1-y][0], val[1].(string))
+	}
+
+	// Do the checks
+	for y, val := range testStringList() {
+		// Get the ids back
+		ids, found := i.Get(val[0])
+		if !found {
+			t.Errorf("not found")
+			return
+		}
+
+		// Check that the first indexed value has the last id position
+		if !reflect.DeepEqual(ids, []string{testStringList()[len(testStringList())-1-y][1].(string)}) {
+			t.Errorf("update not done. Expecting %v and had: %v", testStringList()[len(testStringList())-1-y][1], ids)
+			return
+		}
 	}
 }
 

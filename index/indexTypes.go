@@ -11,6 +11,11 @@ const (
 	CustomIndexType
 )
 
+// Those varables define the deferent errors
+var (
+	NotFoundString = "not found"
+)
+
 type (
 	stringIndex struct {
 		*structIndex
@@ -39,11 +44,13 @@ type (
 		GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool)
 		// Put add the given value.
 		Put(indexedValue interface{}, objectID string)
-		// RemoveID is a slow function. It will check any element of the tree to remove
+		// RemoveID clean the given value of the given id.
+		RemoveID(value interface{}, objectID string) error
+		// RemoveIDFromAll is a slow function. It will check any element of the tree to remove
 		// all the entries where the given id is find.
 		// The logic of the tree is in the opposit side so this function should only
 		// be called for maintenance of the tree consistancy if any issue.
-		RemoveID(objectID string) error
+		RemoveIDFromAll(objectID string) error
 		// This is the way the tree should be manage consistancy.
 		// Any time a intry is update this function should be called to mange the
 		// index.
