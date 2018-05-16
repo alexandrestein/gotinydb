@@ -10,9 +10,10 @@ import (
 	"github.com/emirpasic/gods/trees/btree"
 )
 
-func NewStringIndex(path string) *StringIndex {
-	i := &StringIndex{
-		NewStructIndex(path),
+// NewStringIndex returns Index interface ready to manage string types
+func NewStringIndex(path string) Index {
+	i := &stringIndex{
+		newStructIndex(path),
 	}
 	i.tree = btree.NewWithStringComparator(vars.TreeOrder)
 	i.indexType = StringIndexType
@@ -20,9 +21,10 @@ func NewStringIndex(path string) *StringIndex {
 	return i
 }
 
-func NewIntIndex(path string) *IntIndex {
-	i := &IntIndex{
-		NewStructIndex(path),
+// NewIntIndex returns Index interface ready to manage int types
+func NewIntIndex(path string) Index {
+	i := &intIndex{
+		newStructIndex(path),
 	}
 	i.tree = btree.NewWithIntComparator(vars.TreeOrder)
 	i.indexType = IntIndexType
@@ -30,13 +32,13 @@ func NewIntIndex(path string) *IntIndex {
 	return i
 }
 
-func NewStructIndex(path string) *StructIndex {
-	return &StructIndex{
+func newStructIndex(path string) *structIndex {
+	return &structIndex{
 		path: path,
 	}
 }
 
-func (i *StructIndex) Get(indexedValue interface{}) (string, bool) {
+func (i *structIndex) Get(indexedValue interface{}) (string, bool) {
 	idAsInterface, found := i.tree.Get(indexedValue)
 	objectID, ok := idAsInterface.(string)
 	if !ok {
@@ -45,14 +47,13 @@ func (i *StructIndex) Get(indexedValue interface{}) (string, bool) {
 
 	return objectID, found
 }
-func (i *StructIndex) Put(indexedValue interface{}, objectID string) {
+func (i *structIndex) Put(indexedValue interface{}, objectID string) {
 	i.tree.Put(indexedValue, objectID)
 }
 
 // GetNeighbours returns values interface and true if founded.
-func (i *StructIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool) {
+func (i *structIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool) {
 	iterator := i.tree.IteratorAt(key)
-	// iterator2 := *iterator
 
 	nToAdd := 0
 
@@ -87,19 +88,19 @@ func (i *StructIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (index
 	return
 }
 
-func (i *StructIndex) getPath() string {
+func (i *structIndex) getPath() string {
 	return i.path
 }
 
-func (i *StructIndex) getTree() *btree.Tree {
+func (i *structIndex) getTree() *btree.Tree {
 	return i.tree
 }
 
-func (i *StructIndex) Type() IndexType {
+func (i *structIndex) Type() Type {
 	return i.indexType
 }
 
-func (i *StructIndex) Save() error {
+func (i *structIndex) Save() error {
 	treeAsBytes, jsonErr := i.tree.ToJSON()
 	if jsonErr != nil {
 		return fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
@@ -121,7 +122,7 @@ func (i *StructIndex) Save() error {
 	return nil
 }
 
-func (i *StructIndex) Load() error {
+func (i *structIndex) Load() error {
 	file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
 	if fileErr != nil {
 		return fmt.Errorf("opening file: %s", fileErr.Error())
@@ -151,7 +152,7 @@ func (i *StructIndex) Load() error {
 	return nil
 }
 
-func (i *StructIndex) RemoveId(id string) error {
+func (i *structIndex) RemoveID(id string) error {
 	iter := i.tree.Iterator()
 
 	for iter.Next() {
@@ -168,6 +169,6 @@ func (i *StructIndex) RemoveId(id string) error {
 	return nil
 }
 
-func (i *StructIndex) Update(oldValue, newValue interface{}, id string) error {
+func (i *structIndex) Update(oldValue, newValue interface{}, id string) error {
 	return nil
 }

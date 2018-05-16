@@ -65,7 +65,8 @@ func TestStringIndex(t *testing.T) {
 	i := NewStringIndex(internalTesting.Path)
 	testSaveIndex(t, i)
 
-	i.tree = nil
+	i.getTree().Clear()
+
 	i = NewStringIndex(internalTesting.Path)
 	testLoadIndex(t, i)
 }
@@ -74,7 +75,7 @@ func TestIntIndex(t *testing.T) {
 	i := NewIntIndex(internalTesting.Path)
 	testSaveIndex(t, i)
 
-	i.tree.Clear()
+	i.getTree().Clear()
 
 	i = NewIntIndex(internalTesting.Path)
 	testLoadIndex(t, i)
@@ -129,7 +130,7 @@ func TestRemoveId(t *testing.T) {
 	}
 
 	for _, val := range list {
-		rmErr := i.RemoveId(val[1].(string))
+		rmErr := i.RemoveID(val[1].(string))
 		if rmErr != nil {
 			t.Errorf("removing id %s: %s", val[1], rmErr.Error())
 			return
