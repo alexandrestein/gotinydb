@@ -8,12 +8,13 @@ import (
 
 	"gitea.interlab-net.com/alexandre/db/vars"
 	"github.com/emirpasic/gods/trees/btree"
+	"github.com/fatih/structs"
 )
 
 // NewStringIndex returns Index interface ready to manage string types
-func NewStringIndex(path string) Index {
+func NewStringIndex(path string, selector []string) Index {
 	i := &stringIndex{
-		newStructIndex(path),
+		newStructIndex(path, selector),
 	}
 	i.tree = btree.NewWithStringComparator(vars.TreeOrder)
 	i.indexType = StringIndexType
@@ -22,9 +23,9 @@ func NewStringIndex(path string) Index {
 }
 
 // NewIntIndex returns Index interface ready to manage int types
-func NewIntIndex(path string) Index {
+func NewIntIndex(path string, selector []string) Index {
 	i := &intIndex{
-		newStructIndex(path),
+		newStructIndex(path, selector),
 	}
 	i.tree = btree.NewWithIntComparator(vars.TreeOrder)
 	i.indexType = IntIndexType
@@ -32,9 +33,10 @@ func NewIntIndex(path string) Index {
 	return i
 }
 
-func newStructIndex(path string) *structIndex {
+func newStructIndex(path string, selector []string) *structIndex {
 	return &structIndex{
-		path: path,
+		path:     path,
+		selector: selector,
 	}
 }
 
@@ -249,4 +251,56 @@ func (i *structIndex) Query(q *Query) *Query {
 
 func (i *structIndex) RunQuery(q *Query) (ids []string) {
 	return ids
+}
+
+func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {
+	mapObj := structs.Map(object)
+	var ok bool
+
+	// Loop every level of the index
+	for j, selectorElem := range i.selector {
+		// If not at the top level
+		if j < len(i.selector)-1 {
+			// Trys to convert the value into map[string]interface{}
+			mapObj, ok = mapObj[selectorElem].(map[string]interface{})
+			// If not possible the index do not apply
+			if !ok || mapObj == nil {
+				return nil, false
+			}
+			// If at the top level
+		} else {
+			// Checks that the value is not nil
+			if mapObj[selectorElem] == nil {
+				return nil, false
+			}
+
+			// Check that the value in consustant with the specified index type
+			// Convert to the coresponding type and check if the value is nil.
+			switch i.Type() {
+			case StringIndexType:
+				if val, ok := mapObj[selectorElem].(string); !ok {
+					return nil, false
+				} else if val == "" {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case IntIndexType:
+				if val, ok := mapObj[selectorElem].(int); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			}
+		}
+	}
+
+	// Went to here, means that the index apply to this object
+	return valueToIndex, true
+}
+
+func (i *structIndex) GetSelector() []string {
+	return i.selector
 }

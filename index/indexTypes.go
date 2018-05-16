@@ -27,7 +27,7 @@ type (
 
 	structIndex struct {
 		tree      *btree.Tree
-		selector  []interface{}
+		selector  []string
 		path      string
 		indexType Type
 	}
@@ -55,6 +55,14 @@ type (
 		// Any time a intry is update this function should be called to mange the
 		// index.
 		Update(oldValue, newValue interface{}, id string) error
+
+		// Apply is the way the database knows if this index apply to the given
+		// object. It traces the fields name with the selector statement.
+		Apply(object interface{}) (valueToIndex interface{}, apply bool)
+
+		// GetSelector return a list of strings. The selector is a list of
+		// sub fields to track
+		GetSelector() []string
 
 		// Query returns an object query for this Index
 		Query(q *Query) *Query

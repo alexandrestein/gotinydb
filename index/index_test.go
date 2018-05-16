@@ -1,6 +1,7 @@
 package index
 
 import (
+	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
@@ -69,29 +70,29 @@ func testLoadIndex(t *testing.T, index Index) {
 }
 
 func TestStringIndex(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path)
+	i := NewStringIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewStringIndex(internalTesting.Path)
+	i = NewStringIndex(internalTesting.Path, []string{})
 	testLoadIndex(t, i)
 }
 
 func TestIntIndex(t *testing.T) {
-	i := NewIntIndex(internalTesting.Path)
+	i := NewIntIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewIntIndex(internalTesting.Path)
+	i = NewIntIndex(internalTesting.Path, []string{})
 	testLoadIndex(t, i)
 }
 
 func TestNeighboursWithString(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path)
+	i := NewStringIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
 	list := testStringList()
 	for _, val := range list {
@@ -131,7 +132,7 @@ func testNeighbours(t *testing.T, i Index, key interface{}, nbToTry, nbToGet int
 }
 
 func TestRemoveIdFromAll(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path)
+	i := NewStringIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
 	list := testStringList()
 
@@ -155,7 +156,7 @@ func TestRemoveIdFromAll(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path)
+	i := NewStringIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
 
 	// Insert for the first time
@@ -189,7 +190,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDuplicatedStringValue(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path)
+	i := NewStringIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
 
 	// Add the regular ones
@@ -216,6 +217,28 @@ func TestDuplicatedStringValue(t *testing.T) {
 	if !reflect.DeepEqual(ids, []string{"id100", "id110", "id120", "id130", "id140", "id150", "id160", "id170", "id180", "id190"}) {
 		t.Errorf("the ids are not correct: %v", ids)
 		return
+	}
+}
+
+func TestApply(t *testing.T) {
+	i := NewStringIndex(internalTesting.Path, []string{"Add", "Street", "Name"})
+
+	objs := internalTesting.GetCompleteUsersExample()
+
+	for j, obj := range objs {
+		if j == 0 {
+			if _, apply := i.Apply(obj); !apply {
+				buf, _ := json.Marshal(obj)
+				t.Errorf("the index %v must apply to %v but not", i.GetSelector(), string(buf))
+				return
+			}
+		} else {
+			if _, apply := i.Apply(obj); apply {
+				buf, _ := json.Marshal(obj)
+				t.Errorf("the index %v must not apply to %v but not", i.GetSelector(), string(buf))
+				return
+			}
+		}
 	}
 }
 
