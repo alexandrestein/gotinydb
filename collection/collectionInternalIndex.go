@@ -1,16 +1,8 @@
 package collection
 
-import (
-	"context"
-
-	"github.com/fatih/structs"
-)
-
-func (c *Collection) updateIndex(ctx context.Context, inputInterface interface{}, id string) error {
-	input := structs.New(inputInterface).Map()
-
+func (c *Collection) updateIndex(oldValue, newValue interface{}, id string) error {
 	for _, index := range c.Indexes {
-		go index.Update(input, id)
+		go index.Update(oldValue, newValue, id)
 	}
 
 	return nil

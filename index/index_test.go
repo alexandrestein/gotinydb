@@ -5,10 +5,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
-)
 
-var (
-	path = os.TempDir() + "/dbTest"
+	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
 )
 
 func getGoodList(i Index) [][]interface{} {
@@ -40,7 +38,7 @@ func testSaveIndex(t *testing.T, index Index) {
 }
 
 func testLoadIndex(t *testing.T, index Index) {
-	defer os.RemoveAll(path)
+	defer os.RemoveAll(internalTesting.Path)
 	list := getGoodList(index)
 
 	loadErr := index.Load()
@@ -64,26 +62,26 @@ func testLoadIndex(t *testing.T, index Index) {
 }
 
 func TestStringIndex(t *testing.T) {
-	i := NewStringIndex(path)
+	i := NewStringIndex(internalTesting.Path)
 	testSaveIndex(t, i)
 
 	i.tree = nil
-	i = NewStringIndex(path)
+	i = NewStringIndex(internalTesting.Path)
 	testLoadIndex(t, i)
 }
 
 func TestIntIndex(t *testing.T) {
-	i := NewIntIndex(path)
+	i := NewIntIndex(internalTesting.Path)
 	testSaveIndex(t, i)
 
 	i.tree.Clear()
 
-	i = NewIntIndex(path)
+	i = NewIntIndex(internalTesting.Path)
 	testLoadIndex(t, i)
 }
 
 func TestNeighboursWithString(t *testing.T) {
-	i := NewStringIndex(path)
+	i := NewStringIndex(internalTesting.Path)
 	list := testStringList()
 	for _, val := range list {
 		i.Put(val[0], val[1].(string))
@@ -119,6 +117,27 @@ func testNeighbours(t *testing.T, i Index, key interface{}, nbToTry, nbToGet int
 	if len(values) != nbToGet {
 		t.Errorf("The value count is not good, expecting %d and had %d", nbToGet, len(values))
 		return
+	}
+}
+
+func TestRemoveId(t *testing.T) {
+	i := NewStringIndex(internalTesting.Path)
+	list := testStringList()
+
+	for _, val := range list {
+		i.Put(val[0], val[1].(string))
+	}
+
+	for _, val := range list {
+		rmErr := i.RemoveId(val[1].(string))
+		if rmErr != nil {
+			t.Errorf("removing id %s: %s", val[1], rmErr.Error())
+			return
+		}
+	}
+
+	if size := i.getTree().Size(); size != 0 {
+		t.Errorf("size must be 0 and has %d", size)
 	}
 }
 

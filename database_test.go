@@ -2,19 +2,14 @@ package db
 
 import (
 	"bytes"
-	"crypto/rand"
-	"os"
 	"reflect"
 	"testing"
-	"time"
-)
 
-var (
-	path = os.TempDir() + "/dbTest"
+	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
 )
 
 func TestDB(t *testing.T) {
-	db, initErr := New(path)
+	db, initErr := New(internalTesting.Path)
 	if initErr != nil {
 		t.Error(initErr.Error())
 		return
@@ -27,19 +22,25 @@ func TestDB(t *testing.T) {
 		return
 	}
 
-	for _, user := range getUsersExample() {
-		col1.Put(user.ID, user)
-		tmpUser := &UserTest{}
+	for _, user := range internalTesting.GetUsersExample() {
+		putErr := col1.Put(user.ID, user)
+		if putErr != nil {
+			t.Errorf("puting the object: %s", putErr.Error())
+			return
+		}
+		tmpUser := &internalTesting.UserTest{}
 		getErr := col1.Get(user.ID, tmpUser)
 		if getErr != nil {
 			t.Errorf("getting the object: %s", getErr.Error())
+			return
 		}
 
 		if !reflect.DeepEqual(user, tmpUser) {
 			t.Errorf("returned object is not equal: %v\n%v", user, tmpUser)
+			return
 		}
 	}
-	for _, raw := range getRawExample() {
+	for _, raw := range internalTesting.GetRawExample() {
 		col1.Put(raw.ID, raw.Content)
 		buf := bytes.NewBuffer(nil)
 		getErr := col1.Get(raw.ID, buf)
@@ -56,9 +57,9 @@ func TestDB(t *testing.T) {
 }
 
 func TestExistingDB(t *testing.T) {
-	defer os.RemoveAll(path)
+	// defer os.RemoveAll(path)
 
-	db, initErr := New(path)
+	db, initErr := New(internalTesting.Path)
 	if initErr != nil {
 		t.Error(initErr.Error())
 		return
@@ -70,37 +71,4 @@ func TestExistingDB(t *testing.T) {
 		t.Errorf("openning test collection: %s", col1Err.Error())
 		return
 	}
-}
-
-type (
-	UserTest struct {
-		ID, UserName, Password string
-		Creation               time.Time
-	}
-
-	RawTest struct {
-		ID      string
-		Content []byte
-	}
-)
-
-func getUsersExample() []*UserTest {
-	// Time is truncate because the JSON format do not support nanosecondes
-	return []*UserTest{
-		&UserTest{"ID_USER_1", "mister 1", "pass 1", time.Now().Truncate(time.Millisecond)},
-		&UserTest{"ID_USER_2", "mister 2", "pass 2", time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
-	}
-}
-
-func getRawExample() []*RawTest {
-	return []*RawTest{
-		&RawTest{"ID_RAW_1", genRand(1024)},
-		&RawTest{"ID_RAW_2", genRand(1024 * 1024 * 30)},
-	}
-}
-
-func genRand(size int) []byte {
-	buf := make([]byte, size)
-	rand.Read(buf)
-	return buf
 }

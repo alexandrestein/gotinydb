@@ -33,6 +33,7 @@ type (
 		GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool)
 		Put(indexedValue interface{}, objectID string)
 		RemoveId(objectID string) error
+		Update(oldValue, newValue interface{}, id string) error
 
 		Save() error
 		Load() error

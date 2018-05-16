@@ -2,7 +2,6 @@ package collection
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,9 +26,6 @@ func NewCollection(path string) (*Collection, error) {
 // Put saves the given element into the given ID.
 // If record already exists this update it.
 func (c *Collection) Put(id string, value interface{}) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer c.updateIndex(ctx, value, id)
-
 	isBin := false
 	binAsBytes := []byte{}
 	if bytes, ok := value.([]byte); ok {
@@ -39,19 +35,16 @@ func (c *Collection) Put(id string, value interface{}) error {
 
 	file, openErr := c.openDoc(id, isBin, vars.PutFlags)
 	if openErr != nil {
-		cancel()
 		return fmt.Errorf("opening record: %s", openErr.Error())
 	}
 
 	if isBin {
 		if err := c.putBin(file, binAsBytes); err != nil {
-			cancel()
 			return err
 		}
 	}
 
 	if err := c.putObject(file, value); err != nil {
-		cancel()
 		return err
 	}
 	return nil
@@ -97,11 +90,8 @@ func (c *Collection) Get(id string, value interface{}) error {
 }
 
 func (c *Collection) Delete(id string) error {
-	if rmObjErr := os.Remove(c.getRecordPath(id, false)); rmObjErr != nil {
-		if rmBinErr := os.Remove(c.getRecordPath(id, true)); rmBinErr != nil {
-			return fmt.Errorf("the object do not exist")
-		}
-	}
+	os.Remove(c.getRecordPath(id, false))
+	os.Remove(c.getRecordPath(id, true))
 
 	if err := c.updateIndexAfterDelete(id); err != nil {
 		return fmt.Errorf("updating index: %s", err.Error())

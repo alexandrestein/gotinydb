@@ -161,9 +161,13 @@ func (i *StructIndex) RemoveId(id string) error {
 		}
 
 		if savedID == id {
-			i.tree.Remove(id)
+			i.tree.Remove(iter.Key())
 		}
 	}
 
+	return nil
+}
+
+func (i *StructIndex) Update(oldValue, newValue interface{}, id string) error {
 	return nil
 }

@@ -3,6 +3,7 @@ package collection
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"gitea.interlab-net.com/alexandre/db/vars"
@@ -26,16 +27,40 @@ func (c *Collection) putObject(file *os.File, value interface{}) error {
 		return fmt.Errorf("marshaling record: %s", marshalErr.Error())
 	}
 
-	c.updateIndex(value, file.Name())
+	oldValue, errGetPrevious := c.getPrevious(file)
+	if errGetPrevious != nil {
+		return fmt.Errorf("getting the previous record: %s", errGetPrevious.Error())
+	}
+
+	c.updateIndex(oldValue, value, file.Name())
 
 	return c.putToFile(file, buf)
 }
+
+func (c *Collection) getPrevious(file *os.File) (map[string]interface{}, error) {
+	oldValueBuf := make([]byte, vars.BlockSize)
+	n, errRead := file.ReadAt(oldValueBuf, 0)
+	if errRead != nil {
+		if errRead == io.EOF && n == 0 {
+			return nil, nil
+		}
+	}
+
+	oldValue := map[string]interface{}{}
+	decodeErr := json.Unmarshal(oldValueBuf, oldValue)
+	if decodeErr != nil {
+		return nil, fmt.Errorf("decoding old file: %s", decodeErr.Error())
+	}
+
+	return oldValue, nil
+}
+
 func (c *Collection) putBin(file *os.File, value []byte) error {
 	return c.putToFile(file, value)
 }
 
 func (c *Collection) putToFile(file *os.File, value []byte) error {
-	n, writeErr := file.Write(value)
+	n, writeErr := file.WriteAt(value, 0)
 	if writeErr != nil {
 		return fmt.Errorf("writing record: %s", writeErr.Error())
 	}
@@ -44,6 +69,9 @@ func (c *Collection) putToFile(file *os.File, value []byte) error {
 	}
 
 	return nil
+}
+
+func (c *Collection) putErr(id, string, value interface{}, bin bool) {
 }
 
 func (c *Collection) openDoc(id string, bin bool, flags int) (*os.File, error) {

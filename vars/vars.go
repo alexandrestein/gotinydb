@@ -20,5 +20,5 @@ const (
 	OpenDBFlags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
 
 	GetFlags = os.O_RDONLY
-	PutFlags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+	PutFlags = os.O_RDWR | os.O_CREATE | os.O_TRUNC
 )
