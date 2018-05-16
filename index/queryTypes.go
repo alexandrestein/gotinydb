@@ -1,6 +1,6 @@
 package index
 
-// Defines the different types of queries
+// Defines the different types of queries:
 const (
 	Equal     QueryType = "eq"
 	StartWith QueryType = "sw"
@@ -10,17 +10,27 @@ type (
 	// Query defines the object to request index query.
 	Query struct {
 		index *Index
+		next  *Query
 
-		PathToFiled []string
-		Action      QueryType
-		Limit       int
+		filedPath     []string
+		Action        QueryType
+		InvertedOrder bool
+		Limit         int
 	}
 
 	// QueryType defines the type of query the caller needs to do.
 	QueryType string
 )
 
-// Query permits to chain queries
-func (q *Query) Query(next *Query) {
+// Next permits to chain queries
+func (q *Query) Next() (next *Query) {
+	if q.next != nil {
+		return q.next
+	}
 
+	q.next = &Query{
+		index: q.index,
+	}
+
+	return q.next
 }

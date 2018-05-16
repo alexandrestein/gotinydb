@@ -1,7 +1,6 @@
 package index
 
 import (
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -23,6 +22,14 @@ func testSaveIndex(t *testing.T, index Index) {
 	list := getGoodList(index)
 	for _, val := range list {
 		index.Put(val[0], val[1].(string))
+	}
+
+	lenBeforeDuplicateInsert := index.getTree().Size()
+	// Try to add the value twice this should do nothing
+	index.Put(list[0][0], list[0][1].(string))
+	if lenBeforeDuplicateInsert != index.getTree().Size() {
+		t.Errorf("insertion of same id at the same place should be baned")
+		return
 	}
 
 	if listLen := len(list); listLen != index.getTree().Size() {
@@ -48,14 +55,14 @@ func testLoadIndex(t *testing.T, index Index) {
 	}
 
 	for _, val := range list {
-		savedID, found := index.Get(val[0])
+		savedIDs, found := index.Get(val[0])
 		if !found {
 			t.Errorf("ID %q is not found", val[0])
 			return
 		}
 
-		if !reflect.DeepEqual(val[1], savedID) {
-			t.Errorf("saved value is not equal: \n\t%s\n\t%s", val[1], savedID)
+		if !reflect.DeepEqual(val[1], savedIDs[0]) {
+			t.Errorf("saved value is not equal: \n\t%s\n\t%s", val[1], savedIDs)
 			return
 		}
 	}
@@ -111,7 +118,6 @@ func testNeighbours(t *testing.T, i Index, key interface{}, nbToTry, nbToGet int
 	}
 
 	if len(keys) != nbToGet {
-		fmt.Println(values)
 		t.Errorf("The key count is not good, expecting %d and had %d", nbToGet, len(keys))
 		return
 	}
@@ -124,6 +130,8 @@ func testNeighbours(t *testing.T, i Index, key interface{}, nbToTry, nbToGet int
 func TestRemoveId(t *testing.T) {
 	i := NewStringIndex(internalTesting.Path)
 	list := testStringList()
+
+	list = append(list, testSameValueStringList()...)
 
 	for _, val := range list {
 		i.Put(val[0], val[1].(string))
@@ -139,6 +147,37 @@ func TestRemoveId(t *testing.T) {
 
 	if size := i.getTree().Size(); size != 0 {
 		t.Errorf("size must be 0 and has %d", size)
+	}
+}
+
+func TestDuplicatedStringValue(t *testing.T) {
+	i := NewStringIndex(internalTesting.Path)
+	i.getTree().Clear()
+
+	// Add the regular ones
+	for _, val := range testStringList() {
+		i.Put(val[0], val[1].(string))
+	}
+
+	list := testSameValueStringList()
+	for _, val := range list {
+		i.Put(val[0], val[1].(string))
+	}
+
+	if i.getTree().Size() != 27 {
+		t.Errorf("the size must be 27 and is %d", i.getTree().Size())
+		return
+	}
+
+	ids, found := i.Get("multiple IDs indexed")
+	if !found {
+		t.Errorf("the ids are not found by the indexed value")
+		return
+	}
+
+	if !reflect.DeepEqual(ids, []string{"id100", "id110", "id120", "id130", "id140", "id150", "id160", "id170", "id180", "id190"}) {
+		t.Errorf("the ids are not correct: %v", ids)
+		return
 	}
 }
 
@@ -170,6 +209,21 @@ func testStringList() [][]interface{} {
 		[]interface{}{"indexed field value x", "id23"},
 		[]interface{}{"indexed field value y", "id24"},
 		[]interface{}{"indexed field value z", "id25"},
+	}
+}
+
+func testSameValueStringList() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{"multiple IDs indexed", "id100"},
+		[]interface{}{"multiple IDs indexed", "id110"},
+		[]interface{}{"multiple IDs indexed", "id120"},
+		[]interface{}{"multiple IDs indexed", "id130"},
+		[]interface{}{"multiple IDs indexed", "id140"},
+		[]interface{}{"multiple IDs indexed", "id150"},
+		[]interface{}{"multiple IDs indexed", "id160"},
+		[]interface{}{"multiple IDs indexed", "id170"},
+		[]interface{}{"multiple IDs indexed", "id180"},
+		[]interface{}{"multiple IDs indexed", "id190"},
 	}
 }
 

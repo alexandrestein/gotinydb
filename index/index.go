@@ -38,17 +38,55 @@ func newStructIndex(path string) *structIndex {
 	}
 }
 
-func (i *structIndex) Get(indexedValue interface{}) (string, bool) {
-	idAsInterface, found := i.tree.Get(indexedValue)
-	objectID, ok := idAsInterface.(string)
-	if !ok {
-		return "", false
+func (i *structIndex) Get(indexedValue interface{}) ([]string, bool) {
+	return i.getIdsAsString(indexedValue)
+}
+
+func (i *structIndex) getIdsAsString(indexedValue interface{}) ([]string, bool) {
+	// Trys to get the list of ids for the given indexed value.
+	idsAsInterface, found := i.tree.Get(indexedValue)
+	if found {
+		// Try to convert it into a slice of interface
+		objectIDsAsInterface, okInterfaces := idsAsInterface.([]interface{})
+		if okInterfaces {
+			ret := []string{}
+			// Loop all the interfaces to convert it into strings
+			for _, objectIDAsInterface := range objectIDsAsInterface {
+				objectIDsAsStrings, okStrings := objectIDAsInterface.(string)
+				// Add the result to the return
+				if okStrings {
+					ret = append(ret, objectIDsAsStrings)
+				}
+			}
+
+			// Returns a list of string corresponding to the object ids.
+			return ret, found
+		}
+
+		objectIDsAsStrings, okStrings := idsAsInterface.([]string)
+		if okStrings {
+			return objectIDsAsStrings, found
+		}
 	}
 
-	return objectID, found
+	return nil, false
 }
+
 func (i *structIndex) Put(indexedValue interface{}, objectID string) {
-	i.tree.Put(indexedValue, objectID)
+	objectIDs, found := i.getIdsAsString(indexedValue)
+	if found {
+		// Check that the given id is not allredy in the list
+		for _, savedID := range objectIDs {
+			if savedID == objectID {
+				return
+			}
+		}
+		objectIDs = append(objectIDs, objectID)
+		i.tree.Put(indexedValue, objectIDs)
+		return
+	}
+
+	i.tree.Put(indexedValue, []string{objectID})
 }
 
 // GetNeighbours returns values interface and true if founded.
@@ -75,14 +113,14 @@ func (i *structIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (index
 			break
 		}
 
-		idAsInterface, ok := iterator.Value().(string)
+		idAsInterface, ok := iterator.Value().([]string)
 		// If the values is not an object ID it is not append.
 		if !ok {
 			continue
 		}
 
 		indexedValues = append(indexedValues, iterator.Key())
-		objectIDs = append(objectIDs, idAsInterface)
+		objectIDs = append(objectIDs, idAsInterface...)
 
 	}
 	return
@@ -153,16 +191,35 @@ func (i *structIndex) Load() error {
 }
 
 func (i *structIndex) RemoveID(id string) error {
+	// Build new iterator at the start of the tree
 	iter := i.tree.Iterator()
 
+	// Loop every keys of the tree
 	for iter.Next() {
-		savedID, ok := iter.Value().(string)
+		// Convert the interface into a list of ids as strings
+		savedIDs, ok := iter.Value().([]string)
+		// If can't convert pass
 		if !ok {
 			continue
 		}
 
-		if savedID == id {
+		// newSavedIDs will take the updated list of ids
+		newSavedIDs := []string{}
+		for _, savedID := range savedIDs {
+			if savedID != id {
+				newSavedIDs = append(newSavedIDs, savedID)
+			}
+		}
+
+		// If the new list of ids is empty the key value pair is delete
+		if len(newSavedIDs) <= 0 {
 			i.tree.Remove(iter.Key())
+			return nil
+		}
+
+		// Save the ids if the size as changed
+		if len(newSavedIDs) != len(savedIDs) {
+			i.tree.Put(iter.Key(), newSavedIDs)
 		}
 	}
 
@@ -170,5 +227,14 @@ func (i *structIndex) RemoveID(id string) error {
 }
 
 func (i *structIndex) Update(oldValue, newValue interface{}, id string) error {
+
 	return nil
+}
+
+func (i *structIndex) Query(q *Query) *Query {
+	return nil
+}
+
+func (i *structIndex) RunQuery(q *Query) (ids []string) {
+	return ids
 }
