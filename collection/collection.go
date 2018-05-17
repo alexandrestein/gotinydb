@@ -37,11 +37,13 @@ func (c *Collection) Put(id string, value interface{}) error {
 	if openErr != nil {
 		return fmt.Errorf("opening record: %s", openErr.Error())
 	}
+	defer file.Close()
 
 	if isBin {
 		if err := c.putBin(file, binAsBytes); err != nil {
 			return err
 		}
+		return nil
 	}
 
 	if err := c.putObject(file, value); err != nil {
@@ -53,10 +55,15 @@ func (c *Collection) Put(id string, value interface{}) error {
 // Get fillups the given value from the given ID. If you want to get binary
 // content you must give a bytes.Buffer pointer.
 func (c *Collection) Get(id string, value interface{}) error {
+	if id == "" {
+		return fmt.Errorf("id can't be empty")
+	}
+
 	file, isBin, openErr := c.getFile(id)
 	if openErr != nil {
 		return openErr
 	}
+	defer file.Close()
 
 	ret := []byte{}
 	readOffSet := int64(0)
@@ -90,11 +97,21 @@ func (c *Collection) Get(id string, value interface{}) error {
 }
 
 func (c *Collection) Delete(id string) error {
-	os.Remove(c.getRecordPath(id, false))
-	os.Remove(c.getRecordPath(id, true))
+	defer os.Remove(c.getRecordPath(id, false))
+	defer os.Remove(c.getRecordPath(id, true))
 
-	if err := c.updateIndexAfterDelete(id); err != nil {
-		return fmt.Errorf("updating index: %s", err.Error())
+	savedValue := map[string]interface{}{}
+	getErr := c.Get(id, &savedValue)
+	if getErr != nil && fmt.Sprintf("%T", getErr) == "os.PathError" {
+		return fmt.Errorf("value not found")
+	}
+
+	fmt.Println("err", getErr, savedValue)
+
+	if len(savedValue) != 0 {
+		if err := c.updateIndexAfterDelete(id); err != nil {
+			return fmt.Errorf("updating index: %s", err.Error())
+		}
 	}
 
 	return nil
