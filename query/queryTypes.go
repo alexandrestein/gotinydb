@@ -59,6 +59,7 @@ func (a *Action) Valid() bool {
 func NewQuery(selector []string) *Query {
 	return &Query{
 		Selector: selector,
+		Limit:    1,
 		Actions:  map[ActionType]*Action{},
 	}
 }

@@ -236,12 +236,20 @@ func (i *structIndex) RemoveIDFromAll(id string) error {
 }
 
 func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
+	// Check the selector
 	if !reflect.DeepEqual(q.Selector, i.selector) {
 		return
 	}
 
+	// If equal just this leave will be send
 	if action := q.Actions[query.Equal]; action != nil {
-		ids, _ = i.Get(action.CompareToValue)
+		tmpIDs, found := i.Get(action.CompareToValue)
+		if found {
+			ids = tmpIDs
+			if len(ids) > q.Limit {
+				ids = ids[:q.Limit]
+			}
+		}
 		return
 	}
 

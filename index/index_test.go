@@ -258,39 +258,37 @@ func TestStringQuery(t *testing.T) {
 	}
 
 	q := query.NewQuery(selector)
-	a1 := query.NewAction().Do(query.Equal).CompareTo(user0.Add.Street.Name)
-	q.AddAction(a1)
+	q.AddAction(query.NewAction().Do(query.Equal).CompareTo(user0.Add.Street.Name))
 	ids := i.RunQuery(q)
 	if len(ids) != 1 || ids[0] != user0.GetID() {
-		t.Errorf("the returned id %q is not good.", ids)
+		t.Errorf("the returned ids %q is not good for : %v", ids, user0.Add.Street.Name)
 	}
 
 	q = query.NewQuery(selector).SetLimit(10)
 	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
-	ids = i.RunQuery(q)
-	fmt.Println("1", ids)
+	fmt.Println("1", i.RunQuery(q))
 
 	q = query.NewQuery(selector).SetLimit(3)
 	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
 	q.AddAction(query.NewAction().Do(query.NotEqual))
-	ids = i.RunQuery(q)
-	fmt.Println("2", ids)
+	fmt.Println("2", i.RunQuery(q))
 
 	q = query.NewQuery(selector).SetLimit(10)
 	q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
-	ids = i.RunQuery(q)
-	fmt.Println("3", ids)
+	fmt.Println("3", i.RunQuery(q))
 
 	q = query.NewQuery(selector).SetLimit(3)
 	q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
 	q.AddAction(query.NewAction().Do(query.NotEqual))
-	ids = i.RunQuery(q)
-	fmt.Println("4", ids)
+	fmt.Println("4", i.RunQuery(q))
 
 	q = query.NewQuery(selector).SetLimit(3)
 	q.AddAction(query.NewAction())
-	ids = i.RunQuery(q)
-	fmt.Println("5", ids)
+	fmt.Println("5", i.RunQuery(q))
+
+	q = query.NewQuery(selector).SetLimit(10)
+	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("N"))
+	fmt.Println("6", i.RunQuery(q))
 
 	i.getTree().Clear()
 }
