@@ -2,7 +2,6 @@ package collection
 
 import (
 	"os"
-	"reflect"
 	"testing"
 
 	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
@@ -20,6 +19,34 @@ func insertAndCheck(t *testing.T, col *Collection, values []internalTesting.Test
 	}
 
 	check(t, col, ids, values)
+}
+
+func load(t *testing.T, col *Collection, values []internalTesting.TestValue) {
+	loadedCol, loadErr := NewCollection(col.path)
+	if loadErr != nil {
+		t.Error(loadErr)
+	}
+
+	for _, value := range values {
+		loadedValue1 := value.New()
+		loadedValue2 := value.New()
+
+		get1Err := col.Get(value.GetID(), loadedValue1)
+		if get1Err != nil {
+			t.Error(get1Err)
+			return
+		}
+		get2Err := loadedCol.Get(value.GetID(), loadedValue2)
+		if get2Err != nil {
+			t.Error(get2Err)
+			return
+		}
+
+		if !value.IsEqual(loadedValue1) || !value.IsEqual(loadedValue2) {
+			t.Errorf("%v and %v are not equal to %v", loadedValue1, loadedValue2, value.GetContent())
+			return
+		}
+	}
 }
 
 func updateAndCheck(t *testing.T, col *Collection, values []internalTesting.TestValue) {
@@ -71,10 +98,69 @@ func check(t *testing.T, col *Collection, ids []string, values []internalTesting
 			return
 		}
 
-		if !reflect.DeepEqual(value, gettedValue) {
-			t.Errorf("%v and %v are not equal", value, gettedValue)
+		if !value.IsEqual(gettedValue) {
+			t.Errorf("%v and %v are not equal", value.GetContent(), gettedValue)
 			return
 		}
+
+		// checkErr := checkValues(value, gettedValue)
+		// if checkErr != nil {
+		// 	t.Error(checkErr)
+		// 	return
+		// }
+
+		// switch fmt.Sprintf("%T", gettedValue) {
+		// case "*testing.UserTest":
+		// 	if !reflect.DeepEqual(value, gettedValue) {
+		// 		t.Errorf("%v and %v are not equal", value, gettedValue)
+		// 		return
+		// 	}
+		// case "*bytes.Buffer":
+		// 	if !reflect.DeepEqual(value.GetContent(), gettedValue.(*bytes.Buffer).Bytes()) {
+		// 		t.Errorf("%v and %v are not equal", value, gettedValue)
+		// 		return
+		// 	}
+		// }
+	}
+}
+
+// func checkValues(a internalTesting.TestValue, b interface{}) error {
+// 	switch fmt.Sprintf("%T", a) {
+// 	case "*testing.UserTest":
+// 		if !reflect.DeepEqual(a, b) {
+// 			return fmt.Errorf("%v and %v are not equal", a, b)
+// 		}
+// 	case "*bytes.Buffer":
+// 		if !reflect.DeepEqual(a.GetContent(), b.(*bytes.Buffer).Bytes()) {
+// 			return fmt.Errorf("%v and %v are not equal", a, b)
+// 		}
+// 	}
+// 	return nil
+// }
+
+func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue) {
+	insertAndCheck(t, col, values)
+	if t.Failed() {
+		return
+	}
+
+	load(t, col, values)
+	if t.Failed() {
+		return
+	}
+
+	delete(t, col, values)
+	if t.Failed() {
+		return
+	}
+
+	updateAndCheck(t, col, values)
+	if t.Failed() {
+		return
+	}
+	delete(t, col, values)
+	if t.Failed() {
+		return
 	}
 }
 
@@ -86,24 +172,7 @@ func TestCollectionObject(t *testing.T) {
 		return
 	}
 
-	users := internalTesting.GetUsersExample()
-	insertAndCheck(t, col, users)
-	if t.Failed() {
-		return
-	}
-	delete(t, col, users)
-	if t.Failed() {
-		return
-	}
-
-	updateAndCheck(t, col, users)
-	if t.Failed() {
-		return
-	}
-	delete(t, col, users)
-	if t.Failed() {
-		return
-	}
+	runTest(t, col, internalTesting.GetUsersExample())
 }
 
 func TestCollectionBin(t *testing.T) {
@@ -114,22 +183,5 @@ func TestCollectionBin(t *testing.T) {
 		return
 	}
 
-	raw := internalTesting.GetRawExample()
-	insertAndCheck(t, col, raw)
-	if t.Failed() {
-		return
-	}
-	delete(t, col, raw)
-	if t.Failed() {
-		return
-	}
-
-	updateAndCheck(t, col, raw)
-	if t.Failed() {
-		return
-	}
-	delete(t, col, raw)
-	if t.Failed() {
-		return
-	}
+	runTest(t, col, internalTesting.GetRawExample())
 }

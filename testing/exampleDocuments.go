@@ -1,7 +1,9 @@
 package testing
 
 import (
+	"bytes"
 	"crypto/rand"
+	"reflect"
 	"time"
 )
 
@@ -10,6 +12,7 @@ type (
 		GetID() string
 		GetContent() interface{}
 		New() interface{}
+		IsEqual(with interface{}) bool
 	}
 
 	UserTest struct {
@@ -51,6 +54,10 @@ func (self *UserTest) GetContent() interface{} {
 func (self *UserTest) New() interface{} {
 	return new(UserTest)
 }
+func (self *UserTest) IsEqual(with interface{}) bool {
+	return reflect.DeepEqual(self.GetContent(), with)
+}
+
 func (self *CompleteUser) GetID() string {
 	return self.ID
 }
@@ -60,6 +67,10 @@ func (self *CompleteUser) GetContent() interface{} {
 func (self *CompleteUser) New() interface{} {
 	return new(CompleteUser)
 }
+func (self *CompleteUser) IsEqual(with interface{}) bool {
+	return reflect.DeepEqual(self.GetContent(), with)
+}
+
 func (self *RawTest) GetID() string {
 	return self.ID
 }
@@ -67,7 +78,14 @@ func (self *RawTest) GetContent() interface{} {
 	return self.Content
 }
 func (self *RawTest) New() interface{} {
-	return new(RawTest)
+	return bytes.NewBuffer(nil)
+}
+func (self *RawTest) IsEqual(with interface{}) bool {
+	buff, ok := with.(*bytes.Buffer)
+	if !ok {
+		return false
+	}
+	return reflect.DeepEqual(self.GetContent(), buff.Bytes())
 }
 
 func GetUsersExample() []TestValue {
@@ -111,7 +129,7 @@ func GetCompleteUsersExample() []TestValue {
 func GetRawExample() []TestValue {
 	return []TestValue{
 		&RawTest{"ID_RAW_1", genRand(1024)},
-		&RawTest{"ID_RAW_2", genRand(1024 * 1024 * 30)},
+		&RawTest{"ID_RAW_2", genRand(512)},
 	}
 }
 
