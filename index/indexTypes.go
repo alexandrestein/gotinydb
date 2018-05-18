@@ -1,6 +1,7 @@
 package index
 
 import (
+	"gitea.interlab-net.com/alexandre/db/query"
 	"github.com/emirpasic/gods/trees/btree"
 )
 
@@ -51,10 +52,6 @@ type (
 		// The logic of the tree is in the opposit side so this function should only
 		// be called for maintenance of the tree consistancy if any issue.
 		RemoveIDFromAll(objectID string) error
-		// This is the way the tree should be manage consistancy.
-		// Any time a intry is update this function should be called to mange the
-		// index.
-		Update(oldValue, newValue interface{}, id string) error
 
 		// Apply is the way the database knows if this index apply to the given
 		// object. It traces the fields name with the selector statement.
@@ -64,11 +61,9 @@ type (
 		// sub fields to track
 		GetSelector() []string
 
-		// Query returns an object query for this Index
-		Query(q *Query) *Query
 		// RunQuery runs the given query and subqueries before returning the
 		// corresponding ids.
-		RunQuery(q *Query) (ids []string)
+		RunQuery(q *query.Query) (ids []string)
 
 		// Save and Load saves or loads the tree at or from the path location from
 		// the initialisation.

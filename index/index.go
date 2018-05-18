@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 
+	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/fatih/structs"
@@ -233,65 +235,92 @@ func (i *structIndex) RemoveIDFromAll(id string) error {
 	return nil
 }
 
-func (i *structIndex) Update(oldValue, newValue interface{}, id string) error {
-	rmErr := i.RemoveID(oldValue, id)
-	if rmErr != nil {
-		return fmt.Errorf("trying to delete the ID: %q from the given value %v: %s",
-			id, oldValue, rmErr.Error(),
-		)
+func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
+	if !reflect.DeepEqual(q.Selector, i.selector) {
+		return
 	}
 
-	i.Put(newValue, id)
-	return nil
-}
+	if action := q.Actions[query.Equal]; action != nil {
+		ids, _ = i.Get(action.CompareToValue)
+		return
+	}
 
-func (i *structIndex) Query(q *Query) *Query {
-	return nil
-}
+	var iterator *btree.Iterator
+	var startValue interface{}
+	var nextFunc (func() bool)
+	if q.Actions[query.Greater] != nil {
+		iterator = i.tree.IteratorAt(q.Actions[query.Greater].CompareToValue)
+		startValue = q.Actions[query.Greater].CompareToValue
+		nextFunc = iterator.Next
+	} else if q.Actions[query.Less] != nil {
+		iterator = i.tree.IteratorAt(q.Actions[query.Less].CompareToValue)
+		startValue = q.Actions[query.Less].CompareToValue
+		nextFunc = iterator.Prev
+	} else {
+		return
+	}
 
-func (i *structIndex) RunQuery(q *Query) (ids []string) {
-	return ids
+	// Check if the caller want more or less with equal option
+	if iterator.Key() == startValue {
+		if q.Actions[query.NotEqual] == nil {
+			ids = append(ids, iterator.Value().([]string)...)
+		}
+	}
+
+	for nextFunc() {
+		// Cleans the list if to big and returns
+		if len(ids) >= q.Limit {
+			ids = ids[:q.Limit]
+			return
+		}
+
+		ids = append(ids, iterator.Value().([]string)...)
+	}
+
+	return
 }
 
 func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {
-	mapObj := structs.Map(object)
-	var ok bool
+	if structs.IsStruct(object) {
+		mapObj := structs.Map(object)
+		var ok bool
 
-	// Loop every level of the index
-	for j, selectorElem := range i.selector {
-		// If not at the top level
-		if j < len(i.selector)-1 {
-			// Trys to convert the value into map[string]interface{}
-			mapObj, ok = mapObj[selectorElem].(map[string]interface{})
-			// If not possible the index do not apply
-			if !ok || mapObj == nil {
-				return nil, false
-			}
-			// If at the top level
-		} else {
-			// Checks that the value is not nil
-			if mapObj[selectorElem] == nil {
-				return nil, false
-			}
-
-			// Check that the value in consustant with the specified index type
-			// Convert to the coresponding type and check if the value is nil.
-			switch i.Type() {
-			case StringIndexType:
-				if val, ok := mapObj[selectorElem].(string); !ok {
+		// Loop every level of the index
+		for j, selectorElem := range i.selector {
+			// If not at the top level
+			if j < len(i.selector)-1 {
+				// Trys to convert the value into map[string]interface{}
+				mapObj, ok = mapObj[selectorElem].(map[string]interface{})
+				// If not possible the index do not apply
+				if !ok || mapObj == nil {
 					return nil, false
-				} else if val == "" {
-					return nil, false
-				} else {
-					valueToIndex = val
 				}
-			case IntIndexType:
-				if val, ok := mapObj[selectorElem].(int); !ok {
+				// If at the top level
+			} else {
+				// Checks that the value is not nil
+				if mapObj[selectorElem] == nil {
 					return nil, false
-				} else if val == 0 {
-					return nil, false
-				} else {
-					valueToIndex = val
+				}
+
+				// Check that the value in consustant with the specified index type
+				// Convert to the coresponding type and check if the value is nil.
+				switch i.Type() {
+				case StringIndexType:
+					if val, ok := mapObj[selectorElem].(string); !ok {
+						return nil, false
+					} else if val == "" {
+						return nil, false
+					} else {
+						valueToIndex = val
+					}
+				case IntIndexType:
+					if val, ok := mapObj[selectorElem].(int); !ok {
+						return nil, false
+					} else if val == 0 {
+						return nil, false
+					} else {
+						valueToIndex = val
+					}
 				}
 			}
 		}

@@ -131,7 +131,3 @@ func (c *Collection) SetIndex(name string, indexType index.Type, selector []stri
 
 	return c.save()
 }
-
-func (c *Collection) Query(q *index.Query) {
-
-}

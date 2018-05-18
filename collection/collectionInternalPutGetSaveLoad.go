@@ -99,7 +99,7 @@ func (c *Collection) putObject(file *os.File, value interface{}) error {
 	return c.putToFile(file, buf)
 }
 
-func (c *Collection) getPrevious(file *os.File) (map[string]interface{}, error) {
+func (c *Collection) getPrevious(file *os.File) (interface{}, error) {
 	oldValueBuf := make([]byte, vars.BlockSize)
 	n, errRead := file.ReadAt(oldValueBuf, 0)
 	if errRead != nil {

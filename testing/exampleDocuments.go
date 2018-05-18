@@ -98,6 +98,15 @@ func GetUsersExample() []TestValue {
 }
 
 func GetCompleteUsersExample() []TestValue {
+	ret := []TestValue{}
+
+	ret = append(ret, GetCompleteUsersExampleOneAndTow()...)
+	ret = append(ret, GetCompleteUsersExampleStreetNamesOnly()...)
+
+	return ret
+}
+
+func GetCompleteUsersExampleOneAndTow() []TestValue {
 	return []TestValue{
 		&CompleteUser{ID: "ID_1",
 			Name:  "Mister 1",
@@ -124,6 +133,15 @@ func GetCompleteUsersExample() []TestValue {
 					Name: "Nice City",
 				},
 			}},
+	}
+}
+func GetCompleteUsersExampleStreetNamesOnly() []TestValue {
+	return []TestValue{
+		&CompleteUser{ID: "S_1", Add: &Add{Street: &Street{Name: "North street"}}},
+		&CompleteUser{ID: "S_2", Add: &Add{Street: &Street{Name: "South street"}}},
+		&CompleteUser{ID: "S_3", Add: &Add{Street: &Street{Name: "West street"}}},
+		&CompleteUser{ID: "S_4", Add: &Add{Street: &Street{Name: "East street"}}},
+		&CompleteUser{ID: "S_5", Add: &Add{Street: &Street{Name: "George street"}}},
 	}
 }
 

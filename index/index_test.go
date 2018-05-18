@@ -2,10 +2,12 @@ package index
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
 
+	"gitea.interlab-net.com/alexandre/db/query"
 	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
 )
 
@@ -169,7 +171,8 @@ func TestUpdate(t *testing.T) {
 
 	// Update with the oposite values
 	for y, val := range testStringList() {
-		i.Update(val[0], testStringList()[len(testStringList())-1-y][0], val[1].(string))
+		i.Put(testStringList()[len(testStringList())-1-y][0], val[1].(string))
+		i.RemoveID(val[0], val[1].(string))
 	}
 
 	// Do the checks
@@ -223,7 +226,7 @@ func TestDuplicatedStringValue(t *testing.T) {
 func TestApply(t *testing.T) {
 	i := NewStringIndex(internalTesting.Path, []string{"Add", "Street", "Name"})
 
-	objs := internalTesting.GetCompleteUsersExample()
+	objs := internalTesting.GetCompleteUsersExampleOneAndTow()
 
 	for j, obj := range objs {
 		if j == 0 {
@@ -240,6 +243,56 @@ func TestApply(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestStringQuery(t *testing.T) {
+	selector := []string{"Add", "Street", "Name"}
+	i := NewStringIndex(internalTesting.Path, selector)
+	user0 := &internalTesting.CompleteUser{}
+	for n, val := range internalTesting.GetCompleteUsersExampleStreetNamesOnly() {
+		user := val.(*internalTesting.CompleteUser)
+		if n == 0 {
+			user0 = user
+		}
+		i.Put(user.Add.Street.Name, val.GetID())
+	}
+
+	q := query.NewQuery(selector)
+	a1 := query.NewAction().Do(query.Equal).CompareTo(user0.Add.Street.Name)
+	q.AddAction(a1)
+	ids := i.RunQuery(q)
+	if len(ids) != 1 || ids[0] != user0.GetID() {
+		t.Errorf("the returned id %q is not good.", ids)
+	}
+
+	q = query.NewQuery(selector).SetLimit(10)
+	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
+	ids = i.RunQuery(q)
+	fmt.Println("1", ids)
+
+	q = query.NewQuery(selector).SetLimit(3)
+	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
+	q.AddAction(query.NewAction().Do(query.NotEqual))
+	ids = i.RunQuery(q)
+	fmt.Println("2", ids)
+
+	q = query.NewQuery(selector).SetLimit(10)
+	q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
+	ids = i.RunQuery(q)
+	fmt.Println("3", ids)
+
+	q = query.NewQuery(selector).SetLimit(3)
+	q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
+	q.AddAction(query.NewAction().Do(query.NotEqual))
+	ids = i.RunQuery(q)
+	fmt.Println("4", ids)
+
+	q = query.NewQuery(selector).SetLimit(3)
+	q.AddAction(query.NewAction())
+	ids = i.RunQuery(q)
+	fmt.Println("5", ids)
+
+	i.getTree().Clear()
 }
 
 func testStringList() [][]interface{} {
