@@ -102,41 +102,8 @@ func check(t *testing.T, col *Collection, ids []string, values []internalTesting
 			t.Errorf("%v and %v are not equal", value.GetContent(), gettedValue)
 			return
 		}
-
-		// checkErr := checkValues(value, gettedValue)
-		// if checkErr != nil {
-		// 	t.Error(checkErr)
-		// 	return
-		// }
-
-		// switch fmt.Sprintf("%T", gettedValue) {
-		// case "*testing.UserTest":
-		// 	if !reflect.DeepEqual(value, gettedValue) {
-		// 		t.Errorf("%v and %v are not equal", value, gettedValue)
-		// 		return
-		// 	}
-		// case "*bytes.Buffer":
-		// 	if !reflect.DeepEqual(value.GetContent(), gettedValue.(*bytes.Buffer).Bytes()) {
-		// 		t.Errorf("%v and %v are not equal", value, gettedValue)
-		// 		return
-		// 	}
-		// }
 	}
 }
-
-// func checkValues(a internalTesting.TestValue, b interface{}) error {
-// 	switch fmt.Sprintf("%T", a) {
-// 	case "*testing.UserTest":
-// 		if !reflect.DeepEqual(a, b) {
-// 			return fmt.Errorf("%v and %v are not equal", a, b)
-// 		}
-// 	case "*bytes.Buffer":
-// 		if !reflect.DeepEqual(a.GetContent(), b.(*bytes.Buffer).Bytes()) {
-// 			return fmt.Errorf("%v and %v are not equal", a, b)
-// 		}
-// 	}
-// 	return nil
-// }
 
 func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue) {
 	insertAndCheck(t, col, values)
