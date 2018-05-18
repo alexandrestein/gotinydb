@@ -106,8 +106,6 @@ func (c *Collection) Delete(id string) error {
 		return fmt.Errorf("value not found")
 	}
 
-	fmt.Println("err", getErr, savedValue)
-
 	if len(savedValue) != 0 {
 		if err := c.updateIndexAfterDelete(id); err != nil {
 			return fmt.Errorf("updating index: %s", err.Error())

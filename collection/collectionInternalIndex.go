@@ -9,8 +9,8 @@ func (c *Collection) updateIndex(oldValue, newValue interface{}, id string) erro
 }
 
 func (c *Collection) updateIndexAfterDelete(id string) error {
-	for _, index := range c.Indexes {
-		go index.RemoveId(id)
-	}
+	// for _, index := range c.Indexes {
+	// 	go index.RemoveId(id)
+	// }
 	return nil
 }
