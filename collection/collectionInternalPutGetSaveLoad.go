@@ -1,6 +1,7 @@
 package collection
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,33 @@ import (
 )
 
 func (c *Collection) save() error {
+	metas := []*IndexMeta{}
+	for name, index := range c.Indexes {
+		err := index.Save()
+		if err != nil {
+			return err
+		}
+		metas = append(metas, NewMeta(name, index.GetSelector(), index.Type()))
+	}
+
+	indexMetaFile, openErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/indexes.json", vars.PutFlags, vars.FilePermission)
+	if openErr != nil {
+		return fmt.Errorf("openning index meta data file: %s", openErr.Error())
+	}
+	defer indexMetaFile.Close()
+
+	metasAsBytes, marshalErr := json.Marshal(metas)
+	if marshalErr != nil {
+		return fmt.Errorf("marshaling index meta datas: %s", marshalErr.Error())
+	}
+
+	_, writeErr := indexMetaFile.WriteAt(metasAsBytes, 0)
+	if writeErr != nil {
+		return fmt.Errorf("saving index mata datas: %s", writeErr.Error())
+	}
+
+	c.IndexMeta = metas
+
 	return nil
 }
 
@@ -18,6 +46,40 @@ func (c *Collection) load() error {
 		return fmt.Errorf("directory is not usable: %s", checkErr.Error())
 	}
 
+	indexMetaFile, openErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/indexes.json", vars.GetFlags, vars.FilePermission)
+	if openErr != nil {
+		return fmt.Errorf("openning index meta data file: %s", openErr.Error())
+	}
+	defer indexMetaFile.Close()
+
+	rawJSONBuffer := bytes.NewBuffer(nil)
+	i := int64(0)
+	for {
+		buf := make([]byte, 1024)
+		n, readErr := indexMetaFile.ReadAt(buf, i*1024)
+		if readErr != nil {
+			// If the file is empty the collection don't have indexes
+			if i == 0 && n <= 0 {
+				return nil
+			}
+			// Clean and exit the loop if file is over
+			if readErr == io.EOF {
+				rawJSONBuffer.Write(buf[:n])
+				break
+			}
+			return fmt.Errorf("reading index meta datas file: %s", readErr.Error())
+		}
+		rawJSONBuffer.Write(buf[:n])
+		i++
+	}
+
+	metas := []*IndexMeta{}
+	marshalErr := json.Unmarshal(rawJSONBuffer.Bytes(), &metas)
+	if marshalErr != nil {
+		return fmt.Errorf("unmarshaling index meta datas: %s", marshalErr.Error())
+	}
+
+	c.IndexMeta = metas
 	return nil
 }
 
@@ -130,6 +192,15 @@ func (c *Collection) buildDir() error {
 	}
 	if addDirErr := os.MkdirAll(c.path+"/"+vars.RecordsDirName+"/"+vars.ObjectsDirName, vars.FilePermission); addDirErr != nil {
 		return fmt.Errorf("building the record directory: %s", addDirErr.Error())
+	}
+
+	if addDirErr := os.MkdirAll(c.path+"/"+vars.MetaDatasDirName, vars.FilePermission); addDirErr != nil {
+		return fmt.Errorf("building the record directory: %s", addDirErr.Error())
+	}
+	if file, indexFileErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/indexes.json", vars.PutFlags, vars.FilePermission); indexFileErr != nil {
+		return fmt.Errorf("building the index mata data file: %s", indexFileErr.Error())
+	} else {
+		file.Close()
 	}
 
 	return nil

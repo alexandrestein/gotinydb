@@ -11,11 +11,12 @@ const (
 	FilePermission = 0740             // u -> rwx | g -> r-- | o -> ---
 	TreeOrder      = 10
 
-	IndexesDirName = "indexes"
-	RecordsDirName = "records"
-	ObjectsDirName = "json"
-	BinsDirName    = "bin"
-	LockFileName   = "lock"
+	IndexesDirName   = "indexes"
+	RecordsDirName   = "records"
+	MetaDatasDirName = "meta"
+	ObjectsDirName   = "json"
+	BinsDirName      = "bin"
+	LockFileName     = "lock"
 
 	OpenDBFlags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
 

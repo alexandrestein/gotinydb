@@ -15,6 +15,7 @@ import (
 func NewCollection(path string) (*Collection, error) {
 	c := new(Collection)
 	c.path = path
+	c.Indexes = map[string]index.Index{}
 
 	if err := c.load(); err != nil {
 		return nil, fmt.Errorf("loading DB: %s", err.Error())
@@ -116,8 +117,19 @@ func (c *Collection) Delete(id string) error {
 }
 
 // SetIndex adds new index to the collection
-func (c *Collection) SetIndex(target string) error {
-	return nil
+func (c *Collection) SetIndex(name string, indexType index.Type, selector []string) error {
+	if c.Indexes[name] != nil {
+		return fmt.Errorf("index %q already exists", name)
+	}
+
+	switch indexType {
+	case index.StringIndexType:
+		c.Indexes[name] = index.NewStringIndex(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case index.IntIndexType:
+		c.Indexes[name] = index.NewIntIndex(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	}
+
+	return c.save()
 }
 
 func (c *Collection) Query(q *index.Query) {

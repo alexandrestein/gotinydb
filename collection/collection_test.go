@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"gitea.interlab-net.com/alexandre/db/index"
 	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
 )
 
@@ -105,10 +106,32 @@ func check(t *testing.T, col *Collection, ids []string, values []internalTesting
 	}
 }
 
-func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue) {
+func setIndex(t *testing.T, col *Collection) {
+	col.SetIndex("userName", index.StringIndexType, []string{"UserName"})
+	col.SetIndex("age", index.IntIndexType, []string{"UserName"})
+}
+
+func checkIndex(t *testing.T, col *Collection) {
+}
+
+func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue, bin bool) {
+	if !bin {
+		setIndex(t, col)
+		if t.Failed() {
+			return
+		}
+	}
+
 	insertAndCheck(t, col, values)
 	if t.Failed() {
 		return
+	}
+
+	if !bin {
+		checkIndex(t, col)
+		if t.Failed() {
+			return
+		}
 	}
 
 	load(t, col, values)
@@ -132,23 +155,22 @@ func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue) 
 }
 
 func TestCollectionObject(t *testing.T) {
-	defer os.RemoveAll(internalTesting.Path)
 	col, newColErr := NewCollection(internalTesting.Path)
 	if newColErr != nil {
 		t.Error(newColErr)
 		return
 	}
 
-	runTest(t, col, internalTesting.GetUsersExample())
+	runTest(t, col, internalTesting.GetUsersExample(), false)
 }
 
 func TestCollectionBin(t *testing.T) {
-	defer os.RemoveAll(internalTesting.Path)
+	os.RemoveAll(internalTesting.Path)
 	col, newColErr := NewCollection(internalTesting.Path)
 	if newColErr != nil {
 		t.Error(newColErr)
 		return
 	}
 
-	runTest(t, col, internalTesting.GetRawExample())
+	runTest(t, col, internalTesting.GetRawExample(), true)
 }
