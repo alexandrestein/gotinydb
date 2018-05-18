@@ -287,8 +287,14 @@ func TestStringQuery(t *testing.T) {
 	fmt.Println("5", i.RunQuery(q))
 
 	q = query.NewQuery(selector).SetLimit(10)
-	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("N"))
+	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("z"))
 	fmt.Println("6", i.RunQuery(q))
+
+	fmt.Println("PRINT END")
+	iter := i.getTree().Iterator()
+	for iter.Next() {
+		fmt.Println(iter.Key(), iter.Value())
+	}
 
 	i.getTree().Clear()
 }

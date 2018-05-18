@@ -273,6 +273,8 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 		if q.Actions[query.NotEqual] == nil {
 			ids = append(ids, iterator.Value().([]string)...)
 		}
+	} else {
+		ids = append(ids, iterator.Value().([]string)...)
 	}
 
 	for nextFunc() {

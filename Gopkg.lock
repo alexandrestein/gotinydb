@@ -10,7 +10,7 @@
     "trees/btree",
     "utils"
   ]
-  revision = "1527dbeb5a91bc09c3cd6f2e5e082c4473edcfb3"
+  revision = "96d7548113ed694fd7adabc18ecb2b93a6fadfc3"
   source = "github.com/alexandreStein/gods"
 
 [[projects]]
@@ -22,6 +22,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c89e88e6ac77e8e7a6a5a190d58082adccdb25c1df25145e40ef3a94fa9df2e4"
+  inputs-digest = "7d884e303478004f599df8c09cac12d6d02ba34721742c814b262478c8545f37"
   solver-name = "gps-cdcl"
   solver-version = 1
