@@ -331,57 +331,6 @@ func TestStringQuery(t *testing.T) {
 			t.Errorf("%q the expected result is %v but had %v", test.name, test.expectedResult, ids)
 		}
 	}
-
-	// q := query.NewQuery(selector)
-	// q.AddAction(query.NewAction().Do(query.Equal).CompareTo(user0.Add.Street.Name))
-	// ids := i.RunQuery(q)
-	// if len(ids) != 1 || ids[0] != user0.GetID() {
-	// 	t.Errorf("the returned ids %q is not good for : %v", ids, user0.Add.Street.Name)
-	// }
-	//
-	// q = query.NewQuery(selector).SetLimit(10)
-	// q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
-	// fmt.Println("1", i.RunQuery(q))
-	//
-	// q = query.NewQuery(selector).SetLimit(3)
-	// q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
-	// q.AddAction(query.NewAction().Do(query.NotEqual))
-	// fmt.Println("2", i.RunQuery(q))
-	//
-	// q = query.NewQuery(selector).SetLimit(15)
-	// q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
-	// fmt.Println("3", i.RunQuery(q))
-	//
-	// q = query.NewQuery(selector).SetLimit(3)
-	// q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
-	// q.AddAction(query.NewAction().Do(query.NotEqual))
-	// fmt.Println("4", i.RunQuery(q))
-	//
-	// q = query.NewQuery(selector).SetLimit(3)
-	// q.AddAction(query.NewAction())
-	// fmt.Println("5", i.RunQuery(q))
-	//
-	// q = query.NewQuery(selector).SetLimit(10)
-	// q.AddAction(query.NewAction().Do(query.Greater).CompareTo("Z"))
-	// fmt.Println("6", i.RunQuery(q))
-	//
-	// q = query.NewQuery(selector).SetLimit(10)
-	// q.AddAction(query.NewAction().Do(query.Greater).CompareTo("A"))
-	// fmt.Println("7", i.RunQuery(q))
-	//
-	// q = query.NewQuery(selector).SetLimit(10).InvertOrder()
-	// q.AddAction(query.NewAction().Do(query.Less).CompareTo("Z"))
-	// fmt.Println("8", i.RunQuery(q))
-
-	// fmt.Println("PRINT END")
-	// iter := i.getTree().Iterator()
-	// for iter.Next() {
-	// 	fmt.Println(iter.Key(), iter.Value())
-	// }
-
-	// iter.Last()
-	// fmt.Println("LAST", iter.Key(), iter.Value())
-
 	i.getTree().Clear()
 }
 
