@@ -42,7 +42,7 @@ type (
 		// Get returns the ID of the object corresponding to the given indexed value
 		Get(indexedValue interface{}) (objectIDs []string, found bool)
 		// GetNeighbours returns values interface and true if founded.
-		GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool)
+		// GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool)
 		// Put add the given value.
 		Put(indexedValue interface{}, objectID string)
 		// RemoveID clean the given value of the given id.

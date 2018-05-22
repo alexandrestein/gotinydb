@@ -10,7 +10,7 @@
     "trees/btree",
     "utils"
   ]
-  revision = "96d7548113ed694fd7adabc18ecb2b93a6fadfc3"
+  revision = "19489d1e499989f4cbec1825cc008a57c6e4b40d"
   source = "github.com/alexandreStein/gods"
 
 [[projects]]

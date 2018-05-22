@@ -89,42 +89,42 @@ func (i *structIndex) Put(indexedValue interface{}, objectID string) {
 	i.tree.Put(indexedValue, []string{objectID})
 }
 
-// GetNeighbours returns values interface and true if founded.
-func (i *structIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool) {
-	iterator := i.tree.IteratorAt(key)
-
-	nToAdd := 0
-
-	if iterator.Key() == key {
-		found = true
-		nToAdd++
-	}
-
-	// Go to the right place
-	for i := 0; i <= nBefore; i++ {
-		if !iterator.Prev() {
-			nBefore = i
-			break
-		}
-	}
-
-	for i := 0; i < nToAdd+nBefore+nAfter; i++ {
-		if !iterator.Next() {
-			break
-		}
-
-		idAsInterface, ok := iterator.Value().([]string)
-		// If the values is not an object ID it is not append.
-		if !ok {
-			continue
-		}
-
-		indexedValues = append(indexedValues, iterator.Key())
-		objectIDs = append(objectIDs, idAsInterface...)
-
-	}
-	return
-}
+// // GetNeighbours returns values interface and true if founded.
+// func (i *structIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool) {
+// 	iterator := i.tree.IteratorAt(key, true, false)
+//
+// 	nToAdd := 0
+//
+// 	if iterator.Key() == key {
+// 		found = true
+// 		nToAdd++
+// 	}
+//
+// 	// Go to the right place
+// 	for i := 0; i <= nBefore; i++ {
+// 		if !iterator.Prev() {
+// 			nBefore = i
+// 			break
+// 		}
+// 	}
+//
+// 	for i := 0; i < nToAdd+nBefore+nAfter; i++ {
+// 		if !iterator.Next() {
+// 			break
+// 		}
+//
+// 		idAsInterface, ok := iterator.Value().([]string)
+// 		// If the values is not an object ID it is not append.
+// 		if !ok {
+// 			continue
+// 		}
+//
+// 		indexedValues = append(indexedValues, iterator.Key())
+// 		objectIDs = append(objectIDs, idAsInterface...)
+//
+// 	}
+// 	return
+// }
 
 func (i *structIndex) getPath() string {
 	return i.path
@@ -236,6 +236,19 @@ func (i *structIndex) RemoveIDFromAll(id string) error {
 }
 
 func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
+	// Actualy run the query
+	ids = i.runQuery(q)
+	// Reverts the result if wanted
+	if q.InvertedOrder {
+		for i := len(ids)/2 - 1; i >= 0; i-- {
+			opp := len(ids) - 1 - i
+			ids[i], ids[opp] = ids[opp], ids[i]
+		}
+	}
+	return
+}
+
+func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 	// Check the selector
 	if !reflect.DeepEqual(q.Selector, i.selector) {
 		return
@@ -253,28 +266,45 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 		return
 	}
 
-	var iterator *btree.Iterator
-	var startValue interface{}
+	var iterator btree.Iterator
 	var nextFunc (func() bool)
+	var keyFound bool
+
 	if q.Actions[query.Greater] != nil {
-		iterator = i.tree.IteratorAt(q.Actions[query.Greater].CompareToValue)
-		startValue = q.Actions[query.Greater].CompareToValue
+		_, keyAfter, found := i.tree.GetClosestKeys(q.Actions[query.Greater].CompareToValue)
+		keyFound = found
+		if keyAfter != nil {
+			iterator, found = i.tree.IteratorAt(keyAfter)
+			if !found {
+				iterator.Last()
+			}
+		} else {
+			iterator = i.tree.Iterator()
+			iterator.Last()
+		}
 		nextFunc = iterator.Next
 	} else if q.Actions[query.Less] != nil {
-		iterator = i.tree.IteratorAt(q.Actions[query.Less].CompareToValue)
-		startValue = q.Actions[query.Less].CompareToValue
+		keyBefore, _, found := i.tree.GetClosestKeys(q.Actions[query.Less].CompareToValue)
+		keyFound = found
+		if keyBefore != nil {
+			iterator, found = i.tree.IteratorAt(keyBefore)
+			if !found {
+				iterator.First()
+			}
+		} else {
+			iterator = i.tree.Iterator()
+			iterator.First()
+		}
 		nextFunc = iterator.Prev
 	} else {
 		return
 	}
 
 	// Check if the caller want more or less with equal option
-	if iterator.Key() == startValue {
+	if keyFound {
 		if q.Actions[query.NotEqual] == nil {
 			ids = append(ids, iterator.Value().([]string)...)
 		}
-	} else {
-		ids = append(ids, iterator.Value().([]string)...)
 	}
 
 	for nextFunc() {
