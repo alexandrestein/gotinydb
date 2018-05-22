@@ -89,43 +89,6 @@ func (i *structIndex) Put(indexedValue interface{}, objectID string) {
 	i.tree.Put(indexedValue, []string{objectID})
 }
 
-// // GetNeighbours returns values interface and true if founded.
-// func (i *structIndex) GetNeighbours(key interface{}, nBefore, nAfter int) (indexedValues []interface{}, objectIDs []string, found bool) {
-// 	iterator := i.tree.IteratorAt(key, true, false)
-//
-// 	nToAdd := 0
-//
-// 	if iterator.Key() == key {
-// 		found = true
-// 		nToAdd++
-// 	}
-//
-// 	// Go to the right place
-// 	for i := 0; i <= nBefore; i++ {
-// 		if !iterator.Prev() {
-// 			nBefore = i
-// 			break
-// 		}
-// 	}
-//
-// 	for i := 0; i < nToAdd+nBefore+nAfter; i++ {
-// 		if !iterator.Next() {
-// 			break
-// 		}
-//
-// 		idAsInterface, ok := iterator.Value().([]string)
-// 		// If the values is not an object ID it is not append.
-// 		if !ok {
-// 			continue
-// 		}
-//
-// 		indexedValues = append(indexedValues, iterator.Key())
-// 		objectIDs = append(objectIDs, idAsInterface...)
-//
-// 	}
-// 	return
-// }
-
 func (i *structIndex) getPath() string {
 	return i.path
 }

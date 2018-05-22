@@ -92,46 +92,6 @@ func TestIntIndex(t *testing.T) {
 	testLoadIndex(t, i)
 }
 
-// func TestNeighboursWithString(t *testing.T) {
-// 	i := NewStringIndex(internalTesting.Path, []string{})
-// 	i.getTree().Clear()
-// 	list := testStringList()
-// 	for _, val := range list {
-// 		i.Put(val[0], val[1].(string))
-// 	}
-//
-// 	testNeighbours(t, i, "indexed field value m", 5, 11, true)
-// 	testNeighbours(t, i, "indexed field value a", 5, 6, true)
-// 	testNeighbours(t, i, "indexed field value", 5, 5, false)
-// 	testNeighbours(t, i, "indexed field value z", 5, 6, true)
-// 	testNeighbours(t, i, "indexed field value mm", 1, 2, false)
-//
-// 	// This is not testable because the value needs to be founded or not at the
-// 	// end to get really precise wanted neighbours.
-// 	// testNeighbours(t, i, "indexed field value za", 1, 2, false)
-// }
-//
-// func testNeighbours(t *testing.T, i Index, key interface{}, nbToTry, nbToGet int, needToFound bool) {
-// 	keys, values, found := i.GetNeighbours(key, nbToTry, nbToTry)
-// 	if found != needToFound {
-// 		if needToFound {
-// 			t.Errorf("The key %v is not found", key)
-// 		} else {
-// 			t.Errorf("The key %v is found", key)
-// 		}
-// 		return
-// 	}
-//
-// 	if len(keys) != nbToGet {
-// 		t.Errorf("The key count is not good, expecting %d and had %d", nbToGet, len(keys))
-// 		return
-// 	}
-// 	if len(values) != nbToGet {
-// 		t.Errorf("The value count is not good, expecting %d and had %d", nbToGet, len(values))
-// 		return
-// 	}
-// }
-
 func TestRemoveIdFromAll(t *testing.T) {
 	i := NewStringIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
