@@ -2,7 +2,6 @@ package index
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -248,61 +247,129 @@ func TestApply(t *testing.T) {
 func TestStringQuery(t *testing.T) {
 	selector := []string{"Add", "Street", "Name"}
 	i := NewStringIndex(internalTesting.Path, selector)
-	user0 := &internalTesting.CompleteUser{}
-	for n, val := range internalTesting.GetCompleteUsersExampleStreetNamesOnly() {
+	for _, val := range internalTesting.GetCompleteUsersExampleStreetNamesOnly() {
 		user := val.(*internalTesting.CompleteUser)
-		if n == 0 {
-			user0 = user
-		}
 		i.Put(user.Add.Street.Name, val.GetID())
 	}
 
-	q := query.NewQuery(selector)
-	q.AddAction(query.NewAction().Do(query.Equal).CompareTo(user0.Add.Street.Name))
-	ids := i.RunQuery(q)
-	if len(ids) != 1 || ids[0] != user0.GetID() {
-		t.Errorf("the returned ids %q is not good for : %v", ids, user0.Add.Street.Name)
+	buildTestQuery := func(limit int, actions ...*query.Action) *query.Query {
+		if limit == 0 {
+			limit = 1
+		}
+		q := query.NewQuery(selector).SetLimit(limit)
+		for _, action := range actions {
+			q.AddAction(action)
+		}
+		return q
 	}
 
-	q = query.NewQuery(selector).SetLimit(10)
-	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
-	fmt.Println("1", i.RunQuery(q))
-
-	q = query.NewQuery(selector).SetLimit(3)
-	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
-	q.AddAction(query.NewAction().Do(query.NotEqual))
-	fmt.Println("2", i.RunQuery(q))
-
-	q = query.NewQuery(selector).SetLimit(15)
-	q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
-	fmt.Println("3", i.RunQuery(q))
-
-	q = query.NewQuery(selector).SetLimit(3)
-	q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
-	q.AddAction(query.NewAction().Do(query.NotEqual))
-	fmt.Println("4", i.RunQuery(q))
-
-	q = query.NewQuery(selector).SetLimit(3)
-	q.AddAction(query.NewAction())
-	fmt.Println("5", i.RunQuery(q))
-
-	q = query.NewQuery(selector).SetLimit(10)
-	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("Z"))
-	fmt.Println("6", i.RunQuery(q))
-
-	q = query.NewQuery(selector).SetLimit(10)
-	q.AddAction(query.NewAction().Do(query.Greater).CompareTo("A"))
-	fmt.Println("7", i.RunQuery(q))
-
-	q = query.NewQuery(selector).SetLimit(10).InvertOrder()
-	q.AddAction(query.NewAction().Do(query.Less).CompareTo("Z"))
-	fmt.Println("8", i.RunQuery(q))
-
-	fmt.Println("PRINT END")
-	iter := i.getTree().Iterator()
-	for iter.Next() {
-		fmt.Println(iter.Key(), iter.Value())
+	listOfTests := []struct {
+		name           string
+		query          *query.Query
+		expectedResult []string
+	}{
+		{
+			name:           "Get Equal",
+			query:          buildTestQuery(1, query.NewAction().Do(query.Equal).CompareTo("North street")),
+			expectedResult: []string{"S_North_1"},
+		}, {
+			name:           "Get Greater and Equal - limit 15",
+			query:          buildTestQuery(15, query.NewAction().Do(query.Greater).CompareTo("East street")),
+			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24", "S_East_29", "S_East_34", "S_East_39", "S_East_44", "S_East_49", "S_George_5", "S_George_10", "S_George_15", "S_George_20", "S_George_25"},
+		}, {
+			name:           "Get Greater - limit 10",
+			query:          buildTestQuery(10, query.NewAction().Do(query.Greater).CompareTo("East street"), query.NewAction().Do(query.NotEqual)),
+			expectedResult: []string{"S_George_5", "S_George_10", "S_George_15", "S_George_20", "S_George_25", "S_George_30", "S_George_35", "S_George_40", "S_George_45", "S_North_1"},
+		}, {
+			name:           "Get Less and Equal - limit 15",
+			query:          buildTestQuery(15, query.NewAction().Do(query.Less).CompareTo("West street")),
+			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23", "S_West_28", "S_West_33", "S_West_38", "S_West_43", "S_West_48", "S_South_2", "S_South_7", "S_South_12", "S_South_17", "S_South_22"},
+		}, {
+			name:           "Get Less - limit 10",
+			query:          buildTestQuery(10, query.NewAction().Do(query.Less).CompareTo("West street"), query.NewAction().Do(query.NotEqual)),
+			expectedResult: []string{"S_South_2", "S_South_7", "S_South_12", "S_South_17", "S_South_22", "S_South_27", "S_South_32", "S_South_37", "S_South_42", "S_South_47"},
+		}, {
+			name:           "Empty Action",
+			query:          buildTestQuery(10, query.NewAction()),
+			expectedResult: []string{},
+		}, {
+			name:           "Greater than last",
+			query:          buildTestQuery(5, query.NewAction().Do(query.Greater).CompareTo("Z")),
+			expectedResult: []string{},
+		}, {
+			name:           "Less than first",
+			query:          buildTestQuery(5, query.NewAction().Do(query.Less).CompareTo("A")),
+			expectedResult: []string{},
+		}, {
+			name:           "Greater from start",
+			query:          buildTestQuery(5, query.NewAction().Do(query.Greater).CompareTo("A")),
+			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24"},
+		}, {
+			name:           "Less from end",
+			query:          buildTestQuery(5, query.NewAction().Do(query.Less).CompareTo("Z")),
+			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23"},
+		},
 	}
+
+	for _, test := range listOfTests {
+		ids := i.RunQuery(test.query)
+		if !reflect.DeepEqual(test.expectedResult, ids) {
+			if len(test.expectedResult) == 0 && len(ids) == 0 {
+				continue
+			}
+			t.Errorf("%q the expected result is %v but had %v", test.name, test.expectedResult, ids)
+		}
+	}
+
+	// q := query.NewQuery(selector)
+	// q.AddAction(query.NewAction().Do(query.Equal).CompareTo(user0.Add.Street.Name))
+	// ids := i.RunQuery(q)
+	// if len(ids) != 1 || ids[0] != user0.GetID() {
+	// 	t.Errorf("the returned ids %q is not good for : %v", ids, user0.Add.Street.Name)
+	// }
+	//
+	// q = query.NewQuery(selector).SetLimit(10)
+	// q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
+	// fmt.Println("1", i.RunQuery(q))
+	//
+	// q = query.NewQuery(selector).SetLimit(3)
+	// q.AddAction(query.NewAction().Do(query.Greater).CompareTo("East street"))
+	// q.AddAction(query.NewAction().Do(query.NotEqual))
+	// fmt.Println("2", i.RunQuery(q))
+	//
+	// q = query.NewQuery(selector).SetLimit(15)
+	// q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
+	// fmt.Println("3", i.RunQuery(q))
+	//
+	// q = query.NewQuery(selector).SetLimit(3)
+	// q.AddAction(query.NewAction().Do(query.Less).CompareTo("West street"))
+	// q.AddAction(query.NewAction().Do(query.NotEqual))
+	// fmt.Println("4", i.RunQuery(q))
+	//
+	// q = query.NewQuery(selector).SetLimit(3)
+	// q.AddAction(query.NewAction())
+	// fmt.Println("5", i.RunQuery(q))
+	//
+	// q = query.NewQuery(selector).SetLimit(10)
+	// q.AddAction(query.NewAction().Do(query.Greater).CompareTo("Z"))
+	// fmt.Println("6", i.RunQuery(q))
+	//
+	// q = query.NewQuery(selector).SetLimit(10)
+	// q.AddAction(query.NewAction().Do(query.Greater).CompareTo("A"))
+	// fmt.Println("7", i.RunQuery(q))
+	//
+	// q = query.NewQuery(selector).SetLimit(10).InvertOrder()
+	// q.AddAction(query.NewAction().Do(query.Less).CompareTo("Z"))
+	// fmt.Println("8", i.RunQuery(q))
+
+	// fmt.Println("PRINT END")
+	// iter := i.getTree().Iterator()
+	// for iter.Next() {
+	// 	fmt.Println(iter.Key(), iter.Value())
+	// }
+
+	// iter.Last()
+	// fmt.Println("LAST", iter.Key(), iter.Value())
 
 	i.getTree().Clear()
 }

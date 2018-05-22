@@ -236,6 +236,9 @@ func (i *structIndex) RemoveIDFromAll(id string) error {
 }
 
 func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
+	if q == nil {
+		return
+	}
 	// Actualy run the query
 	ids = i.runQuery(q)
 	// Reverts the result if wanted
@@ -274,20 +277,20 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 		_, keyAfter, found := i.tree.GetClosestKeys(q.Actions[query.Greater].CompareToValue)
 		keyFound = found
 		if keyAfter != nil {
-			iterator, found = i.tree.IteratorAt(keyAfter)
+			iterator, _ = i.tree.IteratorAt(keyAfter)
 			if !found {
-				iterator.Last()
+				iterator.End()
 			}
 		} else {
 			iterator = i.tree.Iterator()
-			iterator.Last()
+			iterator.End()
 		}
 		nextFunc = iterator.Next
 	} else if q.Actions[query.Less] != nil {
 		keyBefore, _, found := i.tree.GetClosestKeys(q.Actions[query.Less].CompareToValue)
 		keyFound = found
 		if keyBefore != nil {
-			iterator, found = i.tree.IteratorAt(keyBefore)
+			iterator, _ = i.tree.IteratorAt(keyBefore)
 			if !found {
 				iterator.First()
 			}
@@ -305,6 +308,13 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 		if q.Actions[query.NotEqual] == nil {
 			ids = append(ids, iterator.Value().([]string)...)
 		}
+	} else {
+		if q.Actions[query.Greater] != nil {
+			iterator.First()
+		} else if q.Actions[query.Less] != nil {
+			iterator.Last()
+		}
+		ids = append(ids, iterator.Value().([]string)...)
 	}
 
 	for nextFunc() {
@@ -316,7 +326,6 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 
 		ids = append(ids, iterator.Value().([]string)...)
 	}
-
 	return
 }
 
