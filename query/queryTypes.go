@@ -23,6 +23,7 @@ type (
 	}
 
 	Action struct {
+		keep, remove   bool
 		Operation      ActionType
 		CompareToValue interface{}
 	}
@@ -34,6 +35,8 @@ type (
 func NewAction() *Action {
 	return &Action{
 		Operation: notSet,
+		keep:      false,
+		remove:    false,
 	}
 }
 
@@ -41,7 +44,15 @@ func (a *Action) CompareTo(val interface{}) *Action {
 	a.CompareToValue = val
 	return a
 }
-func (a *Action) Do(op ActionType) *Action {
+func (a *Action) Keep(op ActionType) *Action {
+	a.keep = true
+	a.remove = false
+	a.Operation = op
+	return a
+}
+func (a *Action) Remove(op ActionType) *Action {
+	a.keep = false
+	a.remove = true
 	a.Operation = op
 	return a
 }

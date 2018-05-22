@@ -241,6 +241,21 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 	}
 	// Actualy run the query
 	ids = i.runQuery(q)
+
+	// if q.Distinct {
+	// 	seen := make(map[interface{}]struct{}, len(ids))
+	// 	j := 0
+	// 	for _, v := range ids {
+	// 		if _, ok := seen[v]; ok {
+	// 			continue
+	// 		}
+	// 		seen[v] = struct{}{}
+	// 		ids[j] = v
+	// 		j++
+	// 	}
+	// 	ids = ids[:j]
+	// }
+
 	// Reverts the result if wanted
 	if q.InvertedOrder {
 		for i := len(ids)/2 - 1; i >= 0; i-- {
