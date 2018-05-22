@@ -270,6 +270,7 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 	}
 
 	var iterator btree.Iterator
+	var iteratorInit bool
 	var nextFunc (func() bool)
 	var keyFound bool
 
@@ -278,12 +279,7 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 		keyFound = found
 		if keyAfter != nil {
 			iterator, _ = i.tree.IteratorAt(keyAfter)
-			if !found {
-				iterator.End()
-			}
-		} else {
-			iterator = i.tree.Iterator()
-			iterator.End()
+			iteratorInit = true
 		}
 		nextFunc = iterator.Next
 	} else if q.Actions[query.Less] != nil {
@@ -291,12 +287,7 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 		keyFound = found
 		if keyBefore != nil {
 			iterator, _ = i.tree.IteratorAt(keyBefore)
-			if !found {
-				iterator.First()
-			}
-		} else {
-			iterator = i.tree.Iterator()
-			iterator.First()
+			iteratorInit = true
 		}
 		nextFunc = iterator.Prev
 	} else {
@@ -309,12 +300,13 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 			ids = append(ids, iterator.Value().([]string)...)
 		}
 	} else {
-		if q.Actions[query.Greater] != nil {
-			iterator.First()
-		} else if q.Actions[query.Less] != nil {
-			iterator.Last()
+		if iteratorInit {
+			ids = append(ids, iterator.Value().([]string)...)
 		}
-		ids = append(ids, iterator.Value().([]string)...)
+		if len(ids) >= q.Limit {
+			ids = ids[:q.Limit]
+		}
+		return
 	}
 
 	for nextFunc() {

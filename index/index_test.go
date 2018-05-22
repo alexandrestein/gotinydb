@@ -309,6 +309,11 @@ func TestStringQuery(t *testing.T) {
 			query:          buildTestQuery(5, query.NewAction().Do(query.Less).CompareTo("Z")),
 			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23"},
 		},
+		{
+			name:           "Reverted",
+			query:          buildTestQuery(5, query.NewAction().Do(query.Less).CompareTo("Z")),
+			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23"},
+		},
 	}
 
 	for _, test := range listOfTests {
