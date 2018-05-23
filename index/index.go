@@ -204,7 +204,7 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 	}
 	// Actualy run the query
 	ids = i.runQuery(q, true)
-	if q.KeepAction != nil {
+	if q.KeepAction != nil && len(ids) != 0 {
 		ids = i.runKeepQuery(q, ids)
 	}
 
