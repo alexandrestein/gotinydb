@@ -4,22 +4,25 @@ package query
 const (
 	notSet ActionType = ""
 
-	Equal    ActionType = "eq"
-	NotEqual ActionType = "nq"
-	Greater  ActionType = "gr"
-	Less     ActionType = "le"
+	Equal ActionType = "eq"
+	// NotEqual ActionType = "nq"
+	Greater ActionType = "gr"
+	Less    ActionType = "le"
 )
 
 type (
 	// Query defines the object to request index query.
 	Query struct {
-		Selector      []string
-		Actions       map[ActionType]*Action
+		Selector              []string
+		GetAction, KeepAction *Action
+		// Actions       map[ActionType]*Action
 		InvertedOrder bool
 		Limit         int
 
-		// Result is the respond of IDs
-		Result []string
+		KeepEqual bool
+
+		// // Result is the respond of IDs
+		// Result []string
 	}
 
 	Action struct {
@@ -31,9 +34,9 @@ type (
 	ActionType string
 )
 
-func NewAction() *Action {
+func NewAction(t ActionType) *Action {
 	return &Action{
-		Operation: notSet,
+		Operation: t,
 	}
 }
 
@@ -41,9 +44,12 @@ func (a *Action) CompareTo(val interface{}) *Action {
 	a.CompareToValue = val
 	return a
 }
-func (a *Action) Get(op ActionType) *Action {
+func (a *Action) SetType(op ActionType) *Action {
 	a.Operation = op
 	return a
+}
+func (a *Action) GetType() ActionType {
+	return a.Operation
 }
 
 func (a *Action) Valid() bool {
@@ -60,16 +66,16 @@ func NewQuery(selector []string) *Query {
 	return &Query{
 		Selector: selector,
 		Limit:    1,
-		Actions:  map[ActionType]*Action{},
+		// Actions:  map[ActionType]*Action{},
 	}
 }
 
-// AddAction add an other action at the end of the query and return itself to
-// chain the functions
-func (q *Query) AddAction(a *Action) *Query {
-	q.Actions[a.Operation] = a
-	return q
-}
+// // AddAction add an other action at the end of the query and return itself to
+// // chain the functions
+// func (q *Query) AddAction(a *Action) *Query {
+// 	q.Actions[a.Operation] = a
+// 	return q
+// }
 
 func (q *Query) SetLimit(l int) *Query {
 	q.Limit = l
@@ -78,5 +84,20 @@ func (q *Query) SetLimit(l int) *Query {
 
 func (q *Query) InvertOrder() *Query {
 	q.InvertedOrder = true
+	return q
+}
+
+func (q *Query) EqualWanted() *Query {
+	q.KeepEqual = true
+	return q
+}
+
+func (q *Query) Get(a *Action) *Query {
+	q.GetAction = a
+	return q
+}
+
+func (q *Query) Keep(a *Action) *Query {
+	q.KeepAction = a
 	return q
 }

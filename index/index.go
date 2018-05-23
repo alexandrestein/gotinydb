@@ -203,7 +203,7 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 		return
 	}
 	// Actualy run the query
-	ids = i.runQuery(q)
+	ids = i.runGetQuery(q)
 
 	// if q.Distinct {
 	// 	seen := make(map[interface{}]struct{}, len(ids))
@@ -229,15 +229,19 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 	return
 }
 
-func (i *structIndex) runQuery(q *query.Query) (ids []string) {
+func (i *structIndex) runGetQuery(q *query.Query) (ids []string) {
+	if q == nil || q.GetAction == nil {
+		return
+	}
+
 	// Check the selector
 	if !reflect.DeepEqual(q.Selector, i.selector) {
 		return
 	}
 
 	// If equal just this leave will be send
-	if action := q.Actions[query.Equal]; action != nil {
-		tmpIDs, found := i.Get(action.CompareToValue)
+	if q.GetAction.GetType() == query.Equal {
+		tmpIDs, found := i.Get(q.GetAction.CompareToValue)
 		if found {
 			ids = tmpIDs
 			if len(ids) > q.Limit {
@@ -252,16 +256,16 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 	var nextFunc (func() bool)
 	var keyFound bool
 
-	if q.Actions[query.Greater] != nil {
-		_, keyAfter, found := i.tree.GetClosestKeys(q.Actions[query.Greater].CompareToValue)
+	if q.GetAction.GetType() == query.Greater {
+		_, keyAfter, found := i.tree.GetClosestKeys(q.GetAction.CompareToValue)
 		keyFound = found
 		if keyAfter != nil {
 			iterator, _ = i.tree.IteratorAt(keyAfter)
 			iteratorInit = true
 		}
 		nextFunc = iterator.Next
-	} else if q.Actions[query.Less] != nil {
-		keyBefore, _, found := i.tree.GetClosestKeys(q.Actions[query.Less].CompareToValue)
+	} else if q.GetAction.GetType() == query.Less {
+		keyBefore, _, found := i.tree.GetClosestKeys(q.GetAction.CompareToValue)
 		keyFound = found
 		if keyBefore != nil {
 			iterator, _ = i.tree.IteratorAt(keyBefore)
@@ -274,7 +278,7 @@ func (i *structIndex) runQuery(q *query.Query) (ids []string) {
 
 	// Check if the caller want more or less with equal option
 	if keyFound {
-		if q.Actions[query.NotEqual] == nil {
+		if !q.KeepEqual {
 			ids = append(ids, iterator.Value().([]string)...)
 		}
 	} else {
