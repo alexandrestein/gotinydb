@@ -203,10 +203,19 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 		return
 	}
 	// Actualy run the query
-	ids = i.runGetQuery(q)
+	ids = i.runQuery(q, true)
+	if q.KeepAction != nil {
+		ids = i.runKeepQuery(q, ids)
+	}
+
+	// Cleans the list if to big and returns
+	if len(ids) > q.Limit {
+		ids = ids[:q.Limit]
+		return
+	}
 
 	// if q.Distinct {
-	// 	seen := make(map[interface{}]struct{}, len(ids))
+	// 	seen := make(map[string]struct{}, len(ids))
 	// 	j := 0
 	// 	for _, v := range ids {
 	// 		if _, ok := seen[v]; ok {
@@ -229,9 +238,29 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 	return
 }
 
-func (i *structIndex) runGetQuery(q *query.Query) (ids []string) {
-	if q == nil || q.GetAction == nil {
+func (i *structIndex) runQuery(q *query.Query, get bool) (ids []string) {
+	var action *query.Action
+
+	// If query is not nil
+	if q == nil {
 		return
+	}
+
+	// If the caller want to do the get lockup
+	if get {
+		// If the get action is nil it returns
+		if q.GetAction == nil {
+			return
+		}
+		// Otherways it save the action
+		action = q.GetAction
+		// The caller do not asked for a get action and the saved action is keep
+		// if any
+	} else {
+		if q.KeepAction == nil {
+			return
+		}
+		action = q.KeepAction
 	}
 
 	// Check the selector
@@ -240,8 +269,8 @@ func (i *structIndex) runGetQuery(q *query.Query) (ids []string) {
 	}
 
 	// If equal just this leave will be send
-	if q.GetAction.GetType() == query.Equal {
-		tmpIDs, found := i.Get(q.GetAction.CompareToValue)
+	if action.GetType() == query.Equal {
+		tmpIDs, found := i.Get(action.CompareToValue)
 		if found {
 			ids = tmpIDs
 			if len(ids) > q.Limit {
@@ -256,16 +285,16 @@ func (i *structIndex) runGetQuery(q *query.Query) (ids []string) {
 	var nextFunc (func() bool)
 	var keyFound bool
 
-	if q.GetAction.GetType() == query.Greater {
-		_, keyAfter, found := i.tree.GetClosestKeys(q.GetAction.CompareToValue)
+	if action.GetType() == query.Greater {
+		_, keyAfter, found := i.tree.GetClosestKeys(action.CompareToValue)
 		keyFound = found
 		if keyAfter != nil {
 			iterator, _ = i.tree.IteratorAt(keyAfter)
 			iteratorInit = true
 		}
 		nextFunc = iterator.Next
-	} else if q.GetAction.GetType() == query.Less {
-		keyBefore, _, found := i.tree.GetClosestKeys(q.GetAction.CompareToValue)
+	} else if action.GetType() == query.Less {
+		keyBefore, _, found := i.tree.GetClosestKeys(action.CompareToValue)
 		keyFound = found
 		if keyBefore != nil {
 			iterator, _ = i.tree.IteratorAt(keyBefore)
@@ -285,22 +314,40 @@ func (i *structIndex) runGetQuery(q *query.Query) (ids []string) {
 		if iteratorInit {
 			ids = append(ids, iterator.Value().([]string)...)
 		}
-		if len(ids) >= q.Limit {
-			ids = ids[:q.Limit]
-		}
+	}
+
+	if !iteratorInit {
 		return
 	}
 
 	for nextFunc() {
-		// Cleans the list if to big and returns
-		if len(ids) >= q.Limit {
-			ids = ids[:q.Limit]
-			return
-		}
-
 		ids = append(ids, iterator.Value().([]string)...)
 	}
 	return
+}
+
+func (i *structIndex) runKeepQuery(q *query.Query, ids []string) []string {
+	// Do the lock up for the IDs to remove
+	idsToRemove := i.runQuery(q, false)
+	indexToRemove := []int{}
+
+	// Do the check of which IDs need to be removed
+	for j, id1 := range ids {
+		for _, id2 := range idsToRemove {
+			if id1 == id2 {
+				// Build the list of ids to remove
+				indexToRemove = append(indexToRemove, j)
+			}
+		}
+	}
+
+	// Once we know which index we need to remove we start at the end of the slice
+	// and we remove every not needed IDs.
+	for j := len(indexToRemove) - 1; j >= 0; j-- {
+		ids = append(ids[:indexToRemove[j]], ids[indexToRemove[j]+1:]...)
+	}
+
+	return ids
 }
 
 func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {

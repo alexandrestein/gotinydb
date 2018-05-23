@@ -65,7 +65,7 @@ func (a *Action) GetType() ActionType {
 func NewQuery(selector []string) *Query {
 	return &Query{
 		Selector: selector,
-		Limit:    1,
+		Limit:    1000,
 	}
 }
 
