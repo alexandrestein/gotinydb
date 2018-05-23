@@ -282,6 +282,10 @@ func TestStringQuery(t *testing.T) {
 			name:           "Greater from start and keep after E - limit 20",
 			query:          buildTestQuery(100, false, query.NewAction(query.Greater).CompareTo("A"), query.NewAction(query.Greater).CompareTo("F")),
 			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24", "S_East_29", "S_East_34", "S_East_39", "S_East_44", "S_East_49"},
+		}, {
+			name:           "Duplicated",
+			query:          buildTestQuery(10, false, query.NewAction(query.Equal).CompareTo("North street Dup"), query.NewAction(query.Greater).CompareTo("North street Dup4")).DistinctWanted(),
+			expectedResult: []string{"DUP_1"},
 		},
 	}
 

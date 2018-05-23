@@ -186,6 +186,11 @@ func GetCompleteUsersExampleStreetNamesOnly() []TestValue {
 		&CompleteUser{ID: "S_South_47", Add: &Add{Street: &Street{Name: "South street"}}},
 		&CompleteUser{ID: "S_West_48", Add: &Add{Street: &Street{Name: "West street"}}},
 		&CompleteUser{ID: "S_East_49", Add: &Add{Street: &Street{Name: "East street"}}},
+
+		&CompleteUser{ID: "DUP_1", Add: &Add{Street: &Street{Name: "North street Dup"}}},
+		&CompleteUser{ID: "DUP_1", Add: &Add{Street: &Street{Name: "North street Dup1"}}},
+		&CompleteUser{ID: "DUP_1", Add: &Add{Street: &Street{Name: "North street Dup2"}}},
+		&CompleteUser{ID: "DUP_1", Add: &Add{Street: &Street{Name: "North street Dup3"}}},
 	}
 }
 

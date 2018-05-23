@@ -208,25 +208,22 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 		ids = i.runKeepQuery(q, ids)
 	}
 
+	if q.Distinct {
+		keys := make(map[string]bool)
+		list := []string{}
+		for _, id := range ids {
+			if _, value := keys[id]; !value {
+				keys[id] = true
+				list = append(list, id)
+			}
+		}
+	}
+
 	// Cleans the list if to big and returns
 	if len(ids) > q.Limit {
 		ids = ids[:q.Limit]
 		return
 	}
-
-	// if q.Distinct {
-	// 	seen := make(map[string]struct{}, len(ids))
-	// 	j := 0
-	// 	for _, v := range ids {
-	// 		if _, ok := seen[v]; ok {
-	// 			continue
-	// 		}
-	// 		seen[v] = struct{}{}
-	// 		ids[j] = v
-	// 		j++
-	// 	}
-	// 	ids = ids[:j]
-	// }
 
 	// Reverts the result if wanted
 	if q.InvertedOrder {
@@ -301,8 +298,6 @@ func (i *structIndex) runQuery(q *query.Query, get bool) (ids []string) {
 			iteratorInit = true
 		}
 		nextFunc = iterator.Prev
-	} else {
-		return
 	}
 
 	// Check if the caller want more or less with equal option
@@ -344,7 +339,11 @@ func (i *structIndex) runKeepQuery(q *query.Query, ids []string) []string {
 	// Once we know which index we need to remove we start at the end of the slice
 	// and we remove every not needed IDs.
 	for j := len(indexToRemove) - 1; j >= 0; j-- {
-		ids = append(ids[:indexToRemove[j]], ids[indexToRemove[j]+1:]...)
+		if len(ids) > indexToRemove[j] {
+			ids = append(ids[:indexToRemove[j]], ids[indexToRemove[j]+1:]...)
+		} else {
+			ids = ids[:indexToRemove[j]]
+		}
 	}
 
 	return ids

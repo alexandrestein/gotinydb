@@ -20,6 +20,7 @@ type (
 		Limit         int
 
 		KeepEqual bool
+		Distinct  bool
 
 		// // Result is the respond of IDs
 		// Result []string
@@ -78,7 +79,10 @@ func (q *Query) InvertOrder() *Query {
 	q.InvertedOrder = true
 	return q
 }
-
+func (q *Query) DistinctWanted() *Query {
+	q.Distinct = true
+	return q
+}
 func (q *Query) EqualWanted() *Query {
 	q.KeepEqual = true
 	return q
