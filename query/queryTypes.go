@@ -2,7 +2,7 @@ package query
 
 // Defines the different types of queries:
 const (
-	notSet ActionType = ""
+	// notSet ActionType = ""
 
 	Equal ActionType = "eq"
 	// NotEqual ActionType = "nq"
@@ -52,30 +52,22 @@ func (a *Action) GetType() ActionType {
 	return a.Operation
 }
 
-func (a *Action) Valid() bool {
-	if a.Operation == notSet {
-		return false
-	}
-	if a.CompareToValue == nil {
-		return false
-	}
-	return true
-}
+// func (a *Action) Valid() bool {
+// 	if a.Operation == notSet {
+// 		return false
+// 	}
+// 	if a.CompareToValue == nil {
+// 		return false
+// 	}
+// 	return true
+// }
 
 func NewQuery(selector []string) *Query {
 	return &Query{
 		Selector: selector,
 		Limit:    1,
-		// Actions:  map[ActionType]*Action{},
 	}
 }
-
-// // AddAction add an other action at the end of the query and return itself to
-// // chain the functions
-// func (q *Query) AddAction(a *Action) *Query {
-// 	q.Actions[a.Operation] = a
-// 	return q
-// }
 
 func (q *Query) SetLimit(l int) *Query {
 	q.Limit = l
