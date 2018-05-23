@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"gitea.interlab-net.com/alexandre/db/index"
+	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
 )
 
@@ -108,7 +109,8 @@ func (c *Collection) Delete(id string) error {
 	}
 
 	if len(savedValue) != 0 {
-		if err := c.updateIndexAfterDelete(id); err != nil {
+		fmt.Println("savedValue", savedValue)
+		if err := c.updateIndex(savedValue, nil, id); err != nil {
 			return fmt.Errorf("updating index: %s", err.Error())
 		}
 	}
@@ -130,4 +132,14 @@ func (c *Collection) SetIndex(name string, indexType index.Type, selector []stri
 	}
 
 	return c.save()
+}
+
+// Query run the given query to all the collection indexes.
+// It returns the
+func (c *Collection) Query(q *query.Query) (ids []string) {
+	for _, index := range c.Indexes {
+		ids = append(ids, index.RunQuery(q)...)
+	}
+
+	return ids
 }

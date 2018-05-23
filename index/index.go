@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 
 	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
@@ -43,6 +42,10 @@ func newStructIndex(path string, selector []string) *structIndex {
 }
 
 func (i *structIndex) Get(indexedValue interface{}) ([]string, bool) {
+	if indexedValue == nil {
+		return nil, false
+	}
+
 	// Trys to get the list of ids for the given indexed value.
 	idsAsInterface, found := i.tree.Get(indexedValue)
 	if found {
@@ -198,10 +201,29 @@ func (i *structIndex) RemoveIDFromAll(id string) error {
 	return nil
 }
 
+func (i *structIndex) doesApply(selector []string) bool {
+	if len(selector) != len(i.GetSelector()) {
+		return false
+	}
+
+	for j, savedField := range i.GetSelector() {
+		if savedField != selector[j] {
+			return false
+		}
+	}
+	return true
+}
+
 func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 	if q == nil {
+		fmt.Println("check selecotr", i.GetSelector(), q.Selector)
 		return
 	}
+
+	if !i.doesApply(q.Selector) {
+		return
+	}
+
 	// Actualy run the query
 	ids = i.runQuery(q, true)
 	if q.KeepAction != nil && len(ids) != 0 {
@@ -260,10 +282,14 @@ func (i *structIndex) runQuery(q *query.Query, get bool) (ids []string) {
 		action = q.KeepAction
 	}
 
-	// Check the selector
-	if !reflect.DeepEqual(q.Selector, i.selector) {
+	if action.CompareToValue == nil {
 		return
 	}
+
+	// // Check the selector
+	// if !reflect.DeepEqual(q.Selector, i.selector) {
+	// 	return
+	// }
 
 	// If equal just this leave will be send
 	if action.GetType() == query.Equal {

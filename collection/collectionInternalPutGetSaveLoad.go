@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"gitea.interlab-net.com/alexandre/db/vars"
 )
@@ -94,7 +95,9 @@ func (c *Collection) putObject(file *os.File, value interface{}) error {
 		return fmt.Errorf("getting the previous record: %s", errGetPrevious.Error())
 	}
 
-	c.updateIndex(oldValue, value, file.Name())
+	fileNamePrefix := c.path + "/" + vars.RecordsDirName + "/" + vars.ObjectsDirName + "/"
+	id := strings.Replace(file.Name(), fileNamePrefix, "", 1)
+	c.updateIndex(oldValue, value, id)
 
 	return c.putToFile(file, buf)
 }

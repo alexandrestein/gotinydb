@@ -2,9 +2,11 @@ package collection
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	"gitea.interlab-net.com/alexandre/db/index"
+	"gitea.interlab-net.com/alexandre/db/query"
 	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
 )
 
@@ -108,10 +110,28 @@ func check(t *testing.T, col *Collection, ids []string, values []internalTesting
 
 func setIndex(t *testing.T, col *Collection) {
 	col.SetIndex("userName", index.StringIndexType, []string{"UserName"})
-	col.SetIndex("age", index.IntIndexType, []string{"UserName"})
+	col.SetIndex("age", index.IntIndexType, []string{"Age"})
 }
 
 func checkIndex(t *testing.T, col *Collection) {
+	userNameSelector := []string{"UserName"}
+	ageSelector := []string{"Age"}
+
+	getAction := query.NewAction(query.Greater).CompareTo("mister")
+	keepAction := query.NewAction(query.Greater).CompareTo("n")
+	q := query.NewQuery(userNameSelector).Get(getAction).Keep(keepAction)
+	ids := col.Query(q)
+	if expectedIDs := []string{"ID_USER_1"}; !reflect.DeepEqual(ids, expectedIDs) {
+		t.Errorf("the returned IDs is not correct for string index. Expected %v but had %v", ids, expectedIDs)
+	}
+
+	getAction = query.NewAction(query.Greater).CompareTo(10)
+	keepAction = query.NewAction(query.Greater).CompareTo(20)
+	q = query.NewQuery(ageSelector).Get(getAction).Keep(keepAction)
+	ids = col.Query(q)
+	if expectedIDs := []string{"ID_USER_1"}; !reflect.DeepEqual(ids, expectedIDs) {
+		t.Errorf("the returned IDs is not correct for int index. Expected %v but had %v", ids, expectedIDs)
+	}
 }
 
 func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue, bin bool) {

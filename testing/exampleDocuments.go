@@ -92,8 +92,8 @@ func (self *RawTest) IsEqual(with interface{}) bool {
 func GetUsersExample() []TestValue {
 	// Time is truncate because the JSON format do not support nanosecondes
 	return []TestValue{
-		&UserTest{"ID_USER_1", "mister 1", "pass 1", 15, time.Now().Truncate(time.Millisecond)},
-		&UserTest{"ID_USER_2", "mister 2", "pass 2", 30, time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
+		&UserTest{"ID_USER_1", "mister one", "pass 1", 15, time.Now().Truncate(time.Millisecond)},
+		&UserTest{"ID_USER_2", "user two", "pass 2", 30, time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
 	}
 }
 

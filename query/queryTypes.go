@@ -12,9 +12,8 @@ type (
 	Query struct {
 		Selector              []string
 		GetAction, KeepAction *Action
-		// Actions       map[ActionType]*Action
-		InvertedOrder bool
-		Limit         int
+		InvertedOrder         bool
+		Limit                 int
 
 		KeepEqual bool
 		Distinct  bool
