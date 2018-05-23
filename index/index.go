@@ -216,7 +216,6 @@ func (i *structIndex) doesApply(selector []string) bool {
 
 func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 	if q == nil {
-		fmt.Println("check selecotr", i.GetSelector(), q.Selector)
 		return
 	}
 
@@ -376,47 +375,54 @@ func (i *structIndex) runKeepQuery(q *query.Query, ids []string) []string {
 }
 
 func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {
+	var mapObj map[string]interface{}
+	var ok bool
 	if structs.IsStruct(object) {
-		mapObj := structs.Map(object)
-		var ok bool
+		mapObj = structs.Map(object)
+	} else if tmpMap, ok := object.(map[string]interface{}); ok {
+		mapObj = tmpMap
+	} else {
+		return nil, false
+	}
 
-		// Loop every level of the index
-		for j, selectorElem := range i.selector {
-			// If not at the top level
-			if j < len(i.selector)-1 {
-				// Trys to convert the value into map[string]interface{}
-				mapObj, ok = mapObj[selectorElem].(map[string]interface{})
-				// If not possible the index do not apply
-				if !ok || mapObj == nil {
-					return nil, false
-				}
-				// If at the top level
-			} else {
-				// Checks that the value is not nil
-				if mapObj[selectorElem] == nil {
-					return nil, false
-				}
+	// Loop every level of the index
+	for j, selectorElem := range i.selector {
+		// If not at the top level
+		if j < len(i.selector)-1 {
+			// Trys to convert the value into map[string]interface{}
+			mapObj, ok = mapObj[selectorElem].(map[string]interface{})
+			// If not possible the index do not apply
+			if !ok || mapObj == nil {
+				return nil, false
+			}
+			// If at the top level
+		} else {
+			// Checks that the value is not nil
+			if mapObj[selectorElem] == nil {
+				return nil, false
+			}
 
-				// Check that the value in consustant with the specified index type
-				// Convert to the coresponding type and check if the value is nil.
-				switch i.Type() {
-				case StringIndexType:
-					if val, ok := mapObj[selectorElem].(string); !ok {
-						return nil, false
-					} else if val == "" {
-						return nil, false
-					} else {
-						valueToIndex = val
-					}
-				case IntIndexType:
-					if val, ok := mapObj[selectorElem].(int); !ok {
-						return nil, false
-					} else if val == 0 {
-						return nil, false
-					} else {
-						valueToIndex = val
-					}
+			// Check that the value in consustant with the specified index type
+			// Convert to the coresponding type and check if the value is nil.
+			switch i.Type() {
+			case StringIndexType:
+				if val, ok := mapObj[selectorElem].(string); !ok {
+					return nil, false
+				} else if val == "" {
+					return nil, false
+				} else {
+					valueToIndex = val
 				}
+			case IntIndexType:
+				if val, ok := mapObj[selectorElem].(int); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			default:
+				return nil, false
 			}
 		}
 	}
@@ -427,4 +433,20 @@ func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply
 
 func (i *structIndex) GetSelector() []string {
 	return i.selector
+}
+
+func (i *structIndex) GetAllIndexedValues() (ret []interface{}) {
+	iter := i.getTree().Iterator()
+	for iter.Next() {
+		ret = append(ret, iter.Key())
+	}
+	return
+}
+
+func (i *structIndex) GetAllIDs() (ret []string) {
+	iter := i.getTree().Iterator()
+	for iter.Next() {
+		ret = append(ret, iter.Value().([]string)...)
+	}
+	return
 }

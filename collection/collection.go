@@ -109,7 +109,6 @@ func (c *Collection) Delete(id string) error {
 	}
 
 	if len(savedValue) != 0 {
-		fmt.Println("savedValue", savedValue)
 		if err := c.updateIndex(savedValue, nil, id); err != nil {
 			return fmt.Errorf("updating index: %s", err.Error())
 		}

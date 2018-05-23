@@ -70,6 +70,9 @@ type (
 		Save() error
 		Load() error
 
+		GetAllIndexedValues() []interface{}
+		GetAllIDs() []string
+
 		getPath() string
 		getTree() *btree.Tree
 

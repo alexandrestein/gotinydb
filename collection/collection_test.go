@@ -164,6 +164,19 @@ func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue, 
 		return
 	}
 
+	if !bin {
+		userNameIndexedValues := col.Indexes["userName"].GetAllIndexedValues()
+		ageIndexedValues := col.Indexes["age"].GetAllIndexedValues()
+		if len(userNameIndexedValues) != 0 {
+			t.Errorf("the index %q is not empty but should: %v", "userName", userNameIndexedValues)
+			return
+		}
+		if len(ageIndexedValues) != 0 {
+			t.Errorf("the index %q is not empty but should: %v", "age", ageIndexedValues)
+			return
+		}
+	}
+
 	updateAndCheck(t, col, values)
 	if t.Failed() {
 		return
