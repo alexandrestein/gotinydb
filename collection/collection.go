@@ -102,19 +102,16 @@ func (c *Collection) Delete(id string) error {
 	defer os.Remove(c.getRecordPath(id, false))
 	defer os.Remove(c.getRecordPath(id, true))
 
-	savedValue := map[string]interface{}
-	getErr := c.Get(id, &savedValue)
-	if getErr != nil && fmt.Sprintf("%T", getErr) == "os.PathError" {
-		return fmt.Errorf("value not found")
+	refs, getRefsErr := c.getIndexReference(id)
+	if getRefsErr != nil {
+		return fmt.Errorf("getting the index references: %s", getRefsErr.Error())
 	}
 
-	if len(savedValue) != 0 {
-		if err := c.updateIndex(savedValue, nil, id); err != nil {
-			return fmt.Errorf("updating index: %s", err.Error())
-		}
+	if err := c.updateIndexAfterDelete(id, refs); err != nil {
+		return fmt.Errorf("updating index: %s", err.Error())
 	}
 
-	return nil
+	return c.deleteIndexRefFile(id)
 }
 
 // SetIndex adds new index to the collection

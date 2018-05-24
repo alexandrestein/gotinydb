@@ -1,10 +1,8 @@
 package collection
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -12,32 +10,32 @@ import (
 )
 
 func (c *Collection) save() error {
-	metas := []*IndexMeta{}
-	for name, index := range c.Indexes {
-		err := index.Save()
-		if err != nil {
-			return err
-		}
-		metas = append(metas, NewMeta(name, index.GetSelector(), index.Type()))
-	}
-
-	indexMetaFile, openErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/indexes.json", vars.PutFlags, vars.FilePermission)
-	if openErr != nil {
-		return fmt.Errorf("openning index meta data file: %s", openErr.Error())
-	}
-	defer indexMetaFile.Close()
-
-	metasAsBytes, marshalErr := json.Marshal(metas)
-	if marshalErr != nil {
-		return fmt.Errorf("marshaling index meta datas: %s", marshalErr.Error())
-	}
-
-	_, writeErr := indexMetaFile.WriteAt(metasAsBytes, 0)
-	if writeErr != nil {
-		return fmt.Errorf("saving index mata datas: %s", writeErr.Error())
-	}
-
-	c.IndexMeta = metas
+	// metas := []*IndexMeta{}
+	// for name, index := range c.Indexes {
+	// 	err := index.Save()
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	metas = append(metas, NewMeta(name, index.GetSelector(), index.Type()))
+	// }
+	//
+	// indexMetaFile, openErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/indexes.json", vars.PutFlags, vars.FilePermission)
+	// if openErr != nil {
+	// 	return fmt.Errorf("openning index meta data file: %s", openErr.Error())
+	// }
+	// defer indexMetaFile.Close()
+	//
+	// metasAsBytes, marshalErr := json.Marshal(metas)
+	// if marshalErr != nil {
+	// 	return fmt.Errorf("marshaling index meta datas: %s", marshalErr.Error())
+	// }
+	//
+	// _, writeErr := indexMetaFile.WriteAt(metasAsBytes, 0)
+	// if writeErr != nil {
+	// 	return fmt.Errorf("saving index mata datas: %s", writeErr.Error())
+	// }
+	//
+	// c.IndexMeta = metas
 
 	return nil
 }
@@ -47,40 +45,40 @@ func (c *Collection) load() error {
 		return fmt.Errorf("directory is not usable: %s", checkErr.Error())
 	}
 
-	indexMetaFile, openErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/indexes.json", vars.GetFlags, vars.FilePermission)
-	if openErr != nil {
-		return fmt.Errorf("openning index meta data file: %s", openErr.Error())
-	}
-	defer indexMetaFile.Close()
-
-	rawJSONBuffer := bytes.NewBuffer(nil)
-	i := int64(0)
-	for {
-		buf := make([]byte, 1024)
-		n, readErr := indexMetaFile.ReadAt(buf, i*1024)
-		if readErr != nil {
-			// If the file is empty the collection don't have indexes
-			if i == 0 && n <= 0 {
-				return nil
-			}
-			// Clean and exit the loop if file is over
-			if readErr == io.EOF {
-				rawJSONBuffer.Write(buf[:n])
-				break
-			}
-			return fmt.Errorf("reading index meta datas file: %s", readErr.Error())
-		}
-		rawJSONBuffer.Write(buf[:n])
-		i++
-	}
-
-	metas := []*IndexMeta{}
-	marshalErr := json.Unmarshal(rawJSONBuffer.Bytes(), &metas)
-	if marshalErr != nil {
-		return fmt.Errorf("unmarshaling index meta datas: %s", marshalErr.Error())
-	}
-
-	c.IndexMeta = metas
+	// indexMetaFile, openErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/indexes.json", vars.GetFlags, vars.FilePermission)
+	// if openErr != nil {
+	// 	return fmt.Errorf("openning index meta data file: %s", openErr.Error())
+	// }
+	// defer indexMetaFile.Close()
+	//
+	// rawJSONBuffer := bytes.NewBuffer(nil)
+	// i := int64(0)
+	// for {
+	// 	buf := make([]byte, 1024)
+	// 	n, readErr := indexMetaFile.ReadAt(buf, i*1024)
+	// 	if readErr != nil {
+	// 		// If the file is empty the collection don't have indexes
+	// 		if i == 0 && n <= 0 {
+	// 			return nil
+	// 		}
+	// 		// Clean and exit the loop if file is over
+	// 		if readErr == io.EOF {
+	// 			rawJSONBuffer.Write(buf[:n])
+	// 			break
+	// 		}
+	// 		return fmt.Errorf("reading index meta datas file: %s", readErr.Error())
+	// 	}
+	// 	rawJSONBuffer.Write(buf[:n])
+	// 	i++
+	// }
+	//
+	// metas := []*IndexMeta{}
+	// marshalErr := json.Unmarshal(rawJSONBuffer.Bytes(), &metas)
+	// if marshalErr != nil {
+	// 	return fmt.Errorf("unmarshaling index meta datas: %s", marshalErr.Error())
+	// }
+	//
+	// c.IndexMeta = metas
 	return nil
 }
 
@@ -90,35 +88,30 @@ func (c *Collection) putObject(file *os.File, value interface{}) error {
 		return fmt.Errorf("marshaling record: %s", marshalErr.Error())
 	}
 
-	oldValue, errGetPrevious := c.getPrevious(file)
-	if errGetPrevious != nil {
-		return fmt.Errorf("getting the previous record: %s", errGetPrevious.Error())
-	}
-
 	fileNamePrefix := c.path + "/" + vars.RecordsDirName + "/" + vars.ObjectsDirName + "/"
 	id := strings.Replace(file.Name(), fileNamePrefix, "", 1)
-	c.updateIndex(oldValue, value, id)
+	c.updateIndex(id, value)
 
 	return c.putToFile(file, buf)
 }
 
-func (c *Collection) getPrevious(file *os.File) (interface{}, error) {
-	oldValueBuf := make([]byte, vars.BlockSize)
-	n, errRead := file.ReadAt(oldValueBuf, 0)
-	if errRead != nil {
-		if errRead == io.EOF && n == 0 {
-			return nil, nil
-		}
-	}
-
-	oldValue := map[string]interface{}{}
-	decodeErr := json.Unmarshal(oldValueBuf, oldValue)
-	if decodeErr != nil {
-		return nil, fmt.Errorf("decoding old file: %s", decodeErr.Error())
-	}
-
-	return oldValue, nil
-}
+// func (c *Collection) getPrevious(file *os.File) (interface{}, error) {
+// 	oldValueBuf := make([]byte, vars.BlockSize)
+// 	n, errRead := file.ReadAt(oldValueBuf, 0)
+// 	if errRead != nil {
+// 		if errRead == io.EOF && n == 0 {
+// 			return nil, nil
+// 		}
+// 	}
+//
+// 	oldValue := map[string]interface{}{}
+// 	decodeErr := json.Unmarshal(oldValueBuf, oldValue)
+// 	if decodeErr != nil {
+// 		return nil, fmt.Errorf("decoding old file: %s", decodeErr.Error())
+// 	}
+//
+// 	return oldValue, nil
+// }
 
 func (c *Collection) putBin(file *os.File, value []byte) error {
 	return c.putToFile(file, value)
@@ -136,8 +129,8 @@ func (c *Collection) putToFile(file *os.File, value []byte) error {
 	return nil
 }
 
-func (c *Collection) putErr(id, string, value interface{}, bin bool) {
-}
+// func (c *Collection) putErr(id, string, value interface{}, bin bool) {
+// }
 
 func (c *Collection) openDoc(id string, bin bool, flags int) (*os.File, error) {
 	return os.OpenFile(c.getRecordPath(id, bin), flags, vars.FilePermission)
