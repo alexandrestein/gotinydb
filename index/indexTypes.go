@@ -6,28 +6,12 @@ import (
 	"github.com/emirpasic/gods/utils"
 )
 
-// // Those constants defines the defferent types of indexes.
-// const (
-// 	StringType Type = iota
-// 	IntType
-// 	TimeType
-// 	CustomType
-// )
-
 // Those varables define the deferent errors
 var (
 	NotFoundString = "not found"
 )
 
 type (
-	// stringIndex struct {
-	// 	*structIndex
-	// }
-	//
-	// intIndex struct {
-	// 	*structIndex
-	// }
-
 	structIndex struct {
 		tree      *btree.Tree
 		selector  []string

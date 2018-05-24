@@ -5,8 +5,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
-	"gitea.interlab-net.com/alexandre/db/query"
 	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
 	"github.com/emirpasic/gods/utils"
 )
@@ -17,6 +17,30 @@ func getGoodList(i Index) [][]interface{} {
 		return testStringList()
 	case utils.IntComparatorType:
 		return testIntList()
+	case utils.TimeComparatorType:
+		return testTimeList()
+	case utils.Int8ComparatorType:
+		return testInt8List()
+	case utils.Int16ComparatorType:
+		return testInt16List()
+	case utils.Int32ComparatorType:
+		return testInt32List()
+	case utils.Int64ComparatorType:
+		return testInt64List()
+	case utils.UIntComparatorType:
+		return testUIntList()
+	case utils.UInt8ComparatorType:
+		return testUInt8List()
+	case utils.UInt16ComparatorType:
+		return testUInt16List()
+	case utils.UInt32ComparatorType:
+		return testUInt32List()
+	case utils.UInt64ComparatorType:
+		return testUInt64List()
+	case utils.Float32ComparatorType:
+		return testFloat32List()
+	case utils.Float64ComparatorType:
+		return testFloat64List()
 	}
 	return nil
 }
@@ -90,6 +114,116 @@ func TestIntIndex(t *testing.T) {
 	i.getTree().Clear()
 
 	i = NewInt(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestTimeIndex(t *testing.T) {
+	i := NewTime(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewTime(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestInt8Index(t *testing.T) {
+	i := NewInt8(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewInt8(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestInt16Index(t *testing.T) {
+	i := NewInt16(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewInt16(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestInt32Index(t *testing.T) {
+	i := NewInt32(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewInt32(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestInt64Index(t *testing.T) {
+	i := NewInt64(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewInt64(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestUIntIndex(t *testing.T) {
+	i := NewUint(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewUint(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestUInt8Index(t *testing.T) {
+	i := NewUint8(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewUint8(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestUInt16Index(t *testing.T) {
+	i := NewUint16(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewUint16(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestUInt32Index(t *testing.T) {
+	i := NewUint32(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewUint32(internalTesting.Path, []string{})
+	testLoadIndex(t, i)
+}
+
+func TestUInt64Index(t *testing.T) {
+	i := NewUint64(internalTesting.Path, []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewUint64(internalTesting.Path, []string{})
 	testLoadIndex(t, i)
 }
 
@@ -205,103 +339,6 @@ func TestApply(t *testing.T) {
 	}
 }
 
-func TestStringQuery(t *testing.T) {
-	selector := []string{"Add", "Street", "Name"}
-	i := NewString(internalTesting.Path, selector)
-	for _, val := range internalTesting.GetCompleteUsersExampleStreetNamesOnly() {
-		user := val.(*internalTesting.CompleteUser)
-		i.Put(user.Add.Street.Name, val.GetID())
-	}
-
-	buildTestQuery := func(limit int, reverted bool, getAction, keepAction *query.Action) *query.Query {
-		if limit == 0 {
-			limit = 1
-		}
-		q := query.NewQuery(selector).SetLimit(limit)
-		if reverted {
-			q.InvertOrder()
-		}
-		q.GetAction = getAction
-		q.KeepAction = keepAction
-		return q
-	}
-
-	listOfTests := []struct {
-		name           string
-		query          *query.Query
-		expectedResult []string
-	}{
-		{
-			name:           "Get Equal with limit 1",
-			query:          buildTestQuery(1, false, query.NewAction(query.Equal).CompareTo("North street"), nil),
-			expectedResult: []string{"S_North_1"},
-		}, {
-			name:           "Get Equal with limit 5",
-			query:          buildTestQuery(5, false, query.NewAction(query.Equal).CompareTo("North street"), nil),
-			expectedResult: []string{"S_North_1", "S_North_6", "S_North_11", "S_North_16", "S_North_21"},
-		}, {
-			name:           "Get Equal with limit 5 and reverted",
-			query:          buildTestQuery(5, true, query.NewAction(query.Equal).CompareTo("North street"), nil),
-			expectedResult: []string{"S_North_21", "S_North_16", "S_North_11", "S_North_6", "S_North_1"},
-		}, {
-			name:           "Get Greater and Equal - limit 15",
-			query:          buildTestQuery(15, false, query.NewAction(query.Greater).CompareTo("East street"), nil),
-			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24", "S_East_29", "S_East_34", "S_East_39", "S_East_44", "S_East_49", "S_George_5", "S_George_10", "S_George_15", "S_George_20", "S_George_25"},
-		}, {
-			name:           "Get Greater - limit 10",
-			query:          buildTestQuery(10, false, query.NewAction(query.Greater).CompareTo("East street"), nil).EqualWanted(),
-			expectedResult: []string{"S_George_5", "S_George_10", "S_George_15", "S_George_20", "S_George_25", "S_George_30", "S_George_35", "S_George_40", "S_George_45", "S_North_21"},
-		}, {
-			name:           "Get Less and Equal - limit 15",
-			query:          buildTestQuery(15, false, query.NewAction(query.Less).CompareTo("West street"), nil),
-			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23", "S_West_28", "S_West_33", "S_West_38", "S_West_43", "S_West_48", "S_South_2", "S_South_7", "S_South_12", "S_South_17", "S_South_22"},
-		}, {
-			name:           "Get Less - limit 10",
-			query:          buildTestQuery(10, false, query.NewAction(query.Less).CompareTo("West street"), nil).EqualWanted(),
-			expectedResult: []string{"S_South_2", "S_South_7", "S_South_12", "S_South_17", "S_South_22", "S_South_27", "S_South_32", "S_South_37", "S_South_42", "S_South_47"},
-		}, {
-			name:           "Empty Action",
-			query:          buildTestQuery(10, false, nil, nil),
-			expectedResult: []string{},
-		}, {
-			name:           "Greater than last",
-			query:          buildTestQuery(5, false, query.NewAction(query.Greater).CompareTo("Z"), nil),
-			expectedResult: []string{},
-		}, {
-			name:           "Less than first",
-			query:          buildTestQuery(5, false, query.NewAction(query.Less).CompareTo("A"), nil),
-			expectedResult: []string{},
-		}, {
-			name:           "Greater from start",
-			query:          buildTestQuery(5, false, query.NewAction(query.Greater).CompareTo("A"), nil),
-			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24"},
-		}, {
-			name:           "Less from end",
-			query:          buildTestQuery(5, false, query.NewAction(query.Less).CompareTo("Z"), nil),
-			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23"},
-		}, {
-			name:           "Greater from start and keep after E - limit 20",
-			query:          buildTestQuery(100, false, query.NewAction(query.Greater).CompareTo("A"), query.NewAction(query.Greater).CompareTo("F")),
-			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24", "S_East_29", "S_East_34", "S_East_39", "S_East_44", "S_East_49"},
-		}, {
-			name:           "Duplicated",
-			query:          buildTestQuery(10, false, query.NewAction(query.Equal).CompareTo("North street Dup"), query.NewAction(query.Greater).CompareTo("North street Dup4")).DistinctWanted(),
-			expectedResult: []string{"DUP_1"},
-		},
-	}
-
-	for _, test := range listOfTests {
-		ids := i.RunQuery(test.query)
-		if !reflect.DeepEqual(test.expectedResult, ids) {
-			if len(test.expectedResult) == 0 && len(ids) == 0 {
-				continue
-			}
-			t.Errorf("%q the expected result is %v but had %v", test.name, test.expectedResult, ids)
-		}
-	}
-	i.getTree().Clear()
-}
-
 func testStringList() [][]interface{} {
 	return [][]interface{}{
 		[]interface{}{"indexed field value a", "id0"},
@@ -352,5 +389,80 @@ func testIntList() [][]interface{} {
 	return [][]interface{}{
 		[]interface{}{1, "id1"},
 		[]interface{}{2, "id2"},
+	}
+}
+
+func testTimeList() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{time.Now().Add(time.Second * 10).Truncate(time.Millisecond), "id1"},
+		[]interface{}{time.Now().Add(time.Second * -10).Truncate(time.Millisecond), "id2"},
+	}
+}
+
+func testInt8List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{int8(1), "id1"},
+		[]interface{}{int8(2), "id2"},
+	}
+}
+
+func testInt16List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{int16(1), "id1"},
+		[]interface{}{int16(2), "id2"},
+	}
+}
+func testInt32List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{int32(1), "id1"},
+		[]interface{}{int32(2), "id2"},
+	}
+}
+func testInt64List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{int64(1), "id1"},
+		[]interface{}{int64(2), "id2"},
+	}
+}
+func testUIntList() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{uint(1), "id1"},
+		[]interface{}{uint(2), "id2"},
+	}
+}
+func testUInt8List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{uint8(1), "id1"},
+		[]interface{}{uint8(2), "id2"},
+	}
+}
+func testUInt16List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{uint16(1), "id1"},
+		[]interface{}{uint16(2), "id2"},
+	}
+}
+func testUInt32List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{uint32(1), "id1"},
+		[]interface{}{uint32(2), "id2"},
+	}
+}
+func testUInt64List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{uint64(1), "id1"},
+		[]interface{}{uint64(2), "id2"},
+	}
+}
+func testFloat32List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{float32(0.1), "id1"},
+		[]interface{}{float32(0.2), "id2"},
+	}
+}
+func testFloat64List() [][]interface{} {
+	return [][]interface{}{
+		[]interface{}{float64(0.1), "id1"},
+		[]interface{}{float64(0.2), "id2"},
 	}
 }

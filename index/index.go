@@ -43,7 +43,7 @@ func NewTime(path string, selector []string) Index {
 // NewInt8 returns Index interface ready to manage int types
 func NewInt8(path string, selector []string) Index {
 	i := newStructIndex(path, selector)
-	i.tree = btree.NewWith(vars.TreeOrder, utils.Int8Comparator, utils.IntComparatorType)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.Int8Comparator, utils.Int8ComparatorType)
 	i.indexType = utils.Int8ComparatorType
 
 	return i
@@ -58,8 +58,8 @@ func NewInt16(path string, selector []string) Index {
 	return i
 }
 
-// Newint32 returns Index interface ready to manage int types
-func Newint32(path string, selector []string) Index {
+// NewInt32 returns Index interface ready to manage int types
+func NewInt32(path string, selector []string) Index {
 	i := newStructIndex(path, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.Int32Comparator, utils.Int32ComparatorType)
 	i.indexType = utils.Int32ComparatorType
@@ -67,8 +67,8 @@ func Newint32(path string, selector []string) Index {
 	return i
 }
 
-// Newint64 returns Index interface ready to manage int types
-func Newint64(path string, selector []string) Index {
+// NewInt64 returns Index interface ready to manage int types
+func NewInt64(path string, selector []string) Index {
 	i := newStructIndex(path, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.Int64Comparator, utils.Int64ComparatorType)
 	i.indexType = utils.Int64ComparatorType
