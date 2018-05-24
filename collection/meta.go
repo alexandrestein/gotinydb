@@ -111,16 +111,6 @@ func (c *Collection) setIndexReferenceWithFile(id string, refs []*IndexReference
 	return nil
 }
 
-// func (c *Collection) setIndexReference(id string, refs []*IndexReference) error {
-// 	file, openErr := c.getIndexRefFile(id, true)
-// 	if openErr != nil {
-// 		return openErr
-// 	}
-// 	defer file.Close()
-//
-// 	return c.setIndexReferenceWithFile(id, refs, file)
-// }
-
 func (c *Collection) getIndexReference(id string) ([]*IndexReference, error) {
 	file, references, openErr := c.loadIndexRefAndFile(id, false)
 	if openErr != nil {
