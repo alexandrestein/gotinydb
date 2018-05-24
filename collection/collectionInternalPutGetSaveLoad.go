@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"gitea.interlab-net.com/alexandre/db/vars"
 )
@@ -26,14 +27,19 @@ func (c *Collection) putObject(file *os.File, value interface{}) error {
 		return fmt.Errorf("marshaling record: %s", marshalErr.Error())
 	}
 
+	fileNamePrefix := c.path + "/" + vars.RecordsDirName + "/" + vars.ObjectsDirName + "/"
+	id := strings.Replace(file.Name(), fileNamePrefix, "", 1)
+	c.updateIndex(id, value)
+
 	return c.putToFile(file, buf)
 }
+
 func (c *Collection) putBin(file *os.File, value []byte) error {
 	return c.putToFile(file, value)
 }
 
 func (c *Collection) putToFile(file *os.File, value []byte) error {
-	n, writeErr := file.Write(value)
+	n, writeErr := file.WriteAt(value, 0)
 	if writeErr != nil {
 		return fmt.Errorf("writing record: %s", writeErr.Error())
 	}
@@ -76,6 +82,20 @@ func (c *Collection) checkDir() error {
 	return nil
 }
 
+func (c *Collection) getFile(id string) (file *os.File, isBin bool, err error) {
+	file, err = c.openDoc(id, false, vars.GetFlags)
+	if err != nil {
+		file, err = c.openDoc(id, true, vars.GetFlags)
+		if err != nil {
+			err = fmt.Errorf("opening record: %s", err.Error())
+			return
+		}
+		isBin = true
+	}
+
+	return
+}
+
 func (c *Collection) buildDir() error {
 	if addDirErr := os.MkdirAll(c.path+"/"+vars.IndexesDirName, vars.FilePermission); addDirErr != nil {
 		return fmt.Errorf("building the index directory: %s", addDirErr.Error())
@@ -87,6 +107,16 @@ func (c *Collection) buildDir() error {
 	if addDirErr := os.MkdirAll(c.path+"/"+vars.RecordsDirName+"/"+vars.ObjectsDirName, vars.FilePermission); addDirErr != nil {
 		return fmt.Errorf("building the record directory: %s", addDirErr.Error())
 	}
+
+	if addDirErr := os.MkdirAll(c.path+"/"+vars.MetaDatasDirName, vars.FilePermission); addDirErr != nil {
+		return fmt.Errorf("building the record directory: %s", addDirErr.Error())
+	}
+
+	file, indexFileErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/indexes.json", vars.PutFlags, vars.FilePermission)
+	if indexFileErr != nil {
+		return fmt.Errorf("building the index mata data file: %s", indexFileErr.Error())
+	}
+	file.Close()
 
 	return nil
 }

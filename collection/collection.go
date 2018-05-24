@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
+	"gitea.interlab-net.com/alexandre/db/index"
+	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
 )
 
@@ -13,6 +16,7 @@ import (
 func NewCollection(path string) (*Collection, error) {
 	c := new(Collection)
 	c.path = path
+	c.Indexes = map[string]index.Index{}
 
 	if err := c.load(); err != nil {
 		return nil, fmt.Errorf("loading DB: %s", err.Error())
@@ -35,27 +39,33 @@ func (c *Collection) Put(id string, value interface{}) error {
 	if openErr != nil {
 		return fmt.Errorf("opening record: %s", openErr.Error())
 	}
+	defer file.Close()
 
 	if isBin {
-		return c.putBin(file, binAsBytes)
+		if err := c.putBin(file, binAsBytes); err != nil {
+			return err
+		}
+		return nil
 	}
 
-	return c.putObject(file, value)
+	if err := c.putObject(file, value); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Get fillups the given value from the given ID. If you want to get binary
 // content you must give a bytes.Buffer pointer.
 func (c *Collection) Get(id string, value interface{}) error {
-	isBin := false
-
-	file, openErr := c.openDoc(id, false, vars.GetFlags)
-	if openErr != nil {
-		file, openErr = c.openDoc(id, true, vars.GetFlags)
-		if openErr != nil {
-			return fmt.Errorf("opening record: %s", openErr.Error())
-		}
-		isBin = true
+	if id == "" {
+		return fmt.Errorf("id can't be empty")
 	}
+
+	file, isBin, openErr := c.getFile(id)
+	if openErr != nil {
+		return openErr
+	}
+	defer file.Close()
 
 	ret := []byte{}
 	readOffSet := int64(0)
@@ -88,7 +98,44 @@ func (c *Collection) Get(id string, value interface{}) error {
 	return nil
 }
 
+func (c *Collection) Delete(id string) error {
+	defer os.Remove(c.getRecordPath(id, false))
+	defer os.Remove(c.getRecordPath(id, true))
+
+	refs, getRefsErr := c.getIndexReference(id)
+	if getRefsErr != nil {
+		return fmt.Errorf("getting the index references: %s", getRefsErr.Error())
+	}
+
+	if err := c.updateIndexAfterDelete(id, refs); err != nil {
+		return fmt.Errorf("updating index: %s", err.Error())
+	}
+
+	return c.deleteIndexRefFile(id)
+}
+
 // SetIndex adds new index to the collection
-func (c *Collection) SetIndex(target string) error {
-	return nil
+func (c *Collection) SetIndex(name string, indexType index.Type, selector []string) error {
+	if c.Indexes[name] != nil {
+		return fmt.Errorf("index %q already exists", name)
+	}
+
+	switch indexType {
+	case index.StringIndexType:
+		c.Indexes[name] = index.NewStringIndex(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case index.IntIndexType:
+		c.Indexes[name] = index.NewIntIndex(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	}
+
+	return c.save()
+}
+
+// Query run the given query to all the collection indexes.
+// It returns the
+func (c *Collection) Query(q *query.Query) (ids []string) {
+	for _, index := range c.Indexes {
+		ids = append(ids, index.RunQuery(q)...)
+	}
+
+	return ids
 }

@@ -10,24 +10,18 @@
     "trees/btree",
     "utils"
   ]
-  revision = "b546bb88fea76b25a300bbfe6f0e9b1366e0bc77"
+  revision = "19489d1e499989f4cbec1825cc008a57c6e4b40d"
   source = "github.com/alexandreStein/gods"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/minio/highwayhash"
+  name = "github.com/fatih/structs"
   packages = ["."]
-  revision = "85fc8a2dacad36a6beb2865793cd81363a496696"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/sys"
-  packages = ["cpu"]
-  revision = "7dfd1290c7917b7ba22824b9d24954ab3002fe24"
+  revision = "a720dfa8df582c51dee1b36feabb906bde1588bd"
+  version = "v1.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2142ded0d9f118b8b53eb41147779d78557450292d1117ffd1d31a801758cb24"
+  inputs-digest = "a721c31cb05dd8fff85cd7c9ddb16d5ce3f3868fe1a517a6adc67962892f486c"
   solver-name = "gps-cdcl"
   solver-version = 1

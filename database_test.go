@@ -2,22 +2,14 @@ package db
 
 import (
 	"bytes"
-	"crypto/rand"
-	"os"
 	"reflect"
 	"testing"
-	"time"
+
+	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
 )
 
-var (
-	path = os.TempDir() + "/dbTest"
-)
-
-func TestSimplePutGet(t *testing.T) {
-	os.RemoveAll(path)
-	defer os.RemoveAll(path)
-
-	db, initErr := New(path)
+func TestDB(t *testing.T) {
+	db, initErr := New(internalTesting.Path)
 	if initErr != nil {
 		t.Error(initErr.Error())
 		return
@@ -30,72 +22,53 @@ func TestSimplePutGet(t *testing.T) {
 		return
 	}
 
-	for _, user := range getUsersExample() {
-		col1.Put(user.ID, user)
-		tmpUser := &UserTest{}
-		getErr := col1.Get(user.ID, tmpUser)
+	for _, user := range internalTesting.GetUsersExample() {
+		putErr := col1.Put(user.GetID(), user)
+		if putErr != nil {
+			t.Errorf("puting the object: %s", putErr.Error())
+			return
+		}
+		tmpUser := &internalTesting.UserTest{}
+		getErr := col1.Get(user.GetID(), tmpUser)
 		if getErr != nil {
 			t.Errorf("getting the object: %s", getErr.Error())
+			return
 		}
 
 		if !reflect.DeepEqual(user, tmpUser) {
 			t.Errorf("returned object is not equal: %v\n%v", user, tmpUser)
+			return
 		}
 	}
-	for _, raw := range getRawExample() {
-		col1.Put(raw.ID, raw.Content)
+	for _, raw := range internalTesting.GetRawExample() {
+		col1.Put(raw.GetID(), raw.GetContent())
 		buf := bytes.NewBuffer(nil)
-		getErr := col1.Get(raw.ID, buf)
+		getErr := col1.Get(raw.GetID(), buf)
 		if getErr != nil {
 			t.Errorf("getting record: %s", getErr.Error())
 			return
 		}
 
-		if buf.String() != string(raw.Content) {
+		if buf.String() != string(raw.GetContent().([]byte)) {
 			t.Errorf("returned raw value is not the same as the given one")
 			return
 		}
 	}
+}
 
-	// Closes the collection
-	db.CloseCollection("col1")
-	// Reopen it to get thought the directory checking
-	_, col1Err = db.Use("col1")
-	if col1Err != nil {
-		t.Errorf("openning the collection again, this should not return any error: %s", col1Err.Error())
+func TestExistingDB(t *testing.T) {
+	// defer os.RemoveAll(path)
+
+	db, initErr := New(internalTesting.Path)
+	if initErr != nil {
+		t.Error(initErr.Error())
 		return
 	}
-}
+	defer db.Close()
 
-type (
-	UserTest struct {
-		ID, UserName, Password string
-		Creation               time.Time
+	_, col1Err := db.Use("col1")
+	if col1Err != nil {
+		t.Errorf("openning test collection: %s", col1Err.Error())
+		return
 	}
-
-	RawTest struct {
-		ID      string
-		Content []byte
-	}
-)
-
-func getUsersExample() []*UserTest {
-	// Time is truncate because the JSON format do not support nanosecondes
-	return []*UserTest{
-		&UserTest{"ID_USER_1", "mister 1", "pass 1", time.Now().Truncate(time.Millisecond)},
-		&UserTest{"ID_USER_2", "mister 2", "pass 2", time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
-	}
-}
-
-func getRawExample() []*RawTest {
-	return []*RawTest{
-		&RawTest{"ID_RAW_1", genRand(1024)},
-		&RawTest{"ID_RAW_2", genRand(1024 * 1024 * 30)},
-	}
-}
-
-func genRand(size int) []byte {
-	buf := make([]byte, size)
-	rand.Read(buf)
-	return buf
 }

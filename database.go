@@ -13,7 +13,7 @@ import (
 // be located in the directory.
 func New(path string) (*DB, error) {
 	d := new(DB)
-	d.Collections = map[string]*Collection{}
+	d.Collections = map[string]*collection.Collection{}
 	d.path = path
 	if err := d.buildRootDir(); err != nil {
 		return nil, fmt.Errorf("initializing DB: %s", err.Error())
