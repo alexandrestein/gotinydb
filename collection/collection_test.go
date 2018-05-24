@@ -109,8 +109,8 @@ func check(t *testing.T, col *Collection, ids []string, values []internalTesting
 }
 
 func setIndex(t *testing.T, col *Collection) {
-	col.SetIndex("userName", index.StringIndexType, []string{"UserName"})
-	col.SetIndex("age", index.IntIndexType, []string{"Age"})
+	col.SetIndex("userName", index.StringType, []string{"UserName"})
+	col.SetIndex("age", index.IntType, []string{"Age"})
 }
 
 func checkIndex(t *testing.T, col *Collection) {

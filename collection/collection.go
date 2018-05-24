@@ -121,9 +121,9 @@ func (c *Collection) SetIndex(name string, indexType index.Type, selector []stri
 	}
 
 	switch indexType {
-	case index.StringIndexType:
+	case index.StringType:
 		c.Indexes[name] = index.NewStringIndex(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
-	case index.IntIndexType:
+	case index.IntType:
 		c.Indexes[name] = index.NewIntIndex(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	}
 

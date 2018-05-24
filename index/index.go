@@ -18,7 +18,7 @@ func NewStringIndex(path string, selector []string) Index {
 		newStructIndex(path, selector),
 	}
 	i.tree = btree.NewWithStringComparator(vars.TreeOrder)
-	i.indexType = StringIndexType
+	i.indexType = StringType
 
 	return i
 }
@@ -29,7 +29,7 @@ func NewIntIndex(path string, selector []string) Index {
 		newStructIndex(path, selector),
 	}
 	i.tree = btree.NewWithIntComparator(vars.TreeOrder)
-	i.indexType = IntIndexType
+	i.indexType = IntType
 
 	return i
 }
@@ -405,7 +405,7 @@ func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply
 			// Check that the value in consustant with the specified index type
 			// Convert to the coresponding type and check if the value is nil.
 			switch i.Type() {
-			case StringIndexType:
+			case StringType:
 				if val, ok := mapObj[selectorElem].(string); !ok {
 					return nil, false
 				} else if val == "" {
@@ -413,7 +413,7 @@ func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply
 				} else {
 					valueToIndex = val
 				}
-			case IntIndexType:
+			case IntType:
 				if val, ok := mapObj[selectorElem].(int); !ok {
 					return nil, false
 				} else if val == 0 {

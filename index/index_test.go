@@ -12,9 +12,9 @@ import (
 
 func getGoodList(i Index) [][]interface{} {
 	switch i.Type() {
-	case StringIndexType:
+	case StringType:
 		return testStringList()
-	case IntIndexType:
+	case IntType:
 		return testIntList()
 	}
 	return nil

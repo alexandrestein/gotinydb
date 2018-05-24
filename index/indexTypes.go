@@ -7,9 +7,10 @@ import (
 
 // Those constants defines the defferent types of indexes.
 const (
-	StringIndexType Type = iota
-	IntIndexType
-	CustomIndexType
+	StringType Type = iota
+	IntType
+	TimeType
+	CustomType
 )
 
 // Those varables define the deferent errors

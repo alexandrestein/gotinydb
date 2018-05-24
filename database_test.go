@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"os"
 	"reflect"
 	"testing"
 
@@ -19,6 +20,11 @@ func TestDB(t *testing.T) {
 	col1, col1Err := db.Use("col1")
 	if col1Err != nil {
 		t.Errorf("openning test collection: %s", col1Err.Error())
+		return
+	}
+
+	if err := setIndexes(col1); err != nil {
+		t.Errorf("can't set the index: %s", err.Error())
 		return
 	}
 
@@ -57,7 +63,7 @@ func TestDB(t *testing.T) {
 }
 
 func TestExistingDB(t *testing.T) {
-	// defer os.RemoveAll(path)
+	defer os.RemoveAll(internalTesting.Path)
 
 	db, initErr := New(internalTesting.Path)
 	if initErr != nil {
