@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
+	"gitea.interlab-net.com/alexandre/db/testing/funcs"
 )
 
 func TestDB(t *testing.T) {
@@ -23,7 +24,7 @@ func TestDB(t *testing.T) {
 		return
 	}
 
-	if err := setIndexes(col1); err != nil {
+	if err := funcs.SetIndexes(t, col1); err != nil {
 		t.Errorf("can't set the index: %s", err.Error())
 		return
 	}

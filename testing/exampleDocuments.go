@@ -19,6 +19,20 @@ type (
 		ID, UserName, Password string
 		Age                    int
 		Creation               time.Time
+
+		Int8  int8
+		Int16 int16
+		Int32 int32
+		Int64 int64
+
+		Uint   uint
+		Uint8  uint8
+		Uint16 uint16
+		Uint32 uint32
+		Uint64 uint64
+
+		Float32 float32
+		Float64 float64
 	}
 
 	RawTest struct {
@@ -92,9 +106,9 @@ func (self *RawTest) IsEqual(with interface{}) bool {
 func GetUsersExample() []TestValue {
 	// Time is truncate because the JSON format do not support nanosecondes
 	return []TestValue{
-		&UserTest{"ID_USER_1", "mister one", "pass 1", 15, time.Now().Truncate(time.Millisecond)},
-		&UserTest{"ID_USER_2", "user two", "pass 2", 30, time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
-		&UserTest{"ID_USER_3", "user two", "pass 2", 9223372036854775807, time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
+		&UserTest{"ID_USER_1", "mister one", "pass 1", 15, time.Now().Truncate(time.Millisecond), -1, -1, -1, -1, 1, 1, 1, 1, 1, 0.1, 0.1},
+		&UserTest{"ID_USER_2", "user two", "pass 2", 30, time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond), -2, -2, -2, -2, 2, 2, 2, 2, 2, 0.2, 0.2},
+		&UserTest{"ID_USER_3", "lady three", "pass 3", 9223372036854775807, time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond), -3, -3, -3, -3, 3, 3, 3, 3, 3, 0.3, 0.3},
 	}
 }
 

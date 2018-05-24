@@ -8,13 +8,14 @@ import (
 
 	"gitea.interlab-net.com/alexandre/db/query"
 	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
+	"github.com/emirpasic/gods/utils"
 )
 
 func getGoodList(i Index) [][]interface{} {
 	switch i.Type() {
-	case StringType:
+	case utils.StringComparatorType:
 		return testStringList()
-	case IntType:
+	case utils.IntComparatorType:
 		return testIntList()
 	}
 	return nil
@@ -71,29 +72,29 @@ func testLoadIndex(t *testing.T, index Index) {
 }
 
 func TestStringIndex(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path, []string{})
+	i := NewString(internalTesting.Path, []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewStringIndex(internalTesting.Path, []string{})
+	i = NewString(internalTesting.Path, []string{})
 	testLoadIndex(t, i)
 }
 
 func TestIntIndex(t *testing.T) {
-	i := NewIntIndex(internalTesting.Path, []string{})
+	i := NewInt(internalTesting.Path, []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewIntIndex(internalTesting.Path, []string{})
+	i = NewInt(internalTesting.Path, []string{})
 	testLoadIndex(t, i)
 }
 
 func TestRemoveIdFromAll(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path, []string{})
+	i := NewString(internalTesting.Path, []string{})
 	i.getTree().Clear()
 	list := testStringList()
 
@@ -117,7 +118,7 @@ func TestRemoveIdFromAll(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path, []string{})
+	i := NewString(internalTesting.Path, []string{})
 	i.getTree().Clear()
 
 	// Insert for the first time
@@ -152,7 +153,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDuplicatedStringValue(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path, []string{})
+	i := NewString(internalTesting.Path, []string{})
 	i.getTree().Clear()
 
 	// Add the regular ones
@@ -183,7 +184,7 @@ func TestDuplicatedStringValue(t *testing.T) {
 }
 
 func TestApply(t *testing.T) {
-	i := NewStringIndex(internalTesting.Path, []string{"Add", "Street", "Name"})
+	i := NewString(internalTesting.Path, []string{"Add", "Street", "Name"})
 
 	objs := internalTesting.GetCompleteUsersExampleOneAndTow()
 
@@ -206,7 +207,7 @@ func TestApply(t *testing.T) {
 
 func TestStringQuery(t *testing.T) {
 	selector := []string{"Add", "Street", "Name"}
-	i := NewStringIndex(internalTesting.Path, selector)
+	i := NewString(internalTesting.Path, selector)
 	for _, val := range internalTesting.GetCompleteUsersExampleStreetNamesOnly() {
 		user := val.(*internalTesting.CompleteUser)
 		i.Put(user.Add.Street.Name, val.GetID())

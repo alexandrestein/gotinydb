@@ -10,6 +10,7 @@ import (
 	"gitea.interlab-net.com/alexandre/db/index"
 	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
+	"github.com/emirpasic/gods/utils"
 )
 
 // NewCollection builds a new Collection pointer. It is called internaly by DB
@@ -115,16 +116,18 @@ func (c *Collection) Delete(id string) error {
 }
 
 // SetIndex adds new index to the collection
-func (c *Collection) SetIndex(name string, indexType index.Type, selector []string) error {
+func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selector []string) error {
 	if c.Indexes[name] != nil {
 		return fmt.Errorf("index %q already exists", name)
 	}
 
 	switch indexType {
-	case index.StringType:
-		c.Indexes[name] = index.NewStringIndex(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
-	case index.IntType:
-		c.Indexes[name] = index.NewIntIndex(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.StringComparatorType:
+		c.Indexes[name] = index.NewString(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.IntComparatorType:
+		c.Indexes[name] = index.NewInt(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.TimeComparatorType:
+		c.Indexes[name] = index.NewTime(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	}
 
 	return c.save()

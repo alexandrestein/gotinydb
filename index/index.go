@@ -9,27 +9,132 @@ import (
 	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
 	"github.com/emirpasic/gods/trees/btree"
+	"github.com/emirpasic/gods/utils"
 	"github.com/fatih/structs"
 )
 
-// NewStringIndex returns Index interface ready to manage string types
-func NewStringIndex(path string, selector []string) Index {
-	i := &stringIndex{
-		newStructIndex(path, selector),
-	}
+// NewString returns Index interface ready to manage string types
+func NewString(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
 	i.tree = btree.NewWithStringComparator(vars.TreeOrder)
-	i.indexType = StringType
+	i.indexType = utils.StringComparatorType
 
 	return i
 }
 
-// NewIntIndex returns Index interface ready to manage int types
-func NewIntIndex(path string, selector []string) Index {
-	i := &intIndex{
-		newStructIndex(path, selector),
-	}
+// NewInt returns Index interface ready to manage int types
+func NewInt(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
 	i.tree = btree.NewWithIntComparator(vars.TreeOrder)
-	i.indexType = IntType
+	i.indexType = utils.IntComparatorType
+
+	return i
+}
+
+// NewTime returns Index interface ready to manage int types
+func NewTime(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.TimeComparator, utils.TimeComparatorType)
+	i.indexType = utils.TimeComparatorType
+
+	return i
+}
+
+// NewInt8 returns Index interface ready to manage int types
+func NewInt8(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.Int8Comparator, utils.IntComparatorType)
+	i.indexType = utils.Int8ComparatorType
+
+	return i
+}
+
+// NewInt16 returns Index interface ready to manage int types
+func NewInt16(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.Int16Comparator, utils.Int16ComparatorType)
+	i.indexType = utils.Int16ComparatorType
+
+	return i
+}
+
+// Newint32 returns Index interface ready to manage int types
+func Newint32(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.Int32Comparator, utils.Int32ComparatorType)
+	i.indexType = utils.Int32ComparatorType
+
+	return i
+}
+
+// Newint64 returns Index interface ready to manage int types
+func Newint64(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.Int64Comparator, utils.Int64ComparatorType)
+	i.indexType = utils.Int64ComparatorType
+
+	return i
+}
+
+// NewUint returns Index interface ready to manage int types
+func NewUint(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.UIntComparator, utils.UIntComparatorType)
+	i.indexType = utils.UIntComparatorType
+
+	return i
+}
+
+// NewUint8 returns Index interface ready to manage int types
+func NewUint8(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.UInt8Comparator, utils.UInt8ComparatorType)
+	i.indexType = utils.UInt8ComparatorType
+
+	return i
+}
+
+// NewUint16 returns Index interface ready to manage int types
+func NewUint16(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.UInt16Comparator, utils.UInt16ComparatorType)
+	i.indexType = utils.UInt16ComparatorType
+
+	return i
+}
+
+// NewUint32 returns Index interface ready to manage int types
+func NewUint32(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.UInt32Comparator, utils.UInt32ComparatorType)
+	i.indexType = utils.UInt32ComparatorType
+
+	return i
+}
+
+// NewUint64 returns Index interface ready to manage int types
+func NewUint64(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.UInt64Comparator, utils.UInt64ComparatorType)
+	i.indexType = utils.UInt64ComparatorType
+
+	return i
+}
+
+// NewFloat32 returns Index interface ready to manage int types
+func NewFloat32(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.Float32Comparator, utils.Float32ComparatorType)
+	i.indexType = utils.Float32ComparatorType
+
+	return i
+}
+
+// NewFloat64 returns Index interface ready to manage int types
+func NewFloat64(path string, selector []string) Index {
+	i := newStructIndex(path, selector)
+	i.tree = btree.NewWith(vars.TreeOrder, utils.Float64Comparator, utils.Float64ComparatorType)
+	i.indexType = utils.Float64ComparatorType
 
 	return i
 }
@@ -100,7 +205,7 @@ func (i *structIndex) getTree() *btree.Tree {
 	return i.tree
 }
 
-func (i *structIndex) Type() Type {
+func (i *structIndex) Type() utils.ComparatorType {
 	return i.indexType
 }
 
@@ -285,11 +390,6 @@ func (i *structIndex) runQuery(q *query.Query, get bool) (ids []string) {
 		return
 	}
 
-	// // Check the selector
-	// if !reflect.DeepEqual(q.Selector, i.selector) {
-	// 	return
-	// }
-
 	// If equal just this leave will be send
 	if action.GetType() == query.Equal {
 		tmpIDs, found := i.Get(action.CompareToValue)
@@ -405,7 +505,7 @@ func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply
 			// Check that the value in consustant with the specified index type
 			// Convert to the coresponding type and check if the value is nil.
 			switch i.Type() {
-			case StringType:
+			case utils.StringComparatorType:
 				if val, ok := mapObj[selectorElem].(string); !ok {
 					return nil, false
 				} else if val == "" {
@@ -413,7 +513,7 @@ func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply
 				} else {
 					valueToIndex = val
 				}
-			case IntType:
+			case utils.IntComparatorType:
 				if val, ok := mapObj[selectorElem].(int); !ok {
 					return nil, false
 				} else if val == 0 {

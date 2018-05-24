@@ -3,15 +3,16 @@ package index
 import (
 	"gitea.interlab-net.com/alexandre/db/query"
 	"github.com/emirpasic/gods/trees/btree"
+	"github.com/emirpasic/gods/utils"
 )
 
-// Those constants defines the defferent types of indexes.
-const (
-	StringType Type = iota
-	IntType
-	TimeType
-	CustomType
-)
+// // Those constants defines the defferent types of indexes.
+// const (
+// 	StringType Type = iota
+// 	IntType
+// 	TimeType
+// 	CustomType
+// )
 
 // Those varables define the deferent errors
 var (
@@ -19,23 +20,20 @@ var (
 )
 
 type (
-	stringIndex struct {
-		*structIndex
-	}
-
-	intIndex struct {
-		*structIndex
-	}
+	// stringIndex struct {
+	// 	*structIndex
+	// }
+	//
+	// intIndex struct {
+	// 	*structIndex
+	// }
 
 	structIndex struct {
 		tree      *btree.Tree
 		selector  []string
 		path      string
-		indexType Type
+		indexType utils.ComparatorType
 	}
-
-	// Type defines the type of indexing
-	Type int
 
 	// Index is the main interface of the package. it provides the functions to manage
 	// those indexes
@@ -77,6 +75,6 @@ type (
 		getPath() string
 		getTree() *btree.Tree
 
-		Type() Type
+		Type() utils.ComparatorType
 	}
 )

@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"gitea.interlab-net.com/alexandre/db/index"
 	"gitea.interlab-net.com/alexandre/db/query"
 	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
 )
@@ -108,11 +107,6 @@ func check(t *testing.T, col *Collection, ids []string, values []internalTesting
 	}
 }
 
-func setIndex(t *testing.T, col *Collection) {
-	col.SetIndex("userName", index.StringType, []string{"UserName"})
-	col.SetIndex("age", index.IntType, []string{"Age"})
-}
-
 func checkIndex(t *testing.T, col *Collection) {
 	userNameSelector := []string{"UserName"}
 	ageSelector := []string{"Age"}
@@ -136,7 +130,7 @@ func checkIndex(t *testing.T, col *Collection) {
 
 func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue, bin bool) {
 	if !bin {
-		setIndex(t, col)
+		SetIndexes(t, col)
 		if t.Failed() {
 			return
 		}
