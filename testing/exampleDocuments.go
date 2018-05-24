@@ -94,6 +94,7 @@ func GetUsersExample() []TestValue {
 	return []TestValue{
 		&UserTest{"ID_USER_1", "mister one", "pass 1", 15, time.Now().Truncate(time.Millisecond)},
 		&UserTest{"ID_USER_2", "user two", "pass 2", 30, time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
+		&UserTest{"ID_USER_3", "user two", "pass 2", 9223372036854775807, time.Now().Add(time.Hour * 3600).Truncate(time.Millisecond)},
 	}
 }
 

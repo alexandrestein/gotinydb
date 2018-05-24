@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 
 	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
@@ -376,7 +377,6 @@ func (i *structIndex) runKeepQuery(q *query.Query, ids []string) []string {
 
 func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {
 	var mapObj map[string]interface{}
-	var ok bool
 	if structs.IsStruct(object) {
 		mapObj = structs.Map(object)
 	} else if tmpMap, ok := object.(map[string]interface{}); ok {
@@ -385,6 +385,7 @@ func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply
 		return nil, false
 	}
 
+	var ok bool
 	// Loop every level of the index
 	for j, selectorElem := range i.selector {
 		// If not at the top level
@@ -415,10 +416,18 @@ func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply
 				}
 			case IntIndexType:
 				if val, ok := mapObj[selectorElem].(int); !ok {
+					// if val2, ok2 := mapObj[selectorElem].(float64); !ok2 {
+					// 	fmt.Println("pas cool", reflect.TypeOf(mapObj[selectorElem]), mapObj[selectorElem])
+					// } else {
+					// 	fmt.Println("CONV OK", val2)
+					// 	val = val2
+					// }
+					fmt.Println("pas cool 2", reflect.TypeOf(mapObj[selectorElem]), mapObj[selectorElem], object)
 					return nil, false
 				} else if val == 0 {
 					return nil, false
 				} else {
+					fmt.Println("val type", val, reflect.TypeOf(mapObj[selectorElem]), mapObj[selectorElem])
 					valueToIndex = val
 				}
 			default:

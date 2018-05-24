@@ -102,7 +102,7 @@ func (c *Collection) Delete(id string) error {
 	defer os.Remove(c.getRecordPath(id, false))
 	defer os.Remove(c.getRecordPath(id, true))
 
-	savedValue := map[string]interface{}{}
+	savedValue := map[string]interface{}
 	getErr := c.Get(id, &savedValue)
 	if getErr != nil && fmt.Sprintf("%T", getErr) == "os.PathError" {
 		return fmt.Errorf("value not found")

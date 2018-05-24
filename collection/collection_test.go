@@ -164,9 +164,11 @@ func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue, 
 		return
 	}
 
+	// Check that the index are correctly cleanup
 	if !bin {
 		userNameIndexedValues := col.Indexes["userName"].GetAllIndexedValues()
 		ageIndexedValues := col.Indexes["age"].GetAllIndexedValues()
+
 		if len(userNameIndexedValues) != 0 {
 			t.Errorf("the index %q is not empty but should: %v", "userName", userNameIndexedValues)
 			return
