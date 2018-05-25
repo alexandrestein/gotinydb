@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
@@ -517,6 +518,102 @@ func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply
 				if val, ok := mapObj[selectorElem].(int); !ok {
 					return nil, false
 				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.Int8ComparatorType:
+				if val, ok := mapObj[selectorElem].(int8); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.Int16ComparatorType:
+				if val, ok := mapObj[selectorElem].(int16); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.Int32ComparatorType:
+				if val, ok := mapObj[selectorElem].(int32); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.Int64ComparatorType:
+				if val, ok := mapObj[selectorElem].(int64); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.UIntComparatorType:
+				if val, ok := mapObj[selectorElem].(uint); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.UInt8ComparatorType:
+				if val, ok := mapObj[selectorElem].(uint8); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.UInt16ComparatorType:
+				if val, ok := mapObj[selectorElem].(uint16); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.UInt32ComparatorType:
+				if val, ok := mapObj[selectorElem].(uint32); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.UInt64ComparatorType:
+				if val, ok := mapObj[selectorElem].(uint64); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.Float32ComparatorType:
+				if val, ok := mapObj[selectorElem].(float32); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.Float64ComparatorType:
+				if val, ok := mapObj[selectorElem].(float64); !ok {
+					return nil, false
+				} else if val == 0 {
+					return nil, false
+				} else {
+					valueToIndex = val
+				}
+			case utils.TimeComparatorType:
+				if val, ok := mapObj[selectorElem].(time.Time); !ok {
+					return nil, false
+				} else if val.IsZero() {
 					return nil, false
 				} else {
 					valueToIndex = val
