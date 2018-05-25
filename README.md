@@ -1,6 +1,7 @@
-# Project Title
+# GoTinyDB
 
-One Paragraph of project description goes here
+The goal is to have a farly simple database wich is light and don't needs to fit
+in RAM. It supports indexing for most of the basic Golang types.
 
 ## Getting Started
 
@@ -78,7 +79,7 @@ See also the list of [contributors](https://github.com/your/project/contributors
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the 3-Clause BSD License - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 
