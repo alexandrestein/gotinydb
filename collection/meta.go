@@ -11,8 +11,8 @@ import (
 )
 
 type (
-	// IndexReference is design to make esay clean up of the index after update
-	// and delete.
+	// IndexReference is design to make easy clean up of the index after update
+	// or delete.
 	// The identifaction of the references are the coresponding ID.
 	IndexReference struct {
 		IndexName string
@@ -68,6 +68,7 @@ func newIndexReference(indexName string, value interface{}) *IndexReference {
 	return ref
 }
 
+// GetValue returns the correctly typed value inside an interface.
 func (ref *IndexReference) GetValue() interface{} {
 	if ref.StringValue != "" {
 		return ref.StringValue

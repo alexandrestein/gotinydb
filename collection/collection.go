@@ -1,3 +1,6 @@
+// Package collection is the "storage structur" of the database package.
+// As most of the NO-SQL databases collections are the main part of the
+// databases.
 package collection
 
 import (
@@ -17,7 +20,7 @@ import (
 func NewCollection(path string) (*Collection, error) {
 	c := new(Collection)
 	c.path = path
-	c.Indexes = map[string]index.Index{}
+	c.indexes = map[string]index.Index{}
 
 	if err := c.load(); err != nil {
 		return nil, fmt.Errorf("loading DB: %s", err.Error())
@@ -56,7 +59,8 @@ func (c *Collection) Put(id string, value interface{}) error {
 }
 
 // Get fillups the given value from the given ID. If you want to get binary
-// content you must give a bytes.Buffer pointer.
+// content you must give a bytes.Buffer pointer. For structs or objects is use
+// the encoding/json package to save and restor obects.
 func (c *Collection) Get(id string, value interface{}) error {
 	if id == "" {
 		return fmt.Errorf("id can't be empty")
@@ -118,48 +122,53 @@ func (c *Collection) Delete(id string) error {
 
 // SetIndex adds new index to the collection
 func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selector []string) error {
-	if c.Indexes[name] != nil {
+	if c.indexes[name] != nil {
 		return fmt.Errorf("index %q already exists", name)
 	}
 
 	switch indexType {
 	case utils.StringComparatorType:
-		c.Indexes[name] = index.NewString(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewString(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.IntComparatorType:
-		c.Indexes[name] = index.NewInt(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewInt(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.Int8ComparatorType:
-		c.Indexes[name] = index.NewInt8(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewInt8(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.Int16ComparatorType:
-		c.Indexes[name] = index.NewInt16(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewInt16(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.Int32ComparatorType:
-		c.Indexes[name] = index.NewInt32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewInt32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.Int64ComparatorType:
-		c.Indexes[name] = index.NewInt64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewInt64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.UIntComparatorType:
-		c.Indexes[name] = index.NewUint(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewUint(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.UInt8ComparatorType:
-		c.Indexes[name] = index.NewUint8(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewUint8(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.UInt16ComparatorType:
-		c.Indexes[name] = index.NewUint16(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewUint16(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.UInt32ComparatorType:
-		c.Indexes[name] = index.NewUint32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewUint32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.UInt64ComparatorType:
-		c.Indexes[name] = index.NewUint64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewUint64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.Float32ComparatorType:
-		c.Indexes[name] = index.NewFloat32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewFloat32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.Float64ComparatorType:
-		c.Indexes[name] = index.NewFloat64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewFloat64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.TimeComparatorType:
-		c.Indexes[name] = index.NewTime(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+		c.indexes[name] = index.NewTime(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	}
 
 	return c.save()
 }
 
+// GetIndex return the coreponding index.
+func (c *Collection) GetIndex(indexName string) index.Index {
+	return c.indexes[indexName]
+}
+
 // Query run the given query to all the collection indexes.
 // It returns the
 func (c *Collection) Query(q *query.Query) (ids []string) {
-	for _, index := range c.Indexes {
+	for _, index := range c.indexes {
 		ids = append(ids, index.RunQuery(q)...)
 	}
 
