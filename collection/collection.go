@@ -126,6 +126,28 @@ func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selec
 		c.Indexes[name] = index.NewString(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.IntComparatorType:
 		c.Indexes[name] = index.NewInt(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.Int8ComparatorType:
+		c.Indexes[name] = index.NewInt8(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.Int16ComparatorType:
+		c.Indexes[name] = index.NewInt16(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.Int32ComparatorType:
+		c.Indexes[name] = index.NewInt32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.Int64ComparatorType:
+		c.Indexes[name] = index.NewInt64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.UIntComparatorType:
+		c.Indexes[name] = index.NewUint(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.UInt8ComparatorType:
+		c.Indexes[name] = index.NewUint8(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.UInt16ComparatorType:
+		c.Indexes[name] = index.NewUint16(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.UInt32ComparatorType:
+		c.Indexes[name] = index.NewUint32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.UInt64ComparatorType:
+		c.Indexes[name] = index.NewUint64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.Float32ComparatorType:
+		c.Indexes[name] = index.NewFloat32(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
+	case utils.Float64ComparatorType:
+		c.Indexes[name] = index.NewFloat64(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	case utils.TimeComparatorType:
 		c.Indexes[name] = index.NewTime(c.path+"/"+vars.IndexesDirName+"/"+name, selector)
 	}
