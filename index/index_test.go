@@ -225,6 +225,28 @@ func TestUInt64Index(t *testing.T) {
 	testLoadIndex(t, i)
 }
 
+func TestFloat32Index(t *testing.T) {
+	i := NewFloat32(internalTesting.Path+"/indexTest", []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewFloat32(internalTesting.Path+"/indexTest", []string{})
+	testLoadIndex(t, i)
+}
+
+func TestFloat64Index(t *testing.T) {
+	i := NewFloat64(internalTesting.Path+"/indexTest", []string{})
+	i.getTree().Clear()
+	testSaveIndex(t, i)
+
+	i.getTree().Clear()
+
+	i = NewFloat64(internalTesting.Path+"/indexTest", []string{})
+	testLoadIndex(t, i)
+}
+
 func TestRemoveIdFromAll(t *testing.T) {
 	i := NewString(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
