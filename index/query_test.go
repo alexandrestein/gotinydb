@@ -1,6 +1,7 @@
 package index
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -9,8 +10,9 @@ import (
 )
 
 func TestStringQuery(t *testing.T) {
+	defer os.RemoveAll(internalTesting.Path)
 	selector := []string{"Add", "Street", "Name"}
-	i := NewString(internalTesting.Path, selector)
+	i := NewString(internalTesting.Path+"/indexTest", selector)
 	for _, val := range internalTesting.GetCompleteUsersExampleStreetNamesOnly() {
 		user := val.(*internalTesting.CompleteUser)
 		i.Put(user.Add.Street.Name, val.GetID())

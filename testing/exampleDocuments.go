@@ -2,7 +2,7 @@ package testing
 
 import (
 	"bytes"
-	"crypto/rand"
+	"math/rand"
 	"reflect"
 	"time"
 )

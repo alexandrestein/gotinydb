@@ -2,7 +2,6 @@ package index
 
 import (
 	"encoding/json"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -72,7 +71,6 @@ func testSaveIndex(t *testing.T, index Index) {
 }
 
 func testLoadIndex(t *testing.T, index Index) {
-	defer os.RemoveAll(internalTesting.Path)
 	list := getGoodList(index)
 
 	loadErr := index.Load()
@@ -96,139 +94,139 @@ func testLoadIndex(t *testing.T, index Index) {
 }
 
 func TestStringIndex(t *testing.T) {
-	i := NewString(internalTesting.Path, []string{})
+	i := NewString(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewString(internalTesting.Path, []string{})
+	i = NewString(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestIntIndex(t *testing.T) {
-	i := NewInt(internalTesting.Path, []string{})
+	i := NewInt(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt(internalTesting.Path, []string{})
+	i = NewInt(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestTimeIndex(t *testing.T) {
-	i := NewTime(internalTesting.Path, []string{})
+	i := NewTime(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewTime(internalTesting.Path, []string{})
+	i = NewTime(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestInt8Index(t *testing.T) {
-	i := NewInt8(internalTesting.Path, []string{})
+	i := NewInt8(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt8(internalTesting.Path, []string{})
+	i = NewInt8(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestInt16Index(t *testing.T) {
-	i := NewInt16(internalTesting.Path, []string{})
+	i := NewInt16(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt16(internalTesting.Path, []string{})
+	i = NewInt16(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestInt32Index(t *testing.T) {
-	i := NewInt32(internalTesting.Path, []string{})
+	i := NewInt32(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt32(internalTesting.Path, []string{})
+	i = NewInt32(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestInt64Index(t *testing.T) {
-	i := NewInt64(internalTesting.Path, []string{})
+	i := NewInt64(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt64(internalTesting.Path, []string{})
+	i = NewInt64(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestUIntIndex(t *testing.T) {
-	i := NewUint(internalTesting.Path, []string{})
+	i := NewUint(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint(internalTesting.Path, []string{})
+	i = NewUint(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestUInt8Index(t *testing.T) {
-	i := NewUint8(internalTesting.Path, []string{})
+	i := NewUint8(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint8(internalTesting.Path, []string{})
+	i = NewUint8(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestUInt16Index(t *testing.T) {
-	i := NewUint16(internalTesting.Path, []string{})
+	i := NewUint16(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint16(internalTesting.Path, []string{})
+	i = NewUint16(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestUInt32Index(t *testing.T) {
-	i := NewUint32(internalTesting.Path, []string{})
+	i := NewUint32(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint32(internalTesting.Path, []string{})
+	i = NewUint32(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestUInt64Index(t *testing.T) {
-	i := NewUint64(internalTesting.Path, []string{})
+	i := NewUint64(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint64(internalTesting.Path, []string{})
+	i = NewUint64(internalTesting.Path+"/indexTest", []string{})
 	testLoadIndex(t, i)
 }
 
 func TestRemoveIdFromAll(t *testing.T) {
-	i := NewString(internalTesting.Path, []string{})
+	i := NewString(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 	list := testStringList()
 
@@ -252,7 +250,7 @@ func TestRemoveIdFromAll(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	i := NewString(internalTesting.Path, []string{})
+	i := NewString(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 
 	// Insert for the first time
@@ -287,7 +285,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDuplicatedStringValue(t *testing.T) {
-	i := NewString(internalTesting.Path, []string{})
+	i := NewString(internalTesting.Path+"/indexTest", []string{})
 	i.getTree().Clear()
 
 	// Add the regular ones
@@ -318,7 +316,7 @@ func TestDuplicatedStringValue(t *testing.T) {
 }
 
 func TestApply(t *testing.T) {
-	i := NewString(internalTesting.Path, []string{"Add", "Street", "Name"})
+	i := NewString(internalTesting.Path+"/indexTest", []string{"Add", "Street", "Name"})
 
 	objs := internalTesting.GetCompleteUsersExampleOneAndTow()
 
@@ -394,8 +392,8 @@ func testIntList() [][]interface{} {
 
 func testTimeList() [][]interface{} {
 	return [][]interface{}{
-		[]interface{}{time.Now().Add(time.Second * 10).Truncate(time.Millisecond), "id1"},
-		[]interface{}{time.Now().Add(time.Second * -10).Truncate(time.Millisecond), "id2"},
+		[]interface{}{time.Now().Add(time.Second * 10).Truncate(time.Second), "id1"},
+		[]interface{}{time.Now().Add(time.Second * -10).Truncate(time.Second), "id2"},
 	}
 }
 

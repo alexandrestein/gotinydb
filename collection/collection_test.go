@@ -184,7 +184,8 @@ func runTest(t *testing.T, col *Collection, values []internalTesting.TestValue, 
 }
 
 func TestCollectionObject(t *testing.T) {
-	col, newColErr := NewCollection(internalTesting.Path)
+	defer os.RemoveAll(internalTesting.Path)
+	col, newColErr := NewCollection(internalTesting.Path + "/collectionObjectTest")
 	if newColErr != nil {
 		t.Error(newColErr)
 		return
@@ -194,8 +195,8 @@ func TestCollectionObject(t *testing.T) {
 }
 
 func TestCollectionBin(t *testing.T) {
-	os.RemoveAll(internalTesting.Path)
-	col, newColErr := NewCollection(internalTesting.Path)
+	defer os.RemoveAll(internalTesting.Path)
+	col, newColErr := NewCollection(internalTesting.Path + "/collectionBinTest")
 	if newColErr != nil {
 		t.Error(newColErr)
 		return

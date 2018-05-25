@@ -11,6 +11,7 @@ import (
 )
 
 func TestDB(t *testing.T) {
+	defer os.RemoveAll(internalTesting.Path)
 	db, initErr := New(internalTesting.Path)
 	if initErr != nil {
 		t.Error(initErr.Error())
@@ -65,7 +66,6 @@ func TestDB(t *testing.T) {
 
 func TestExistingDB(t *testing.T) {
 	defer os.RemoveAll(internalTesting.Path)
-
 	db, initErr := New(internalTesting.Path)
 	if initErr != nil {
 		t.Error(initErr.Error())
