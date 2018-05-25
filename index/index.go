@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"gitea.interlab-net.com/alexandre/db/vars"
-	"github.com/emirpasic/gods/trees/btree"
-	"github.com/emirpasic/gods/utils"
+	"github.com/alexandreStein/GoTinyDB/vars"
+	"github.com/alexandreStein/gods/trees/btree"
+	"github.com/alexandreStein/gods/utils"
 	"github.com/fatih/structs"
 )
 

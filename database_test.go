@@ -1,4 +1,4 @@
-package db
+package GoTinyDB
 
 import (
 	"bytes"
@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
-	"gitea.interlab-net.com/alexandre/db/testing/funcs"
+	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
+	"github.com/alexandreStein/GoTinyDB/testing/funcs"
 )
 
 func TestDB(t *testing.T) {

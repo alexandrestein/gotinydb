@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
-	"github.com/emirpasic/gods/utils"
+	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
+	"github.com/alexandreStein/gods/utils"
 )
 
 type (

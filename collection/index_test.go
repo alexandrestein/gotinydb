@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/emirpasic/gods/utils"
+	"github.com/alexandreStein/gods/utils"
 )
 
 const (

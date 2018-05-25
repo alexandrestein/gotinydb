@@ -1,6 +1,6 @@
 # Gopkg.toml example
 #
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
 # required = ["github.com/user/thing/cmd/thing"]
@@ -26,19 +26,13 @@
 
 
 [[constraint]]
-  branch = "myUpdates"
-  source = "github.com/alexandreStein/gods"
-  name = "github.com/emirpasic/gods"
-  # version = "1.9.0"
-
-[prune]
-  go-tests = true
-  unused-packages = true
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/minio/highwayhash"
+  name = "github.com/alexandreStein/gods"
+  version = "1.0.0"
 
 [[constraint]]
   name = "github.com/fatih/structs"
   version = "1.0.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true

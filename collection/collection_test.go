@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"gitea.interlab-net.com/alexandre/db/query"
-	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
+	"github.com/alexandreStein/GoTinyDB/query"
+	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
 )
 
 func insertAndCheck(t *testing.T, col *Collection, values []internalTesting.TestValue) {

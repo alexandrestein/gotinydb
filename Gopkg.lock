@@ -2,16 +2,15 @@
 
 
 [[projects]]
-  branch = "myUpdates"
-  name = "github.com/emirpasic/gods"
+  name = "github.com/alexandreStein/gods"
   packages = [
     "containers",
     "trees",
     "trees/btree",
     "utils"
   ]
-  revision = "19489d1e499989f4cbec1825cc008a57c6e4b40d"
-  source = "github.com/alexandreStein/gods"
+  revision = "932b024ec989d1648611e33afd9f21d3a2009fb9"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/fatih/structs"
@@ -22,6 +21,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a721c31cb05dd8fff85cd7c9ddb16d5ce3f3868fe1a517a6adc67962892f486c"
+  inputs-digest = "ef3e826dd5f3e5dd53bbd3a434f2a18f1582db58ec53b14caa6b69f83454a75d"
   solver-name = "gps-cdcl"
   solver-version = 1

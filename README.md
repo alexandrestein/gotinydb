@@ -95,6 +95,10 @@ with the Get function.
 * [Structs](https://github.com/fatih/structs) - The package used to cut objects in
 part for indexing
 
+## To Do
+
+* Build write serialiser at the object level (at this point there is no concurancy protection)
+
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.

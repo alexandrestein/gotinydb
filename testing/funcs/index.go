@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"gitea.interlab-net.com/alexandre/db/collection"
-	"github.com/emirpasic/gods/utils"
+	"github.com/alexandreStein/GoTinyDB/collection"
+	"github.com/alexandreStein/gods/utils"
 )
 
 const (

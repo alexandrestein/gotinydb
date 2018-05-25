@@ -1,9 +1,9 @@
 package index
 
 import (
-	"gitea.interlab-net.com/alexandre/db/query"
-	"github.com/emirpasic/gods/trees/btree"
-	"github.com/emirpasic/gods/utils"
+	"github.com/alexandreStein/GoTinyDB/query"
+	"github.com/alexandreStein/gods/trees/btree"
+	"github.com/alexandreStein/gods/utils"
 )
 
 // Those varables define the deferent errors
