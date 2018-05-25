@@ -378,128 +378,128 @@ func testGetAllLists() (ret []*TestStruct) {
 
 func testStringList() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{"indexed field value a", "id0"},
-		&TestStruct{"indexed field value b", "id1"},
-		&TestStruct{"indexed field value c", "id2"},
-		&TestStruct{"indexed field value d", "id3"},
-		&TestStruct{"indexed field value e", "id4"},
-		&TestStruct{"indexed field value f", "id5"},
-		&TestStruct{"indexed field value g", "id6"},
-		&TestStruct{"indexed field value h", "id7"},
-		&TestStruct{"indexed field value i", "id8"},
-		&TestStruct{"indexed field value j", "id9"},
-		&TestStruct{"indexed field value k", "id10"},
-		&TestStruct{"indexed field value l", "id11"},
-		&TestStruct{"indexed field value m", "id12"},
-		&TestStruct{"indexed field value n", "id13"},
-		&TestStruct{"indexed field value o", "id14"},
-		&TestStruct{"indexed field value p", "id15"},
-		&TestStruct{"indexed field value q", "id16"},
-		&TestStruct{"indexed field value r", "id17"},
-		&TestStruct{"indexed field value s", "id18"},
-		&TestStruct{"indexed field value t", "id19"},
-		&TestStruct{"indexed field value u", "id20"},
-		&TestStruct{"indexed field value v", "id21"},
-		&TestStruct{"indexed field value w", "id22"},
-		&TestStruct{"indexed field value x", "id23"},
-		&TestStruct{"indexed field value y", "id24"},
-		&TestStruct{"indexed field value z", "id25"},
+		{"indexed field value a", "id0"},
+		{"indexed field value b", "id1"},
+		{"indexed field value c", "id2"},
+		{"indexed field value d", "id3"},
+		{"indexed field value e", "id4"},
+		{"indexed field value f", "id5"},
+		{"indexed field value g", "id6"},
+		{"indexed field value h", "id7"},
+		{"indexed field value i", "id8"},
+		{"indexed field value j", "id9"},
+		{"indexed field value k", "id10"},
+		{"indexed field value l", "id11"},
+		{"indexed field value m", "id12"},
+		{"indexed field value n", "id13"},
+		{"indexed field value o", "id14"},
+		{"indexed field value p", "id15"},
+		{"indexed field value q", "id16"},
+		{"indexed field value r", "id17"},
+		{"indexed field value s", "id18"},
+		{"indexed field value t", "id19"},
+		{"indexed field value u", "id20"},
+		{"indexed field value v", "id21"},
+		{"indexed field value w", "id22"},
+		{"indexed field value x", "id23"},
+		{"indexed field value y", "id24"},
+		{"indexed field value z", "id25"},
 	}
 }
 
 func testSameValueStringList() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{"multiple IDs indexed", "id100"},
-		&TestStruct{"multiple IDs indexed", "id110"},
-		&TestStruct{"multiple IDs indexed", "id120"},
-		&TestStruct{"multiple IDs indexed", "id130"},
-		&TestStruct{"multiple IDs indexed", "id140"},
-		&TestStruct{"multiple IDs indexed", "id150"},
-		&TestStruct{"multiple IDs indexed", "id160"},
-		&TestStruct{"multiple IDs indexed", "id170"},
-		&TestStruct{"multiple IDs indexed", "id180"},
-		&TestStruct{"multiple IDs indexed", "id190"},
+		{"multiple IDs indexed", "id100"},
+		{"multiple IDs indexed", "id110"},
+		{"multiple IDs indexed", "id120"},
+		{"multiple IDs indexed", "id130"},
+		{"multiple IDs indexed", "id140"},
+		{"multiple IDs indexed", "id150"},
+		{"multiple IDs indexed", "id160"},
+		{"multiple IDs indexed", "id170"},
+		{"multiple IDs indexed", "id180"},
+		{"multiple IDs indexed", "id190"},
 	}
 }
 
 func testIntList() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{1, "id1"},
-		&TestStruct{2, "id2"},
+		{1, "id1"},
+		{2, "id2"},
 	}
 }
 
 func testTimeList() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{time.Now().Add(time.Second * 10).Truncate(time.Second), "id1"},
-		&TestStruct{time.Now().Add(time.Second * -10).Truncate(time.Second), "id2"},
+		{time.Now().Add(time.Second * 10).Truncate(time.Second), "id1"},
+		{time.Now().Add(time.Second * -10).Truncate(time.Second), "id2"},
 	}
 }
 
 func testInt8List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{int8(1), "id1"},
-		&TestStruct{int8(2), "id2"},
+		{int8(1), "id1"},
+		{int8(2), "id2"},
 	}
 }
 
 func testInt16List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{int16(1), "id1"},
-		&TestStruct{int16(2), "id2"},
+		{int16(1), "id1"},
+		{int16(2), "id2"},
 	}
 }
 func testInt32List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{int32(1), "id1"},
-		&TestStruct{int32(2), "id2"},
+		{int32(1), "id1"},
+		{int32(2), "id2"},
 	}
 }
 func testInt64List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{int64(1), "id1"},
-		&TestStruct{int64(2), "id2"},
+		{int64(1), "id1"},
+		{int64(2), "id2"},
 	}
 }
 func testUIntList() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{uint(1), "id1"},
-		&TestStruct{uint(2), "id2"},
+		{uint(1), "id1"},
+		{uint(2), "id2"},
 	}
 }
 func testUInt8List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{uint8(1), "id1"},
-		&TestStruct{uint8(2), "id2"},
+		{uint8(1), "id1"},
+		{uint8(2), "id2"},
 	}
 }
 func testUInt16List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{uint16(1), "id1"},
-		&TestStruct{uint16(2), "id2"},
+		{uint16(1), "id1"},
+		{uint16(2), "id2"},
 	}
 }
 func testUInt32List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{uint32(1), "id1"},
-		&TestStruct{uint32(2), "id2"},
+		{uint32(1), "id1"},
+		{uint32(2), "id2"},
 	}
 }
 func testUInt64List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{uint64(1), "id1"},
-		&TestStruct{uint64(2), "id2"},
+		{uint64(1), "id1"},
+		{uint64(2), "id2"},
 	}
 }
 func testFloat32List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{float32(0.1), "id1"},
-		&TestStruct{float32(0.2), "id2"},
+		{float32(0.1), "id1"},
+		{float32(0.2), "id2"},
 	}
 }
 func testFloat64List() []*TestStruct {
 	return []*TestStruct{
-		&TestStruct{float64(0.1), "id1"},
-		&TestStruct{float64(0.2), "id2"},
+		{float64(0.1), "id1"},
+		{float64(0.2), "id2"},
 	}
 }

@@ -1,4 +1,4 @@
-Copyright 2018 Stein Alexandre <alexandre_stein@interlab-net.com>
+Copyright 2018 Stein Alexandre <astein58@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 

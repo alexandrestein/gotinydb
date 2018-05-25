@@ -30,7 +30,9 @@ func NewCollection(path string) (*Collection, error) {
 }
 
 // Put saves the given element into the given ID.
-// If record already exists this update it.
+// If record already exists it updates it.
+// If the goal is to store stream of bytes you need to send []byte{} inside
+// the interface.
 func (c *Collection) Put(id string, value interface{}) error {
 	isBin := false
 	binAsBytes := []byte{}
