@@ -99,6 +99,7 @@ func (c *Collection) Get(id string, value interface{}) error {
 	return nil
 }
 
+// Delete removes the coresponding object and index references.
 func (c *Collection) Delete(id string) error {
 	defer os.Remove(c.getRecordPath(id, false))
 	defer os.Remove(c.getRecordPath(id, true))
