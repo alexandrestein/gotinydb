@@ -21,7 +21,9 @@ before_install:
   - go get -t -v ./...
 
 script:
-  - go test -race -coverprofile=coverage.txt -covermode=atomic
+  # - go test -race -coverprofile=coverage.txt -covermode=atomic
+  - chmod +x ./testScript.sh
+  - ./testScript.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
