@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"reflect"
 	"time"
+
+	"github.com/fatih/structs"
 )
 
 type (
@@ -70,7 +72,32 @@ func (self *UserTest) New() interface{} {
 	return new(UserTest)
 }
 func (self *UserTest) IsEqual(with interface{}) bool {
-	return reflect.DeepEqual(self.GetContent(), with)
+	if !reflect.DeepEqual(self.GetContent(), with) {
+		userMap := structs.Map(self)
+		tmpUserMap := structs.Map(with)
+
+		var notEqualField string
+		for fieldName := range userMap {
+			if !reflect.DeepEqual(userMap[fieldName], tmpUserMap[fieldName]) {
+				userTime, ok := userMap[fieldName].(time.Time)
+				if ok {
+					tmpUserTime, _ := tmpUserMap[fieldName].(time.Time)
+					if userTime.Equal(tmpUserTime) {
+						continue
+					}
+				}
+				notEqualField = fieldName
+				break
+			}
+		}
+
+		if notEqualField == "" {
+			return true
+		}
+		return false
+	}
+
+	return true
 }
 
 func (self *CompleteUser) GetID() string {
