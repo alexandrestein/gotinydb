@@ -43,31 +43,7 @@ func TestDB(t *testing.T) {
 		}
 
 		if !user.IsEqual(tmpUser) {
-			// if !reflect.DeepEqual(user, tmpUser) {
-			// userMap := structs.Map(user)
-			// tmpUserMap := structs.Map(tmpUser)
-			//
-			// var notEqualField string
-			// for fieldName := range userMap {
-			// 	if !reflect.DeepEqual(userMap[fieldName], tmpUserMap[fieldName]) {
-			// 		userTime, ok := userMap[fieldName].(time.Time)
-			// 		if ok {
-			// 			tmpUserTime, _ := tmpUserMap[fieldName].(time.Time)
-			// 			if userTime.Equal(tmpUserTime) {
-			// 				continue
-			// 			}
-			// 		}
-			// 		notEqualField = fieldName
-			// 		break
-			// 	}
-			// }
-			//
-			// if notEqualField == "" {
-			// 	continue
-			// }
-
 			t.Errorf("returned objects are not equal: \n%v\n%v", user, tmpUser)
-			// t.Errorf("returned objects \n%v\n%v\nare not equal: \n%v\n%v", user, tmpUser, userMap[notEqualField], tmpUserMap[notEqualField])
 			return
 		}
 	}
