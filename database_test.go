@@ -8,6 +8,7 @@ import (
 
 	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
 	"github.com/alexandreStein/GoTinyDB/testing/funcs"
+	"github.com/fatih/structs"
 )
 
 func TestDB(t *testing.T) {
@@ -44,7 +45,17 @@ func TestDB(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(user, tmpUser) {
-			t.Errorf("returned object is not equal: %v\n%v", user, tmpUser)
+			userMap := structs.Map(user)
+			tmpUserMap := structs.Map(tmpUser)
+
+			var notEqualField string
+			for fieldName := range userMap {
+				if !reflect.DeepEqual(userMap[fieldName], tmpUserMap[fieldName]) {
+					notEqualField = fieldName
+				}
+			}
+
+			t.Errorf("returned objects \n%v\n%v\nare not equal: \n%v\n%v", user, tmpUser, userMap[notEqualField], tmpUserMap[notEqualField])
 			return
 		}
 	}
