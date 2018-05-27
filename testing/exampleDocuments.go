@@ -2,7 +2,6 @@ package testing
 
 import (
 	"bytes"
-	"math/rand"
 	"reflect"
 	"time"
 
@@ -234,17 +233,4 @@ func GetCompleteUsersExampleStreetNamesOnly() []TestValue {
 		&CompleteUser{ID: "DUP_1", Add: &Add{Street: &Street{Name: "North street Dup2"}}},
 		&CompleteUser{ID: "DUP_1", Add: &Add{Street: &Street{Name: "North street Dup3"}}},
 	}
-}
-
-func GetRawExample() []TestValue {
-	return []TestValue{
-		&RawTest{"ID_RAW_1", genRand(1024)},
-		&RawTest{"ID_RAW_2", genRand(512)},
-	}
-}
-
-func genRand(size int) []byte {
-	buf := make([]byte, size)
-	rand.Read(buf)
-	return buf
 }
