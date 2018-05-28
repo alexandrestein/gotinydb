@@ -6,8 +6,6 @@ import (
 	"log"
 	"math/big"
 	"os"
-
-	"github.com/alexandreStein/GoTinyDB/vars"
 )
 
 var (
@@ -20,5 +18,5 @@ func init() {
 		log.Fatal(err)
 	}
 	Path = os.TempDir() + "/dbTest-" + fmt.Sprintf("%d", randNum)
-	os.MkdirAll(Path, vars.FilePermission)
+	// os.MkdirAll(Path, vars.FilePermission)
 }

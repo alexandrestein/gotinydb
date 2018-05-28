@@ -85,7 +85,7 @@ func testSaveIndex(t *testing.T, index Index) {
 
 	saveErr := index.Save()
 	if saveErr != nil {
-		t.Errorf("save in %q err: %s", index.getPath(), saveErr.Error())
+		t.Errorf("save in %q err: %s", index.getName(), saveErr.Error())
 		return
 	}
 }
@@ -267,29 +267,29 @@ func TestTimeIndex(t *testing.T) {
 	testLoadIndex(t, i)
 }
 
-func TestRemoveIdFromAll(t *testing.T) {
-	i := NewString(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	list := testStringList()
-
-	list = append(list, testSameValueStringList()...)
-
-	for _, val := range list {
-		i.Put(val.IndexedValue, val.ObjectID)
-	}
-
-	for _, val := range list {
-		rmErr := i.RemoveIDFromAll(val.ObjectID)
-		if rmErr != nil {
-			t.Errorf("removing id %s: %s", val.ObjectID, rmErr.Error())
-			return
-		}
-	}
-
-	if size := i.getTree().Size(); size != 0 {
-		t.Errorf("size must be 0 and has %d", size)
-	}
-}
+// func TestRemoveIdFromAll(t *testing.T) {
+// 	i := NewString(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	list := testStringList()
+//
+// 	list = append(list, testSameValueStringList()...)
+//
+// 	for _, val := range list {
+// 		i.Put(val.IndexedValue, val.ObjectID)
+// 	}
+//
+// 	for _, val := range list {
+// 		rmErr := i.RemoveIDFromAll(val.ObjectID)
+// 		if rmErr != nil {
+// 			t.Errorf("removing id %s: %s", val.ObjectID, rmErr.Error())
+// 			return
+// 		}
+// 	}
+//
+// 	if size := i.getTree().Size(); size != 0 {
+// 		t.Errorf("size must be 0 and has %d", size)
+// 	}
+// }
 
 func TestUpdate(t *testing.T) {
 	i := NewString(internalTesting.Path+"/indexTest", []string{})

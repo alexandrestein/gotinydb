@@ -1,16 +1,13 @@
 package index
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"time"
 
-	"github.com/alexandreStein/GoTinyDB/vars"
 	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/alexandreStein/gods/utils"
 	"github.com/fatih/structs"
+	"github.com/labstack/gommon/log"
 )
 
 func (i *structIndex) Get(indexedValue interface{}) ([]string, bool) {
@@ -64,8 +61,8 @@ func (i *structIndex) Put(indexedValue interface{}, objectID string) {
 	i.tree.Put(indexedValue, []string{objectID})
 }
 
-func (i *structIndex) getPath() string {
-	return i.path
+func (i *structIndex) getName() string {
+	return i.name
 }
 
 func (i *structIndex) getTree() *btree.Tree {
@@ -77,55 +74,61 @@ func (i *structIndex) Type() utils.ComparatorType {
 }
 
 func (i *structIndex) Save() error {
-	treeAsBytes, jsonErr := i.tree.ToJSON()
-	if jsonErr != nil {
-		return fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
-	}
-
-	file, fileErr := os.OpenFile(i.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, vars.FilePermission)
-	if fileErr != nil {
-		return fmt.Errorf("opening file: %s", fileErr.Error())
-	}
-
-	n, writeErr := file.WriteAt(treeAsBytes, 0)
-	if writeErr != nil {
-		return fmt.Errorf("writing file: %s", writeErr.Error())
-	}
-	if n != len(treeAsBytes) {
-		return fmt.Errorf("writes no complet, writen %d and have %d", len(treeAsBytes), n)
-	}
-
+	log.Print("SAVE")
 	return nil
+
+	// treeAsBytes, jsonErr := i.tree.ToJSON()
+	// if jsonErr != nil {
+	// 	return fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
+	// }
+	//
+	// file, fileErr := os.OpenFile(i.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, vars.FilePermission)
+	// if fileErr != nil {
+	// 	return fmt.Errorf("opening file: %s", fileErr.Error())
+	// }
+	//
+	// n, writeErr := file.WriteAt(treeAsBytes, 0)
+	// if writeErr != nil {
+	// 	return fmt.Errorf("writing file: %s", writeErr.Error())
+	// }
+	// if n != len(treeAsBytes) {
+	// 	return fmt.Errorf("writes no complet, writen %d and have %d", len(treeAsBytes), n)
+	// }
+	//
+	// return nil
 }
 
 func (i *structIndex) Load() error {
-	file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
-	if fileErr != nil {
-		return fmt.Errorf("opening file: %s", fileErr.Error())
-	}
-
-	buf := bytes.NewBuffer(nil)
-	at := int64(0)
-	for {
-		tmpBuf := make([]byte, vars.BlockSize)
-		n, readErr := file.ReadAt(tmpBuf, at)
-		if readErr != nil {
-			if io.EOF == readErr {
-				buf.Write(tmpBuf[:n])
-				break
-			}
-			return fmt.Errorf("%d readed but: %s", n, readErr.Error())
-		}
-		at = at + int64(n)
-		buf.Write(tmpBuf)
-	}
-
-	err := i.tree.FromJSON(buf.Bytes())
-	if err != nil {
-		return fmt.Errorf("parsing block: %s", err.Error())
-	}
-
+	log.Print("LOAD")
 	return nil
+
+	// file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
+	// if fileErr != nil {
+	// 	return fmt.Errorf("opening file: %s", fileErr.Error())
+	// }
+	//
+	// buf := bytes.NewBuffer(nil)
+	// at := int64(0)
+	// for {
+	// 	tmpBuf := make([]byte, vars.BlockSize)
+	// 	n, readErr := file.ReadAt(tmpBuf, at)
+	// 	if readErr != nil {
+	// 		if io.EOF == readErr {
+	// 			buf.Write(tmpBuf[:n])
+	// 			break
+	// 		}
+	// 		return fmt.Errorf("%d readed but: %s", n, readErr.Error())
+	// 	}
+	// 	at = at + int64(n)
+	// 	buf.Write(tmpBuf)
+	// }
+	//
+	// err := i.tree.FromJSON(buf.Bytes())
+	// if err != nil {
+	// 	return fmt.Errorf("parsing block: %s", err.Error())
+	// }
+	//
+	// return nil
 }
 
 func (i *structIndex) RemoveID(value interface{}, objectID string) error {

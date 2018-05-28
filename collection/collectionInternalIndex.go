@@ -10,7 +10,7 @@ func (c *Collection) updateIndex(id string, newValue interface{}) error {
 	c.updateIndexAfterDelete(id, refs)
 
 	newRefs := []*IndexReference{}
-	for indexName, index := range c.indexes {
+	for indexName, index := range c.Indexes {
 		if newValue != nil {
 			if value, apply := index.Apply(newValue); apply {
 				index.Put(value, id)
@@ -33,7 +33,7 @@ func (c *Collection) updateIndexAfterDelete(id string, refs []*IndexReference) e
 	}
 
 	for _, ref := range refs {
-		c.indexes[ref.IndexName].RemoveID(ref.GetValue(), id)
+		c.Indexes[ref.IndexName].RemoveID(ref.GetValue(), id)
 	}
 	return nil
 }

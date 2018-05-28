@@ -7,8 +7,8 @@ import (
 )
 
 // NewString returns Index interface ready to manage string types
-func NewString(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewString(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWithStringComparator(vars.TreeOrder)
 	i.indexType = utils.StringComparatorType
 
@@ -16,8 +16,8 @@ func NewString(path string, selector []string) Index {
 }
 
 // NewInt returns Index interface ready to manage int types
-func NewInt(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewInt(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWithIntComparator(vars.TreeOrder)
 	i.indexType = utils.IntComparatorType
 
@@ -25,8 +25,8 @@ func NewInt(path string, selector []string) Index {
 }
 
 // NewTime returns Index interface ready to manage int types
-func NewTime(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewTime(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.TimeComparator, utils.TimeComparatorType)
 	i.indexType = utils.TimeComparatorType
 
@@ -34,8 +34,8 @@ func NewTime(path string, selector []string) Index {
 }
 
 // NewInt8 returns Index interface ready to manage int types
-func NewInt8(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewInt8(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.Int8Comparator, utils.Int8ComparatorType)
 	i.indexType = utils.Int8ComparatorType
 
@@ -43,8 +43,8 @@ func NewInt8(path string, selector []string) Index {
 }
 
 // NewInt16 returns Index interface ready to manage int types
-func NewInt16(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewInt16(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.Int16Comparator, utils.Int16ComparatorType)
 	i.indexType = utils.Int16ComparatorType
 
@@ -52,8 +52,8 @@ func NewInt16(path string, selector []string) Index {
 }
 
 // NewInt32 returns Index interface ready to manage int types
-func NewInt32(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewInt32(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.Int32Comparator, utils.Int32ComparatorType)
 	i.indexType = utils.Int32ComparatorType
 
@@ -61,8 +61,8 @@ func NewInt32(path string, selector []string) Index {
 }
 
 // NewInt64 returns Index interface ready to manage int types
-func NewInt64(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewInt64(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.Int64Comparator, utils.Int64ComparatorType)
 	i.indexType = utils.Int64ComparatorType
 
@@ -70,8 +70,8 @@ func NewInt64(path string, selector []string) Index {
 }
 
 // NewUint returns Index interface ready to manage int types
-func NewUint(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewUint(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.UIntComparator, utils.UIntComparatorType)
 	i.indexType = utils.UIntComparatorType
 
@@ -79,8 +79,8 @@ func NewUint(path string, selector []string) Index {
 }
 
 // NewUint8 returns Index interface ready to manage int types
-func NewUint8(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewUint8(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.UInt8Comparator, utils.UInt8ComparatorType)
 	i.indexType = utils.UInt8ComparatorType
 
@@ -88,8 +88,8 @@ func NewUint8(path string, selector []string) Index {
 }
 
 // NewUint16 returns Index interface ready to manage int types
-func NewUint16(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewUint16(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.UInt16Comparator, utils.UInt16ComparatorType)
 	i.indexType = utils.UInt16ComparatorType
 
@@ -97,8 +97,8 @@ func NewUint16(path string, selector []string) Index {
 }
 
 // NewUint32 returns Index interface ready to manage int types
-func NewUint32(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewUint32(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.UInt32Comparator, utils.UInt32ComparatorType)
 	i.indexType = utils.UInt32ComparatorType
 
@@ -106,8 +106,8 @@ func NewUint32(path string, selector []string) Index {
 }
 
 // NewUint64 returns Index interface ready to manage int types
-func NewUint64(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewUint64(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.UInt64Comparator, utils.UInt64ComparatorType)
 	i.indexType = utils.UInt64ComparatorType
 
@@ -115,8 +115,8 @@ func NewUint64(path string, selector []string) Index {
 }
 
 // NewFloat32 returns Index interface ready to manage int types
-func NewFloat32(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewFloat32(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.Float32Comparator, utils.Float32ComparatorType)
 	i.indexType = utils.Float32ComparatorType
 
@@ -124,17 +124,17 @@ func NewFloat32(path string, selector []string) Index {
 }
 
 // NewFloat64 returns Index interface ready to manage int types
-func NewFloat64(path string, selector []string) Index {
-	i := newStructIndex(path, selector)
+func NewFloat64(name string, selector []string) Index {
+	i := newStructIndex(name, selector)
 	i.tree = btree.NewWith(vars.TreeOrder, utils.Float64Comparator, utils.Float64ComparatorType)
 	i.indexType = utils.Float64ComparatorType
 
 	return i
 }
 
-func newStructIndex(path string, selector []string) *structIndex {
+func newStructIndex(name string, selector []string) *structIndex {
 	return &structIndex{
-		path:     path,
+		name:     name,
 		selector: selector,
 	}
 }

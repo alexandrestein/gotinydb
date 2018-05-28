@@ -1,16 +1,16 @@
 package GoTinyDB
 
 import (
-	"os"
-
 	"github.com/alexandreStein/GoTinyDB/collection"
+	bolt "github.com/coreos/bbolt"
 )
 
 type (
 	DB struct {
-		Collections map[string]*collection.Collection
+		collections map[string]*collection.Collection
+		boltDB      *bolt.DB
 		path        string
-		lockFile    *os.File
+		// lockFile    *os.File
 	}
 
 	Record struct {

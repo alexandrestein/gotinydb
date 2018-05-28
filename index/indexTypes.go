@@ -15,7 +15,7 @@ type (
 	structIndex struct {
 		tree      *btree.Tree
 		selector  []string
-		path      string
+		name      string
 		indexType utils.ComparatorType
 	}
 
@@ -30,11 +30,6 @@ type (
 		Put(indexedValue interface{}, objectID string)
 		// RemoveID clean the given value of the given id.
 		RemoveID(value interface{}, objectID string) error
-		// RemoveIDFromAll is a slow function. It will check any element of the tree to remove
-		// all the entries where the given id is find.
-		// The logic of the tree is in the opposit side so this function should only
-		// be called for maintenance of the tree consistancy if any issue.
-		RemoveIDFromAll(objectID string) error
 
 		// Apply is the way the database knows if this index apply to the given
 		// object. It traces the fields name with the selector statement.
@@ -56,7 +51,7 @@ type (
 		GetAllIndexedValues() []interface{}
 		GetAllIDs() []string
 
-		getPath() string
+		getName() string
 		getTree() *btree.Tree
 
 		Type() utils.ComparatorType

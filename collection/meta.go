@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
-
-	"github.com/alexandreStein/GoTinyDB/vars"
 )
 
 type (
@@ -146,22 +145,25 @@ func (c *Collection) loadIndexRefAndFile(id string, update bool) (*os.File, []*I
 }
 
 func (c *Collection) getIndexRefFile(id string, update bool) (ret *os.File, err error) {
-	openFlags := vars.GetFlags
-	if update {
-		openFlags = vars.PutFlags
-	}
+	log.Print("getIndexRef")
+	return nil, nil
 
-	indexMetaFile, openErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/"+id+".json", openFlags, vars.FilePermission)
-	if openErr != nil {
-		if !update && fmt.Sprintf("%T", openErr) == "*os.PathError" {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("openning index reference data file %q: %s", id, openErr.Error())
-	}
-
-	return indexMetaFile, nil
+	// openFlags := vars.GetFlags
+	// if update {
+	// openFlags = vars.PutFlags
+	// }
+	//
+	// indexMetaFile, openErr := os.OpenFile(c.path+"/"+vars.MetaDatasDirName+"/"+id+".json", openFlags, vars.FilePermission)
+	// if openErr != nil {
+	// if !update && fmt.Sprintf("%T", openErr) == "*os.PathError" {
+	// return nil, nil
+	// }
+	// return nil, fmt.Errorf("openning index reference data file %q: %s", id, openErr.Error())
+	// }
+	//
+	// return indexMetaFile, nil
 }
 
-func (c *Collection) deleteIndexRefFile(id string) (err error) {
-	return os.RemoveAll(c.path + "/" + vars.MetaDatasDirName + "/" + id + ".json")
-}
+// func (c *Collection) deleteIndexRefFile(id string) (err error) {
+// 	return os.RemoveAll(c.path + "/" + vars.MetaDatasDirName + "/" + id + ".json")
+// }
