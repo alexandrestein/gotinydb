@@ -2,7 +2,7 @@ package index
 
 import (
 	"gitea.interlab-net.com/alexandre/db/query"
-	"github.com/emirpasic/gods/trees/btree"
+	"github.com/alexandreStein/gods/trees/btree"
 )
 
 // Those constants defines the defferent types of indexes.
@@ -67,8 +67,8 @@ type (
 
 		// Save and Load saves or loads the tree at or from the path location from
 		// the initialisation.
-		Save() error
-		Load() error
+		Save() ([]byte, error)
+		Load(content []byte) error
 
 		GetAllIndexedValues() []interface{}
 		GetAllIDs() []string

@@ -1,14 +1,11 @@
 package index
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"os"
 
 	"gitea.interlab-net.com/alexandre/db/query"
 	"gitea.interlab-net.com/alexandre/db/vars"
-	"github.com/emirpasic/gods/trees/btree"
+	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/fatih/structs"
 )
 
@@ -104,51 +101,38 @@ func (i *structIndex) Type() Type {
 	return i.indexType
 }
 
-func (i *structIndex) Save() error {
+func (i *structIndex) Save() ([]byte, error) {
 	treeAsBytes, jsonErr := i.tree.ToJSON()
 	if jsonErr != nil {
-		return fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
+		return nil, fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
 	}
 
-	file, fileErr := os.OpenFile(i.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, vars.FilePermission)
-	if fileErr != nil {
-		return fmt.Errorf("opening file: %s", fileErr.Error())
-	}
-
-	n, writeErr := file.WriteAt(treeAsBytes, 0)
-	if writeErr != nil {
-		return fmt.Errorf("writing file: %s", writeErr.Error())
-	}
-	if n != len(treeAsBytes) {
-		return fmt.Errorf("writes no complet, writen %d and have %d", len(treeAsBytes), n)
-	}
-
-	return nil
+	return treeAsBytes, nil
 }
 
-func (i *structIndex) Load() error {
-	file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
-	if fileErr != nil {
-		return fmt.Errorf("opening file: %s", fileErr.Error())
-	}
+func (i *structIndex) Load(content []byte) error {
+	// file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
+	// if fileErr != nil {
+	// 	return fmt.Errorf("opening file: %s", fileErr.Error())
+	// }
+	//
+	// buf := bytes.NewBuffer(nil)
+	// at := int64(0)
+	// for {
+	// 	tmpBuf := make([]byte, vars.BlockSize)
+	// 	n, readErr := file.ReadAt(tmpBuf, at)
+	// 	if readErr != nil {
+	// 		if io.EOF == readErr {
+	// 			buf.Write(tmpBuf[:n])
+	// 			break
+	// 		}
+	// 		return fmt.Errorf("%d readed but: %s", n, readErr.Error())
+	// 	}
+	// 	at = at + int64(n)
+	// 	buf.Write(tmpBuf)
+	// }
 
-	buf := bytes.NewBuffer(nil)
-	at := int64(0)
-	for {
-		tmpBuf := make([]byte, vars.BlockSize)
-		n, readErr := file.ReadAt(tmpBuf, at)
-		if readErr != nil {
-			if io.EOF == readErr {
-				buf.Write(tmpBuf[:n])
-				break
-			}
-			return fmt.Errorf("%d readed but: %s", n, readErr.Error())
-		}
-		at = at + int64(n)
-		buf.Write(tmpBuf)
-	}
-
-	err := i.tree.FromJSON(buf.Bytes())
+	err := i.tree.FromJSON(content)
 	if err != nil {
 		return fmt.Errorf("parsing block: %s", err.Error())
 	}

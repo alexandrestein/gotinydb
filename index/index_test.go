@@ -20,7 +20,7 @@ func getGoodList(i Index) [][]interface{} {
 	return nil
 }
 
-func testSaveIndex(t *testing.T, index Index) {
+func testSaveIndex(t *testing.T, index Index) []byte {
 	list := getGoodList(index)
 	for _, val := range list {
 		index.Put(val[0], val[1].(string))
@@ -31,26 +31,28 @@ func testSaveIndex(t *testing.T, index Index) {
 	index.Put(list[0][0], list[0][1].(string))
 	if lenBeforeDuplicateInsert != index.getTree().Size() {
 		t.Errorf("insertion of same id at the same place should be baned")
-		return
+		return nil
 	}
 
 	if listLen := len(list); listLen != index.getTree().Size() {
 		t.Errorf("the tree has %d element(s) but the list is %d", index.getTree().Size(), listLen)
-		return
+		return nil
 	}
 
-	saveErr := index.Save()
+	indexContentToSave, saveErr := index.Save()
 	if saveErr != nil {
 		t.Errorf("save in %q err: %s", index.getPath(), saveErr.Error())
-		return
+		return nil
 	}
+
+	return indexContentToSave
 }
 
-func testLoadIndex(t *testing.T, index Index) {
+func testLoadIndex(t *testing.T, index Index, indexSavedContent []byte) {
 	defer os.RemoveAll(internalTesting.Path)
 	list := getGoodList(index)
 
-	loadErr := index.Load()
+	loadErr := index.Load(indexSavedContent)
 	if loadErr != nil {
 		t.Errorf("loading tree: %s", loadErr.Error())
 		return
@@ -73,23 +75,23 @@ func testLoadIndex(t *testing.T, index Index) {
 func TestStringIndex(t *testing.T) {
 	i := NewStringIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
-	testSaveIndex(t, i)
+	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
 	i = NewStringIndex(internalTesting.Path, []string{})
-	testLoadIndex(t, i)
+	testLoadIndex(t, i, indexContent)
 }
 
 func TestIntIndex(t *testing.T) {
 	i := NewIntIndex(internalTesting.Path, []string{})
 	i.getTree().Clear()
-	testSaveIndex(t, i)
+	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
 	i = NewIntIndex(internalTesting.Path, []string{})
-	testLoadIndex(t, i)
+	testLoadIndex(t, i, indexContent)
 }
 
 func TestRemoveIdFromAll(t *testing.T) {
