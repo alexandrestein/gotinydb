@@ -5,8 +5,10 @@ package collection
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alexandreStein/GoTinyDB/index"
 	"github.com/alexandreStein/GoTinyDB/query"
@@ -223,10 +225,89 @@ func (c *Collection) GetIndex(indexName string) index.Index {
 }
 
 // Query run the given query to all the collection indexes.
-// It returns the
 func (c *Collection) Query(q *query.Query) (ids []string) {
+	if q == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+	defer cancel()
+
+	getIDsChan := make(chan []string, 16)
+	getIDs := []string{}
+	keepIDsChan := make(chan []string, 16)
+	keepIDs := []string{}
+
 	for _, index := range c.Indexes {
-		ids = append(ids, index.RunQuery(q)...)
+		go index.RunQuery(ctx, q.GetActions, getIDsChan)
+		go index.RunQuery(ctx, q.KeepActions, keepIDsChan)
+	}
+
+	getDone, keepDone := false, false
+
+	for {
+		select {
+		case retIDs, ok := <-getIDsChan:
+			if ok {
+				getIDs = append(getIDs, retIDs...)
+			} else {
+				getDone = true
+			}
+
+			if getDone && keepDone {
+				goto afterFilters
+			}
+		case retIDs, ok := <-keepIDsChan:
+			if ok {
+				keepIDs = append(keepIDs, retIDs...)
+			} else {
+				keepDone = true
+			}
+
+			if getDone && keepDone {
+				goto afterFilters
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+
+afterFilters:
+	ids = getIDs
+
+	// Clean the retreived IDs of the keep selection
+	for j := len(ids) - 1; j >= 0; j-- {
+		for _, keepID := range keepIDs {
+			if len(ids) <= j {
+				continue
+			}
+			if ids[j] == keepID {
+				ids = append(ids[:j], ids[j+1:]...)
+				continue
+			}
+		}
+		if q.Distinct {
+			keys := make(map[string]bool)
+			list := []string{}
+			if _, value := keys[ids[j]]; !value {
+				keys[ids[j]] = true
+				list = append(list, ids[j])
+			}
+			ids = list
+		}
+	}
+
+	// Do the limit
+	if len(ids) > q.Limit {
+		ids = ids[:q.Limit]
+	}
+
+	// Reverts the result if wanted
+	if q.InvertedOrder {
+		for i := len(ids)/2 - 1; i >= 0; i-- {
+			opp := len(ids) - 1 - i
+			ids[i], ids[opp] = ids[opp], ids[i]
+		}
 	}
 
 	return ids

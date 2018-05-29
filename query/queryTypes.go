@@ -10,19 +10,22 @@ const (
 type (
 	// Query defines the object to request index query.
 	Query struct {
-		Selector              []string
-		GetAction, KeepAction *Action
-		InvertedOrder         bool
-		Limit                 int
+		GetActions, KeepActions []*Action
 
-		KeepEqual bool
-		Distinct  bool
+		// OrderBy       []string
+		InvertedOrder bool
+
+		Limit int
+
+		Distinct bool
 	}
 
 	// Action defines the way the query will be performed
 	Action struct {
+		Selector       []string
 		Operation      ActionType
 		CompareToValue interface{}
+		KeepEqual      bool
 	}
 
 	// ActionType defines the type of action to perform.
@@ -47,12 +50,23 @@ func (a *Action) GetType() ActionType {
 	return a.Operation
 }
 
-// NewQuery build a new query object with the given selector.
+// EqualWanted defines if the exact corresponding key is retrieved or not.
+func (a *Action) EqualWanted() *Action {
+	a.KeepEqual = true
+	return a
+}
+
+// SetSelector defines the configurable limit of IDs.
+func (a *Action) SetSelector(s []string) *Action {
+	a.Selector = s
+	return a
+}
+
+// NewQuery build a new query object.
 // It also set the default limit to 1000.
-func NewQuery(selector []string) *Query {
+func NewQuery() *Query {
 	return &Query{
-		Selector: selector,
-		Limit:    1000,
+		Limit: 1000,
 	}
 }
 
@@ -74,21 +88,21 @@ func (q *Query) DistinctWanted() *Query {
 	return q
 }
 
-// EqualWanted defines if the exact corresponding key is retrieved or not.
-func (q *Query) EqualWanted() *Query {
-	q.KeepEqual = true
-	return q
-}
-
 // Get defines the action to perform to get IDs
 func (q *Query) Get(a *Action) *Query {
-	q.GetAction = a
+	if q.GetActions == nil {
+		q.GetActions = []*Action{a}
+	}
+	q.GetActions = append(q.GetActions, a)
 	return q
 }
 
 // Keep defines the action to perform to clean IDs which have already retrieved
 // by the Get action.
 func (q *Query) Keep(a *Action) *Query {
-	q.KeepAction = a
+	if q.KeepActions == nil {
+		q.GetActions = []*Action{a}
+	}
+	q.KeepActions = append(q.KeepActions, a)
 	return q
 }

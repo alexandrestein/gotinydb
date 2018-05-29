@@ -1,10 +1,19 @@
 package index
 
 import (
+	"context"
+
 	"github.com/alexandreStein/GoTinyDB/query"
 	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/alexandreStein/gods/utils"
 )
+
+// // Those constants defines the defferent types of indexes.
+// const (
+// 	StringIndexType Type = iota
+// 	IntIndexType
+// 	CustomIndexType
+// )
 
 // Those varables define the deferent errors
 var (
@@ -41,12 +50,13 @@ type (
 
 		// RunQuery runs the given query and subqueries before returning the
 		// corresponding ids.
-		RunQuery(q *query.Query) (ids []string)
+		RunQuery(ctx context.Context, queries []*query.Action, responseChan chan []string)
+		// RunQuery(q *query.Query) (ids []string)
 
 		// Save and Load saves or loads the tree at or from the path location from
 		// the initialisation.
-		Save() error
-		Load() error
+		Save() ([]byte, error)
+		Load(content []byte) error
 
 		GetAllIndexedValues() []interface{}
 		GetAllIDs() []string

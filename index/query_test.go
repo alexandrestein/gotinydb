@@ -18,7 +18,7 @@ func TestStringQuery(t *testing.T) {
 		i.Put(user.Add.Street.Name, val.GetID())
 	}
 
-	buildTestQuery := func(limit int, reverted bool, getAction, keepAction *query.Action) *query.Query {
+	buildTestQuery := func(limit int, reverted bool, getActions, keepActions []*query.Action) *query.Query {
 		if limit == 0 {
 			limit = 1
 		}

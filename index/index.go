@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"context"
+
 	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/alexandreStein/gods/utils"
+
+	"github.com/alexandreStein/GoTinyDB/query"
 	"github.com/fatih/structs"
-	"github.com/labstack/gommon/log"
 )
 
 func (i *structIndex) Get(indexedValue interface{}) ([]string, bool) {
@@ -73,33 +76,21 @@ func (i *structIndex) Type() utils.ComparatorType {
 	return i.indexType
 }
 
-func (i *structIndex) Save() error {
-	log.Print("SAVE")
-	return nil
+func (i *structIndex) Save() ([]byte, error) {
+	treeAsBytes, jsonErr := i.tree.ToJSON()
+	if jsonErr != nil {
+		return nil, fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
+	}
 
-	// treeAsBytes, jsonErr := i.tree.ToJSON()
-	// if jsonErr != nil {
-	// 	return fmt.Errorf("durring JSON convertion: %s", jsonErr.Error())
-	// }
-	//
-	// file, fileErr := os.OpenFile(i.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, vars.FilePermission)
-	// if fileErr != nil {
-	// 	return fmt.Errorf("opening file: %s", fileErr.Error())
-	// }
-	//
-	// n, writeErr := file.WriteAt(treeAsBytes, 0)
-	// if writeErr != nil {
-	// 	return fmt.Errorf("writing file: %s", writeErr.Error())
-	// }
-	// if n != len(treeAsBytes) {
-	// 	return fmt.Errorf("writes no complet, writen %d and have %d", len(treeAsBytes), n)
-	// }
-	//
-	// return nil
+	return treeAsBytes, nil
 }
 
-func (i *structIndex) Load() error {
-	log.Print("LOAD")
+func (i *structIndex) Load(content []byte) error {
+	err := i.tree.FromJSON(content)
+	if err != nil {
+		return fmt.Errorf("parsing block: %s", err.Error())
+	}
+
 	return nil
 
 	// file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
@@ -187,6 +178,178 @@ func (i *structIndex) doesApply(selector []string) bool {
 		}
 	}
 	return true
+}
+
+// func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
+// 	// if q == nil {
+// 	// 	return
+// 	// }
+// 	//
+// 	// ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+// 	// defer cancel()
+// 	//
+// 	// getIDs := []string{}
+// 	// keepIDs := []string{}
+// 	// getIDsChan := i.buildIDList(ctx, q.GetActions)
+// 	// keepIDsChan := i.buildIDList(ctx, q.KeepActions)
+// 	//
+// 	// select {
+// 	// case retIDs := <-getIDsChan:
+// 	// 	getIDs = retIDs
+// 	// case retIDs := <-keepIDsChan:
+// 	// 	keepIDs = retIDs
+// 	// case <-ctx.Done():
+// 	// 	return
+// 	// }
+//
+// 	// // Clean the retreived IDs of the keep selection
+// 	// for j := len(getIDs) - 1; j <= 0; j-- {
+// 	// 	for _, keepID := range keepIDs {
+// 	// 		if getIDs[j] == keepID {
+// 	// 			getIDs = append(getIDs[:j], getIDs[j+1:]...)
+// 	// 		}
+// 	// 	}
+// 	// 	if q.Distinct {
+// 	// 		keys := make(map[string]bool)
+// 	// 		list := []string{}
+// 	// 		if _, value := keys[getIDs[j]]; !value {
+// 	// 			keys[getIDs[j]] = true
+// 	// 			list = append(list, getIDs[j])
+// 	// 		}
+// 	// 		ids = list
+// 	// 	}
+// 	// }
+// 	//
+// 	// // Do the limit
+// 	// ids = getIDs[:q.Limit]
+//
+// 	// // Actualy run the query
+// 	// ids = i.runQuery(q)
+// 	// if q.KeepAction != nil && len(ids) != 0 {
+// 	// 	ids = i.runKeepQuery(q, ids)
+// 	// }
+// 	//
+// 	// if q.Distinct {
+// 	// 	keys := make(map[string]bool)
+// 	// 	list := []string{}
+// 	// 	for _, id := range ids {
+// 	// 		if _, value := keys[id]; !value {
+// 	// 			keys[id] = true
+// 	// 			list = append(list, id)
+// 	// 		}
+// 	// 	}
+// 	// }
+// 	//
+// 	// // Cleans the list if to big and returns
+// 	// if len(ids) > q.Limit {
+// 	// 	ids = ids[:q.Limit]
+// 	// 	return
+// 	// }
+// 	//
+// 	// // Reverts the result if wanted
+// 	// if q.InvertedOrder {
+// 	// 	for i := len(ids)/2 - 1; i >= 0; i-- {
+// 	// 		opp := len(ids) - 1 - i
+// 	// 		ids[i], ids[opp] = ids[opp], ids[i]
+// 	// 	}
+// 	// }
+// 	return
+// }
+
+func (i *structIndex) RunQuery(ctx context.Context, actions []*query.Action, retChan chan []string) {
+	responseChan := make(chan []string, 16)
+	defer close(retChan)
+	defer close(responseChan)
+
+	if len(actions) == 0 {
+		return
+	}
+
+	nbToWait := 0
+	for _, action := range actions {
+		if !i.doesApply(action.Selector) {
+			continue
+		}
+
+		go getIDs(ctx, i, action, responseChan)
+		nbToWait++
+	}
+
+	ret := []string{}
+
+	for {
+		select {
+		case ids := <-responseChan:
+			ret = append(ret, ids...)
+			retChan <- ret
+		case <-ctx.Done():
+			return
+		}
+		nbToWait--
+		if nbToWait <= 0 {
+			return
+		}
+	}
+}
+
+func getIDs(ctx context.Context, i *structIndex, action *query.Action, responseChan chan []string) {
+	ids := i.runQuery(action)
+	responseChan <- ids
+}
+
+func (i *structIndex) runQuery(action *query.Action) (ids []string) {
+	// If equal just this leave will be send
+	if action.GetType() == query.Equal {
+		tmpIDs, found := i.Get(action.CompareToValue)
+		if found {
+			ids = tmpIDs
+		}
+		return
+	}
+
+	var iterator btree.Iterator
+	var iteratorInit bool
+	var nextFunc (func() bool)
+	var keyFound bool
+
+	if action.GetType() == query.Greater {
+		_, keyAfter, found := i.tree.GetClosestKeys(action.CompareToValue)
+		keyFound = found
+		if keyAfter != nil {
+			iterator, _ = i.tree.IteratorAt(keyAfter)
+			iteratorInit = true
+		}
+		nextFunc = iterator.Next
+	} else if action.GetType() == query.Less {
+		keyBefore, _, found := i.tree.GetClosestKeys(action.CompareToValue)
+		keyFound = found
+		if keyBefore != nil {
+			iterator, _ = i.tree.IteratorAt(keyBefore)
+			iteratorInit = true
+		}
+		nextFunc = iterator.Prev
+	}
+
+	// Check if the caller want more or less with equal option
+	if keyFound {
+		if !action.KeepEqual {
+			ids = append(ids, iterator.Value().([]string)...)
+		}
+	} else {
+		if iteratorInit {
+			ids = append(ids, iterator.Value().([]string)...)
+		}
+	}
+
+	if !iteratorInit {
+		return
+	}
+
+	for nextFunc() {
+		ids = append(ids, iterator.Value().([]string)...)
+	}
+
+	return
 }
 
 func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {
