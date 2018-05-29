@@ -3,7 +3,6 @@ package index
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/alexandreStein/GoTinyDB/query"
 	"github.com/alexandreStein/GoTinyDB/vars"
@@ -179,132 +178,120 @@ func (i *structIndex) doesApply(selector []string) bool {
 	return true
 }
 
-func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
-	if q == nil {
-		return
-	}
+// func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
+// 	// if q == nil {
+// 	// 	return
+// 	// }
+// 	//
+// 	// ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+// 	// defer cancel()
+// 	//
+// 	// getIDs := []string{}
+// 	// keepIDs := []string{}
+// 	// getIDsChan := i.buildIDList(ctx, q.GetActions)
+// 	// keepIDsChan := i.buildIDList(ctx, q.KeepActions)
+// 	//
+// 	// select {
+// 	// case retIDs := <-getIDsChan:
+// 	// 	getIDs = retIDs
+// 	// case retIDs := <-keepIDsChan:
+// 	// 	keepIDs = retIDs
+// 	// case <-ctx.Done():
+// 	// 	return
+// 	// }
+//
+// 	// // Clean the retreived IDs of the keep selection
+// 	// for j := len(getIDs) - 1; j <= 0; j-- {
+// 	// 	for _, keepID := range keepIDs {
+// 	// 		if getIDs[j] == keepID {
+// 	// 			getIDs = append(getIDs[:j], getIDs[j+1:]...)
+// 	// 		}
+// 	// 	}
+// 	// 	if q.Distinct {
+// 	// 		keys := make(map[string]bool)
+// 	// 		list := []string{}
+// 	// 		if _, value := keys[getIDs[j]]; !value {
+// 	// 			keys[getIDs[j]] = true
+// 	// 			list = append(list, getIDs[j])
+// 	// 		}
+// 	// 		ids = list
+// 	// 	}
+// 	// }
+// 	//
+// 	// // Do the limit
+// 	// ids = getIDs[:q.Limit]
+//
+// 	// // Actualy run the query
+// 	// ids = i.runQuery(q)
+// 	// if q.KeepAction != nil && len(ids) != 0 {
+// 	// 	ids = i.runKeepQuery(q, ids)
+// 	// }
+// 	//
+// 	// if q.Distinct {
+// 	// 	keys := make(map[string]bool)
+// 	// 	list := []string{}
+// 	// 	for _, id := range ids {
+// 	// 		if _, value := keys[id]; !value {
+// 	// 			keys[id] = true
+// 	// 			list = append(list, id)
+// 	// 		}
+// 	// 	}
+// 	// }
+// 	//
+// 	// // Cleans the list if to big and returns
+// 	// if len(ids) > q.Limit {
+// 	// 	ids = ids[:q.Limit]
+// 	// 	return
+// 	// }
+// 	//
+// 	// // Reverts the result if wanted
+// 	// if q.InvertedOrder {
+// 	// 	for i := len(ids)/2 - 1; i >= 0; i-- {
+// 	// 		opp := len(ids) - 1 - i
+// 	// 		ids[i], ids[opp] = ids[opp], ids[i]
+// 	// 	}
+// 	// }
+// 	return
+// }
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
-	defer cancel()
-
-	getIDs := []string{}
-	keepIDs := []string{}
-	getIDsChan := i.buildIDList(ctx, q.GetActions)
-	keepIDsChan := i.buildIDList(ctx, q.KeepActions)
-
-	select {
-	case retIDs := <-getIDsChan:
-		getIDs = retIDs
-	case retIDs := <-keepIDsChan:
-		keepIDs = retIDs
-	case <-ctx.Done():
-		return
-	}
-
-	// Clean the retreived IDs of the keep selection
-	for j := len(getIDs) - 1; j <= 0; j-- {
-		for _, keepID := range keepIDs {
-			if getIDs[j] == keepID {
-				getIDs = append(getIDs[:j], getIDs[j+1:]...)
-			}
-		}
-		if q.Distinct {
-			keys := make(map[string]bool)
-			list := []string{}
-			if _, value := keys[getIDs[j]]; !value {
-				keys[getIDs[j]] = true
-				list = append(list, getIDs[j])
-			}
-			ids = list
-		}
-	}
-
-	// Do the limit
-	ids = getIDs[:q.Limit]
-
-	// // Actualy run the query
-	// ids = i.runQuery(q)
-	// if q.KeepAction != nil && len(ids) != 0 {
-	// 	ids = i.runKeepQuery(q, ids)
-	// }
-	//
-	// if q.Distinct {
-	// 	keys := make(map[string]bool)
-	// 	list := []string{}
-	// 	for _, id := range ids {
-	// 		if _, value := keys[id]; !value {
-	// 			keys[id] = true
-	// 			list = append(list, id)
-	// 		}
-	// 	}
-	// }
-	//
-	// // Cleans the list if to big and returns
-	// if len(ids) > q.Limit {
-	// 	ids = ids[:q.Limit]
-	// 	return
-	// }
-	//
-	// // Reverts the result if wanted
-	// if q.InvertedOrder {
-	// 	for i := len(ids)/2 - 1; i >= 0; i-- {
-	// 		opp := len(ids) - 1 - i
-	// 		ids[i], ids[opp] = ids[opp], ids[i]
-	// 	}
-	// }
-	return
-}
-
-func (i *structIndex) buildIDList(ctx context.Context, queries []*query.Action) chan []string {
-	retChan := make(chan []string, 16)
+func (i *structIndex) RunQuery(ctx context.Context, actions []*query.Action, retChan chan []string) {
 	responseChan := make(chan []string, 16)
+	defer close(retChan)
+	defer close(responseChan)
 
-	if len(queries) == 0 {
-		return retChan
+	if len(actions) == 0 {
+		return
 	}
 
-	nbRet := 0
-
-	for _, action := range queries {
-		if action == nil {
-			continue
-		}
-
+	nbToWait := 0
+	for _, action := range actions {
 		if !i.doesApply(action.Selector) {
-			nbRet++
 			continue
 		}
 
-		ctx2, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
-		defer cancel()
-
-		go getIDs(ctx2, i, action, responseChan)
+		go getIDs(ctx, i, action, responseChan)
+		nbToWait++
 	}
 
 	ret := []string{}
 
-	go func() {
-		for {
-			select {
-			case ids := <-responseChan:
-				ret = append(ret, ids...)
-				retChan <- ret
-				nbRet++
-
-				if nbRet == len(queries) {
-					return
-				}
-			case <-ctx.Done():
-				return
-			}
+	for {
+		select {
+		case ids := <-responseChan:
+			ret = append(ret, ids...)
+			retChan <- ret
+		case <-ctx.Done():
+			return
 		}
-	}()
-	return retChan
+		nbToWait--
+		if nbToWait <= 0 {
+			return
+		}
+	}
 }
 
 func getIDs(ctx context.Context, i *structIndex, action *query.Action, responseChan chan []string) {
 	ids := i.runQuery(action)
-	fmt.Println("getIDs", ids)
 	responseChan <- ids
 }
 

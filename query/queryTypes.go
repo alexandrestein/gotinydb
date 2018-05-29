@@ -12,7 +12,7 @@ type (
 	Query struct {
 		GetActions, KeepActions []*Action
 
-		OrderBy       []string
+		// OrderBy       []string
 		InvertedOrder bool
 
 		Limit int
@@ -53,6 +53,12 @@ func (a *Action) GetType() ActionType {
 // EqualWanted defines if the exact corresponding key is retrieved or not.
 func (a *Action) EqualWanted() *Action {
 	a.KeepEqual = true
+	return a
+}
+
+// SetSelector defines the configurable limit of IDs.
+func (a *Action) SetSelector(s []string) *Action {
+	a.Selector = s
 	return a
 }
 
