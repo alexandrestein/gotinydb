@@ -1,7 +1,7 @@
 package index
 
 import (
-	"gitea.interlab-net.com/alexandre/db/query"
+	"github.com/alexandreStein/GoTinyDB/query"
 	"github.com/alexandreStein/gods/trees/btree"
 )
 

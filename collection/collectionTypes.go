@@ -1,6 +1,6 @@
 package collection
 
-import "gitea.interlab-net.com/alexandre/db/index"
+import "github.com/alexandreStein/GoTinyDB/index"
 
 type (
 	Collection struct {

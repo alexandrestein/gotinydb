@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"gitea.interlab-net.com/alexandre/db/collection"
-	"gitea.interlab-net.com/alexandre/db/vars"
+	"github.com/alexandreStein/GoTinyDB/collection"
+	"github.com/alexandreStein/GoTinyDB/vars"
 )
 
 // New builds a new DB object with the given root path. It must be a directory.

@@ -7,9 +7,9 @@ import (
 	"io"
 	"os"
 
-	"gitea.interlab-net.com/alexandre/db/index"
-	"gitea.interlab-net.com/alexandre/db/query"
-	"gitea.interlab-net.com/alexandre/db/vars"
+	"github.com/alexandreStein/GoTinyDB/index"
+	"github.com/alexandreStein/GoTinyDB/query"
+	"github.com/alexandreStein/GoTinyDB/vars"
 )
 
 // NewCollection builds a new Collection pointer. It is called internaly by DB

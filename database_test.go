@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	internalTesting "gitea.interlab-net.com/alexandre/db/testing"
+	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
 )
 
 func TestDB(t *testing.T) {

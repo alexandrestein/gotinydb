@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"gitea.interlab-net.com/alexandre/db/vars"
+	"github.com/alexandreStein/GoTinyDB/vars"
 )
 
 func (c *Collection) save() error {

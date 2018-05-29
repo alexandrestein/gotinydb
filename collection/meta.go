@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"gitea.interlab-net.com/alexandre/db/vars"
+	"github.com/alexandreStein/GoTinyDB/vars"
 )
 
 type (

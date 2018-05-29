@@ -3,7 +3,7 @@ package db
 import (
 	"os"
 
-	"gitea.interlab-net.com/alexandre/db/collection"
+	"github.com/alexandreStein/GoTinyDB/collection"
 )
 
 type (

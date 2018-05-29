@@ -1,10 +1,12 @@
 package index
 
 import (
+	"context"
 	"fmt"
+	"time"
 
-	"gitea.interlab-net.com/alexandre/db/query"
-	"gitea.interlab-net.com/alexandre/db/vars"
+	"github.com/alexandreStein/GoTinyDB/query"
+	"github.com/alexandreStein/GoTinyDB/vars"
 	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/fatih/structs"
 )
@@ -111,27 +113,6 @@ func (i *structIndex) Save() ([]byte, error) {
 }
 
 func (i *structIndex) Load(content []byte) error {
-	// file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
-	// if fileErr != nil {
-	// 	return fmt.Errorf("opening file: %s", fileErr.Error())
-	// }
-	//
-	// buf := bytes.NewBuffer(nil)
-	// at := int64(0)
-	// for {
-	// 	tmpBuf := make([]byte, vars.BlockSize)
-	// 	n, readErr := file.ReadAt(tmpBuf, at)
-	// 	if readErr != nil {
-	// 		if io.EOF == readErr {
-	// 			buf.Write(tmpBuf[:n])
-	// 			break
-	// 		}
-	// 		return fmt.Errorf("%d readed but: %s", n, readErr.Error())
-	// 	}
-	// 	at = at + int64(n)
-	// 	buf.Write(tmpBuf)
-	// }
-
 	err := i.tree.FromJSON(content)
 	if err != nil {
 		return fmt.Errorf("parsing block: %s", err.Error())
@@ -203,85 +184,136 @@ func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 		return
 	}
 
-	if !i.doesApply(q.Selector) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+	defer cancel()
+
+	getIDs := []string{}
+	keepIDs := []string{}
+	getIDsChan := i.buildIDList(ctx, q.GetActions)
+	keepIDsChan := i.buildIDList(ctx, q.KeepActions)
+
+	select {
+	case retIDs := <-getIDsChan:
+		getIDs = retIDs
+	case retIDs := <-keepIDsChan:
+		keepIDs = retIDs
+	case <-ctx.Done():
 		return
 	}
 
-	// Actualy run the query
-	ids = i.runQuery(q, true)
-	if q.KeepAction != nil && len(ids) != 0 {
-		ids = i.runKeepQuery(q, ids)
-	}
-
-	if q.Distinct {
-		keys := make(map[string]bool)
-		list := []string{}
-		for _, id := range ids {
-			if _, value := keys[id]; !value {
-				keys[id] = true
-				list = append(list, id)
+	// Clean the retreived IDs of the keep selection
+	for j := len(getIDs) - 1; j <= 0; j-- {
+		for _, keepID := range keepIDs {
+			if getIDs[j] == keepID {
+				getIDs = append(getIDs[:j], getIDs[j+1:]...)
 			}
 		}
-	}
-
-	// Cleans the list if to big and returns
-	if len(ids) > q.Limit {
-		ids = ids[:q.Limit]
-		return
-	}
-
-	// Reverts the result if wanted
-	if q.InvertedOrder {
-		for i := len(ids)/2 - 1; i >= 0; i-- {
-			opp := len(ids) - 1 - i
-			ids[i], ids[opp] = ids[opp], ids[i]
+		if q.Distinct {
+			keys := make(map[string]bool)
+			list := []string{}
+			if _, value := keys[getIDs[j]]; !value {
+				keys[getIDs[j]] = true
+				list = append(list, getIDs[j])
+			}
+			ids = list
 		}
 	}
+
+	// Do the limit
+	ids = getIDs[:q.Limit]
+
+	// // Actualy run the query
+	// ids = i.runQuery(q)
+	// if q.KeepAction != nil && len(ids) != 0 {
+	// 	ids = i.runKeepQuery(q, ids)
+	// }
+	//
+	// if q.Distinct {
+	// 	keys := make(map[string]bool)
+	// 	list := []string{}
+	// 	for _, id := range ids {
+	// 		if _, value := keys[id]; !value {
+	// 			keys[id] = true
+	// 			list = append(list, id)
+	// 		}
+	// 	}
+	// }
+	//
+	// // Cleans the list if to big and returns
+	// if len(ids) > q.Limit {
+	// 	ids = ids[:q.Limit]
+	// 	return
+	// }
+	//
+	// // Reverts the result if wanted
+	// if q.InvertedOrder {
+	// 	for i := len(ids)/2 - 1; i >= 0; i-- {
+	// 		opp := len(ids) - 1 - i
+	// 		ids[i], ids[opp] = ids[opp], ids[i]
+	// 	}
+	// }
 	return
 }
 
-func (i *structIndex) runQuery(q *query.Query, get bool) (ids []string) {
-	var action *query.Action
+func (i *structIndex) buildIDList(ctx context.Context, queries []*query.Action) chan []string {
+	retChan := make(chan []string, 16)
+	responseChan := make(chan []string, 16)
 
-	// If query is not nil
-	if q == nil {
-		return
+	if len(queries) == 0 {
+		return retChan
 	}
 
-	// If the caller want to do the get lockup
-	if get {
-		// If the get action is nil it returns
-		if q.GetAction == nil {
-			return
+	nbRet := 0
+
+	for _, action := range queries {
+		if action == nil {
+			continue
 		}
-		// Otherways it save the action
-		action = q.GetAction
-		// The caller do not asked for a get action and the saved action is keep
-		// if any
-	} else {
-		if q.KeepAction == nil {
-			return
+
+		if !i.doesApply(action.Selector) {
+			nbRet++
+			continue
 		}
-		action = q.KeepAction
+
+		ctx2, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+		defer cancel()
+
+		go getIDs(ctx2, i, action, responseChan)
 	}
 
-	if action.CompareToValue == nil {
-		return
-	}
+	ret := []string{}
 
-	// // Check the selector
-	// if !reflect.DeepEqual(q.Selector, i.selector) {
-	// 	return
-	// }
+	go func() {
+		for {
+			select {
+			case ids := <-responseChan:
+				ret = append(ret, ids...)
+				retChan <- ret
+				nbRet++
 
+				if nbRet == len(queries) {
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return retChan
+}
+
+func getIDs(ctx context.Context, i *structIndex, action *query.Action, responseChan chan []string) {
+	ids := i.runQuery(action)
+	fmt.Println("getIDs", ids)
+	responseChan <- ids
+}
+
+func (i *structIndex) runQuery(action *query.Action) (ids []string) {
 	// If equal just this leave will be send
 	if action.GetType() == query.Equal {
 		tmpIDs, found := i.Get(action.CompareToValue)
 		if found {
 			ids = tmpIDs
-			if len(ids) > q.Limit {
-				ids = ids[:q.Limit]
-			}
 		}
 		return
 	}
@@ -311,7 +343,7 @@ func (i *structIndex) runQuery(q *query.Query, get bool) (ids []string) {
 
 	// Check if the caller want more or less with equal option
 	if keyFound {
-		if !q.KeepEqual {
+		if !action.KeepEqual {
 			ids = append(ids, iterator.Value().([]string)...)
 		}
 	} else {
@@ -327,35 +359,8 @@ func (i *structIndex) runQuery(q *query.Query, get bool) (ids []string) {
 	for nextFunc() {
 		ids = append(ids, iterator.Value().([]string)...)
 	}
+
 	return
-}
-
-func (i *structIndex) runKeepQuery(q *query.Query, ids []string) []string {
-	// Do the lock up for the IDs to remove
-	idsToRemove := i.runQuery(q, false)
-	indexToRemove := []int{}
-
-	// Do the check of which IDs need to be removed
-	for j, id1 := range ids {
-		for _, id2 := range idsToRemove {
-			if id1 == id2 {
-				// Build the list of ids to remove
-				indexToRemove = append(indexToRemove, j)
-			}
-		}
-	}
-
-	// Once we know which index we need to remove we start at the end of the slice
-	// and we remove every not needed IDs.
-	for j := len(indexToRemove) - 1; j >= 0; j-- {
-		if len(ids) > indexToRemove[j] {
-			ids = append(ids[:indexToRemove[j]], ids[indexToRemove[j]+1:]...)
-		} else {
-			ids = ids[:indexToRemove[j]]
-		}
-	}
-
-	return ids
 }
 
 func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {
