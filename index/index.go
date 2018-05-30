@@ -252,7 +252,6 @@ func (i *structIndex) RunQuery(ctx context.Context, actions []*query.Action, ret
 		select {
 		case ids := <-responseChan:
 			ret = append(ret, ids...)
-			fmt.Println("22222", ret)
 			retChan <- ret
 		case <-ctx.Done():
 			return
@@ -266,13 +265,6 @@ func (i *structIndex) RunQuery(ctx context.Context, actions []*query.Action, ret
 
 func getIDs(ctx context.Context, i *structIndex, action *query.Action, responseChan chan []string) {
 	ids := i.runQuery(action)
-	fmt.Println("333", ids)
-
-	iter := i.tree.Iterator()
-	for iter.Next() {
-		fmt.Println(iter.Value(), iter.Key())
-	}
-
 	responseChan <- ids
 }
 

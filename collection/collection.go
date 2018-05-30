@@ -269,7 +269,6 @@ func (c *Collection) Query(q *query.Query) (ids []string) {
 		select {
 		case retIDs, ok := <-getIDsChan:
 			if ok {
-				fmt.Println("11111", retIDs)
 				getIDs = append(getIDs, retIDs...)
 			} else {
 				getDone = true

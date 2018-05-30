@@ -14,11 +14,8 @@ func (c *Collection) updateIndex(id string, newValue interface{}) error {
 	newRefs := []*IndexReference{}
 	for indexName, index := range c.Indexes {
 		if newValue != nil {
-			if value, apply := index.Apply(newValue); apply {
-				index.Put(value, id)
-
-				newRefs = append(newRefs, newIndexReference(indexName, value))
-			}
+			index.Put(newValue, id)
+			newRefs = append(newRefs, newIndexReference(indexName, newValue))
 		}
 	}
 

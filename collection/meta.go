@@ -146,7 +146,7 @@ func (c *Collection) getIndexReferences(id string) ([]*IndexReference, error) {
 		refsAsBytes = tx.Bucket(vars.InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Get([]byte(id))
 		return nil
 	}); viewErr != nil {
-		return nil, fmt.Errorf("getting the ")
+		return nil, fmt.Errorf("getting the references: %s", viewErr)
 	}
 
 	refs := []*IndexReference{}
