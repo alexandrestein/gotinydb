@@ -18,6 +18,8 @@ func TestStringQuery(t *testing.T) {
 	db, _ := bolt.Open(internalTesting.Path, vars.FilePermission, nil)
 	db.Update(func(tx *bolt.Tx) error {
 		tx.CreateBucket(vars.InternalBuckectCollections)
+		metaBucket, _ := tx.CreateBucket(vars.InternalBuckectMetaDatas)
+		metaBucket.CreateBucket([]byte(colName))
 		return nil
 	})
 	// i := index.NewStringIndex(internalTesting.Path, selector)

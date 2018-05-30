@@ -7,10 +7,7 @@ import (
 	"testing"
 
 	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
-<<<<<<< HEAD
 	"github.com/alexandreStein/gods/utils"
-=======
->>>>>>> indexes
 )
 
 var rawExamples = []internalTesting.TestValue{}

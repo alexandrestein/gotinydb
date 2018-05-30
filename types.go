@@ -1,14 +1,8 @@
 package GoTinyDB
 
 import (
-<<<<<<< HEAD
 	"github.com/alexandreStein/GoTinyDB/collection"
 	bolt "github.com/coreos/bbolt"
-=======
-	"os"
-
-	"github.com/alexandreStein/GoTinyDB/collection"
->>>>>>> indexes
 )
 
 type (

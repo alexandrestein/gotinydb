@@ -59,13 +59,33 @@ func (c *Collection) Put(id string, value interface{}) error {
 		valueAsBytes = jsonBytes
 	}
 
-	return c.boltDB.Update(func(tx *bolt.Tx) error {
+	if insertErr := c.boltDB.Update(func(tx *bolt.Tx) error {
 		colBucket := tx.Bucket(vars.InternalBuckectCollections).Bucket([]byte(c.Name))
 		if colBucket == nil {
 			colBucket, _ = tx.Bucket(vars.InternalBuckectCollections).CreateBucket([]byte(c.Name))
 		}
 		return colBucket.Put([]byte(id), valueAsBytes)
-	})
+	}); insertErr != nil {
+		return insertErr
+	}
+
+	indexErrors := map[string]error{}
+	for indexName, index := range c.Indexes {
+		if val, apply := index.Apply(value); apply {
+			if updateErr := c.updateIndex(id, val); updateErr != nil {
+				indexErrors[indexName] = updateErr
+			}
+		}
+	}
+
+	if len(indexErrors) > 1 {
+		errorString := "updating the index: "
+		for indexName, err := range indexErrors {
+			errorString += fmt.Sprintf("index %q: %s\n", indexName, err.Error())
+		}
+		return fmt.Errorf(errorString)
+	}
+	return nil
 
 	// file, openErr := c.openDoc(id, isBin, vars.PutFlags)
 	// if openErr != nil {
@@ -166,7 +186,7 @@ func (c *Collection) Delete(id string) error {
 	log.Print("DELETE")
 	return nil
 
-	refs, getRefsErr := c.getIndexReference(id)
+	refs, getRefsErr := c.getIndexReferences(id)
 	if getRefsErr != nil {
 		return fmt.Errorf("getting the index references: %s", getRefsErr.Error())
 	}

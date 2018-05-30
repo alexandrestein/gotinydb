@@ -5,10 +5,7 @@ import (
 
 	"github.com/alexandreStein/GoTinyDB/collection"
 	"github.com/alexandreStein/GoTinyDB/vars"
-<<<<<<< HEAD
 	bolt "github.com/coreos/bbolt"
-=======
->>>>>>> indexes
 )
 
 // Open builds a new DB object with the given root path. It must be a directory.

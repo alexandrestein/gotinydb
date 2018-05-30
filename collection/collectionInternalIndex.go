@@ -3,8 +3,10 @@ package collection
 import "fmt"
 
 func (c *Collection) updateIndex(id string, newValue interface{}) error {
-	file, refs, _ := c.loadIndexRefAndFile(id, true)
-	defer file.Close()
+	refs, getIndexRefErr := c.getIndexReferences(id)
+	if getIndexRefErr != nil {
+		return fmt.Errorf("getting the index references: %s", getIndexRefErr.Error())
+	}
 
 	// Clean old values
 	c.updateIndexAfterDelete(id, refs)
@@ -20,12 +22,12 @@ func (c *Collection) updateIndex(id string, newValue interface{}) error {
 		}
 	}
 
-	return c.setIndexReferenceWithFile(id, newRefs, file)
+	return c.setIndexReferences(id, newRefs)
 }
 
 func (c *Collection) updateIndexAfterDelete(id string, refs []*IndexReference) error {
 	if refs == nil {
-		tmpRefs, getRefsErr := c.getIndexReference(id)
+		tmpRefs, getRefsErr := c.getIndexReferences(id)
 		if getRefsErr != nil {
 			return fmt.Errorf("can't get the index references of %q: %s", id, getRefsErr.Error())
 		}

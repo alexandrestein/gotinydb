@@ -12,8 +12,13 @@ import (
 func (d *DB) setNewCol(colName string) error {
 	return d.boltDB.Update(func(tx *bolt.Tx) error {
 		// Get the list of collection from internal bucket
-		bucket := tx.Bucket(vars.InternalBuckectMetaDatas)
-		v := bucket.Get(vars.InternalMetaDataCollectionsID)
+		metaDataBucket := tx.Bucket(vars.InternalBuckectMetaDatas)
+
+		if _, creatColMetaBucketErr := metaDataBucket.CreateBucket(colName); creatColMetaBucketErr != nil {
+			return fmt.Errorf("can't create the meta data bucket for collection %q: %s", colName, creatColMetaBucketErr.Error())
+		}
+
+		v := metaDataBucket.Get(vars.InternalMetaDataCollectionsID)
 
 		collectionsNames := []string{}
 		// If the response is empty there is no existing collections.
@@ -31,7 +36,7 @@ func (d *DB) setNewCol(colName string) error {
 			return fmt.Errorf("marshaling index names: %s", marshErr.Error())
 		}
 
-		if setErr := bucket.Put(vars.InternalMetaDataCollectionsID, colNamesAsBytes); setErr != nil {
+		if setErr := metaDataBucket.Put(vars.InternalMetaDataCollectionsID, colNamesAsBytes); setErr != nil {
 			return fmt.Errorf("saving the collection names: %s", setErr.Error())
 		}
 
