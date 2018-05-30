@@ -1,10 +1,9 @@
 package index
 
 import (
+	"context"
 	"fmt"
 	"time"
-
-	"context"
 
 	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/alexandreStein/gods/utils"
@@ -92,34 +91,6 @@ func (i *structIndex) Load(content []byte) error {
 	}
 
 	return nil
-
-	// file, fileErr := os.OpenFile(i.path, os.O_RDONLY, vars.FilePermission)
-	// if fileErr != nil {
-	// 	return fmt.Errorf("opening file: %s", fileErr.Error())
-	// }
-	//
-	// buf := bytes.NewBuffer(nil)
-	// at := int64(0)
-	// for {
-	// 	tmpBuf := make([]byte, vars.BlockSize)
-	// 	n, readErr := file.ReadAt(tmpBuf, at)
-	// 	if readErr != nil {
-	// 		if io.EOF == readErr {
-	// 			buf.Write(tmpBuf[:n])
-	// 			break
-	// 		}
-	// 		return fmt.Errorf("%d readed but: %s", n, readErr.Error())
-	// 	}
-	// 	at = at + int64(n)
-	// 	buf.Write(tmpBuf)
-	// }
-	//
-	// err := i.tree.FromJSON(buf.Bytes())
-	// if err != nil {
-	// 	return fmt.Errorf("parsing block: %s", err.Error())
-	// }
-	//
-	// return nil
 }
 
 func (i *structIndex) RemoveID(value interface{}, objectID string) error {
@@ -351,6 +322,63 @@ func (i *structIndex) runQuery(action *query.Action) (ids []string) {
 
 	return
 }
+
+// func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {
+// 	var mapObj map[string]interface{}
+// 	if structs.IsStruct(object) {
+// 		mapObj = structs.Map(object)
+// 	} else if tmpMap, ok := object.(map[string]interface{}); ok {
+// 		mapObj = tmpMap
+// 	} else {
+// 		return nil, false
+// 	}
+//
+// 	var ok bool
+// 	// Loop every level of the index
+// 	for j, selectorElem := range i.selector {
+// 		// If not at the top level
+// 		if j < len(i.selector)-1 {
+// 			// Trys to convert the value into map[string]interface{}
+// 			mapObj, ok = mapObj[selectorElem].(map[string]interface{})
+// 			// If not possible the index do not apply
+// 			if !ok || mapObj == nil {
+// 				return nil, false
+// 			}
+// 			// If at the top level
+// 		} else {
+// 			// Checks that the value is not nil
+// 			if mapObj[selectorElem] == nil {
+// 				return nil, false
+// 			}
+//
+// 			// Check that the value in consustant with the specified index type
+// 			// Convert to the coresponding type and check if the value is nil.
+// 			switch i.Type() {
+// 			case StringIndexType:
+// 				if val, ok := mapObj[selectorElem].(string); !ok {
+// 					return nil, false
+// 				} else if val == "" {
+// 					return nil, false
+// 				} else {
+// 					valueToIndex = val
+// 				}
+// 			case IntIndexType:
+// 				if val, ok := mapObj[selectorElem].(int); !ok {
+// 					return nil, false
+// 				} else if val == 0 {
+// 					return nil, false
+// 				} else {
+// 					valueToIndex = val
+// 				}
+// 			default:
+// 				return nil, false
+// 			}
+// 		}
+// 	}
+//
+// 	// Went to here, means that the index apply to this object
+// 	return valueToIndex, true
+// }
 
 func (i *structIndex) Apply(object interface{}) (valueToIndex interface{}, apply bool) {
 	var mapObj map[string]interface{}

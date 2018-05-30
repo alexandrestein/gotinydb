@@ -50,8 +50,7 @@ type (
 
 		// RunQuery runs the given query and subqueries before returning the
 		// corresponding ids.
-		RunQuery(ctx context.Context, queries []*query.Action, responseChan chan []string)
-		// RunQuery(q *query.Query) (ids []string)
+		RunQuery(ctx context.Context, actions []*query.Action, retChan chan []string)
 
 		// Save and Load saves or loads the tree at or from the path location from
 		// the initialisation.

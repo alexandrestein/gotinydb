@@ -619,7 +619,7 @@ func testFloat64List() []*TestStruct {
 }
 func testTimeList() []*TestStruct {
 	return []*TestStruct{
-		{time.Now().Add(-time.Hour), "id1"},
-		{time.Now().Add(time.Hour), "id2"},
+		{time.Now().Add(-time.Hour).Truncate(time.Millisecond), "id1"},
+		{time.Now().Add(time.Hour).Truncate(time.Millisecond), "id2"},
 	}
 }

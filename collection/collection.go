@@ -34,9 +34,9 @@ func NewCollection(db *bolt.DB, name string) *Collection {
 	return c
 }
 
-func (c *Collection) SetBolt(db *bolt.DB) {
-	c.boltDB = db
-}
+// func (c *Collection) SetBolt(db *bolt.DB) {
+// 	c.boltDB = db
+// }
 
 // Put saves the given element into the given ID.
 // If record already exists it updates it.
@@ -249,6 +249,7 @@ func (c *Collection) Query(q *query.Query) (ids []string) {
 		select {
 		case retIDs, ok := <-getIDsChan:
 			if ok {
+				fmt.Println("11111", retIDs)
 				getIDs = append(getIDs, retIDs...)
 			} else {
 				getDone = true
