@@ -8,7 +8,6 @@ import (
 	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/alexandreStein/gods/utils"
 
-	"github.com/alexandreStein/GoTinyDB/query"
 	"github.com/fatih/structs"
 )
 
@@ -227,7 +226,7 @@ func (i *structIndex) doesApply(selector []string) bool {
 // 	return
 // }
 
-func (i *structIndex) RunQuery(ctx context.Context, actions []*query.Action, retChan chan []string) {
+func (i *structIndex) RunQuery(ctx context.Context, actions []*Action, retChan chan []string) {
 	responseChan := make(chan []string, 16)
 	defer close(retChan)
 	defer close(responseChan)
@@ -263,14 +262,14 @@ func (i *structIndex) RunQuery(ctx context.Context, actions []*query.Action, ret
 	}
 }
 
-func getIDs(ctx context.Context, i *structIndex, action *query.Action, responseChan chan []string) {
+func getIDs(ctx context.Context, i *structIndex, action *Action, responseChan chan []string) {
 	ids := i.runQuery(action)
 	responseChan <- ids
 }
 
-func (i *structIndex) runQuery(action *query.Action) (ids []string) {
+func (i *structIndex) runQuery(action *Action) (ids []string) {
 	// If equal just this leave will be send
-	if action.GetType() == query.Equal {
+	if action.GetType() == Equal {
 		tmpIDs, found := i.Get(action.CompareToValue)
 		if found {
 			ids = tmpIDs
@@ -283,7 +282,7 @@ func (i *structIndex) runQuery(action *query.Action) (ids []string) {
 	var nextFunc (func() bool)
 	var keyFound bool
 
-	if action.GetType() == query.Greater {
+	if action.GetType() == Greater {
 		_, keyAfter, found := i.tree.GetClosestKeys(action.CompareToValue)
 		keyFound = found
 		if keyAfter != nil {
@@ -291,7 +290,7 @@ func (i *structIndex) runQuery(action *query.Action) (ids []string) {
 			iteratorInit = true
 		}
 		nextFunc = iterator.Next
-	} else if action.GetType() == query.Less {
+	} else if action.GetType() == Less {
 		keyBefore, _, found := i.tree.GetClosestKeys(action.CompareToValue)
 		keyFound = found
 		if keyBefore != nil {

@@ -3,7 +3,6 @@ package index
 import (
 	"context"
 
-	"github.com/alexandreStein/GoTinyDB/query"
 	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/alexandreStein/gods/utils"
 )
@@ -50,7 +49,7 @@ type (
 
 		// RunQuery runs the given query and subqueries before returning the
 		// corresponding ids.
-		RunQuery(ctx context.Context, actions []*query.Action, retChan chan []string)
+		RunQuery(ctx context.Context, actions []*Action, retChan chan []string)
 
 		// Save and Load saves or loads the tree at or from the path location from
 		// the initialisation.
