@@ -12,12 +12,12 @@ go:
   # - "1.8.x"
   # - "1.9.x"
   - "1.10.x"
-  - master
+  # - master
   # - tip
 
 before_install:
   - go get -t -v ./...
-  - chmod +x ./testScript.sh
+  # - chmod +x ./testScript.sh
 
 script:
   # - go test -race -coverprofile=coverage.txt -covermode=atomic

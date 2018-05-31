@@ -23,8 +23,6 @@ func getGoodList(i Index) []*TestStruct {
 		return testStringList()
 	case utils.IntComparatorType:
 		return testIntList()
-	case utils.TimeComparatorType:
-		return testTimeList()
 	case utils.Int8ComparatorType:
 		return testInt8List()
 	case utils.Int16ComparatorType:
@@ -47,8 +45,11 @@ func getGoodList(i Index) []*TestStruct {
 		return testFloat32List()
 	case utils.Float64ComparatorType:
 		return testFloat64List()
+	case utils.TimeComparatorType:
+		return testTimeList()
+	default:
+		return nil
 	}
-	return nil
 }
 
 func testApply(t *testing.T, i Index) {
@@ -619,7 +620,7 @@ func testFloat64List() []*TestStruct {
 }
 func testTimeList() []*TestStruct {
 	return []*TestStruct{
-		{time.Now().Add(-time.Hour).Truncate(time.Millisecond), "id1"},
-		{time.Now().Add(time.Hour).Truncate(time.Millisecond), "id2"},
+		{time.Now().Add(-time.Hour).Truncate(time.Second), "id1"},
+		{time.Now().Add(time.Hour).Truncate(time.Second), "id2"},
 	}
 }
