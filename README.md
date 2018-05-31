@@ -5,7 +5,7 @@
 The goal is to have a farly simple database wich is light and don't needs to fit
 in RAM. It supports indexing for most of the basic Golang types.
 
-### Installing
+## Installing
 
 ```bash
 go get -u github.com/alexandreStein/GoTinyDB
@@ -13,18 +13,19 @@ go get -u github.com/alexandreStein/GoTinyDB
 
 ## Getting Started
 
-The package is supposed to be used inside your sofware and at this point it is not supose to be a real database server.
+The package is supposed to be used inside your sofware and at this point it is not supose to be a "real" database service.
 
-In your package you will init the database with something like:
+### Open database:
 ```golang
 db, initErr := New(internalTesting.Path)
 if initErr != nil {
   log.Fatal(initErr.Error())
   return
 }
+defer db.Close()
 ```
 
-Ones init you will get or build a collection:
+### Open collection:
 ```golang
 col, colErr := db.Use("colectionName")
 if colErr != nil {
@@ -33,9 +34,11 @@ if colErr != nil {
 }
 ```
 
-Then the operations are done directly on the collection ponter:
-To have access to the query you need to build the index before puting data.
+### Setup an index for future queries:
 ```golang
+// If you have user object like this:
+// {UserName: string, Address: {Street: string, Num: int, City: string, ZIP: int}}
+// and you want to index the username and the ZIP code.
 if err := col.SetIndex(UserNameIndexName, utils.StringComparatorType, []string{"UserName"}); err != nil {
   log.Fatal(err)
 }
@@ -43,11 +46,11 @@ if err := col.SetIndex(ZipIndexName, utils.IntComparatorType, []string{"Address"
   log.Fatal(err)
 }
 ```
-There is many types of index. Take a look at the [index documentation](indexDOC).
+There is many types of index. Take a look at the [index documentation](https://godoc.org/github.com/alexandreStein/GoTinyDB/index).
 
-Put some data in the collection:
+### Put some data in the collection:
 ```golang
-putErr := col.Put(objectID, content)
+putErr := col.Put(objectID, objectOrBytes)
 if putErr != nil {
   log.Error(putErr)
   return
@@ -57,7 +60,7 @@ The content can be an object or a stream of bytes. If it's a stream it needs to
 have the form of `[]byte{}`.
 This will adds and updates existing values.
 
-To get some data from the collection directly from the ID:
+### Get some data from the collection directly by it's the ID:
 ```golang
 getErr := col.Get(objectID, receiver)
 if getErr != nil {
@@ -65,18 +68,20 @@ if getErr != nil {
   return
 }
 ```
-The receiver can be an object or a stream of bytes. If it's a stream it needs to
+The receiver can be an object ponter or a stream of bytes. If it's a stream it needs to
 have the form of `*bytes.Buffer`.
 
-When you need to get value based on the sub elements use the query function with:
+### Get objects by query:
 ```golang
+// Get IDs of object with ZIP code greater than 5000 less than 6000 and limited
+// to 100 responses starting with elements with ZIP code are the closest from 5000
 selector := []string{"Address","ZIP"}
 limit := 100
-q := query.NewQuery(selector).SetLimit(limit)
+q := query.NewQuery().SetLimit(limit)
 // This defines the elements you want to retreive
-wantAction := query.NewAction(query.Greater).CompareTo(5000)
-// This will removes ids from the list if it match this action
-doesNotWantAction := query.NewAction(query.Greater).CompareTo(6000)
+wantAction := query.NewAction(query.Greater).SetSelector(selector).CompareTo(5000)
+// This will removes ids from the list if match
+doesNotWantAction := query.NewAction(query.Greater).SetSelector(selector).CompareTo(6000)
 
 // Actualy do the query and get the IDs
 ids := col.Query(q.Get(wantAction).Keep(doesNotWantAction))

@@ -96,11 +96,20 @@ func TestDB(t *testing.T) {
 
 	for _, user := range internalTesting.GetUsersExample() {
 		tmpUser := &internalTesting.UserTest{}
-		queryObj := query.NewQuery()
 		getAction := query.NewAction(query.Equal).SetSelector(usernameSelector)
-		queryObj.Get(getAction).SetLimit(1)
-		col1.Query(queryObj)
-		getErr := col1.Get(user.GetID(), tmpUser)
+		queryObj := query.NewQuery().Get(getAction)
+		userID := ""
+		if ids := col1.Query(queryObj); len(ids) != 1 {
+			t.Errorf("query did not responde the expected id\nexpected %q\nhad %v", user.GetID(), ids)
+			return
+		} else {
+			userID = ids[0]
+		}
+		if userID != user.GetID() {
+			t.Errorf("getting the id of %q but had %q", userID, user.GetID())
+			return
+		}
+		getErr := col1.Get(userID, tmpUser)
 		if getErr != nil {
 			t.Errorf("getting the object: %s", getErr.Error())
 			return
