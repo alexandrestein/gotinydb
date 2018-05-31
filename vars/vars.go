@@ -30,11 +30,12 @@ var (
 // Defines the nested bucket inside MetaDatas bucket.
 var (
 	InternalMetaDataBuckectCollections = InternalBuckectCollections
-	InternalMetaDataBuckectIndexes     = []byte("_indexes")
+	// InternalMetaDataBuckectIndexes     = []byte("_indexes")
 )
 
-// Defines the IDs used to get internal values from the
+// Defines the IDs used to get internal values from the store
 var (
 	InternalMetaDataCollectionsID = []byte("collections")
-	InternalMetaDataIndexesID     = []byte("indexes")
+
+	InternalMetaDataCollectionsIDSuffix = ".collection"
 )

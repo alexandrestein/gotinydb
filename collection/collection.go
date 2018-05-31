@@ -15,8 +15,6 @@ import (
 	"github.com/alexandreStein/GoTinyDB/vars"
 	"github.com/alexandreStein/gods/utils"
 	bolt "github.com/coreos/bbolt"
-
-	"github.com/labstack/gommon/log"
 )
 
 // NewCollection builds a new Collection pointer. It is called internaly by DB
@@ -130,8 +128,11 @@ func (c *Collection) Get(id string, value interface{}) error {
 	}
 
 	if givenBuffer, ok := value.(*bytes.Buffer); ok {
-		givenBuffer.Write(contentAsBytes)
-		return nil
+		if len(contentAsBytes) != 0 {
+			givenBuffer.Write(contentAsBytes)
+			return nil
+		}
+		return fmt.Errorf("content of %q is empty or not present", id)
 	}
 
 	uMarshalErr := json.Unmarshal(contentAsBytes, value)
@@ -180,12 +181,8 @@ func (c *Collection) Get(id string, value interface{}) error {
 
 // Delete removes the coresponding object and index references.
 func (c *Collection) Delete(id string) error {
-	// defer os.Remove(c.getRecordPath(id, false))
-	// defer os.Remove(c.getRecordPath(id, true))
 
-	log.Print("DELETE")
-	return nil
-
+	// Take care of cleaning the index
 	refs, getRefsErr := c.getIndexReferences(id)
 	if getRefsErr != nil {
 		return fmt.Errorf("getting the index references: %s", getRefsErr.Error())
@@ -193,6 +190,12 @@ func (c *Collection) Delete(id string) error {
 
 	if err := c.updateIndexAfterDelete(id, refs); err != nil {
 		return fmt.Errorf("updating index: %s", err.Error())
+	}
+
+	if err := c.boltDB.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(vars.InternalBuckectCollections).Bucket([]byte(c.Name)).Delete([]byte(id))
+	}); err != nil {
+		return fmt.Errorf("deleting on the DB: %s", err.Error())
 	}
 
 	return nil

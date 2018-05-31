@@ -14,7 +14,7 @@ func (d *DB) setNewCol(colName string) error {
 		// Get the list of collection from internal bucket
 		metaDataBucket := tx.Bucket(vars.InternalBuckectMetaDatas)
 
-		if _, creatColMetaBucketErr := metaDataBucket.CreateBucket(colName); creatColMetaBucketErr != nil {
+		if _, creatColMetaBucketErr := metaDataBucket.CreateBucket([]byte(colName)); creatColMetaBucketErr != nil {
 			return fmt.Errorf("can't create the meta data bucket for collection %q: %s", colName, creatColMetaBucketErr.Error())
 		}
 
@@ -46,7 +46,6 @@ func (d *DB) setNewCol(colName string) error {
 
 func (d *DB) updateCollection(col *collection.Collection) error {
 	return d.boltDB.Update(func(tx *bolt.Tx) error {
-		// Get the list of collection from internal bucket
 		bucket := tx.Bucket(vars.InternalBuckectMetaDatas)
 
 		colAsBytes, marshErr := json.Marshal(col)
@@ -54,8 +53,8 @@ func (d *DB) updateCollection(col *collection.Collection) error {
 			return marshErr
 		}
 
-		if setErr := bucket.Put([]byte(col.Name), colAsBytes); setErr != nil {
-			return fmt.Errorf("saving the collection names: %s", setErr.Error())
+		if setErr := bucket.Put([]byte(col.Name+vars.InternalMetaDataCollectionsIDSuffix), colAsBytes); setErr != nil {
+			return fmt.Errorf("saving the collection name %q: %s", col.Name, setErr.Error())
 		}
 
 		return nil

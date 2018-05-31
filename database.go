@@ -40,15 +40,12 @@ func Open(path string) (*DB, error) {
 
 func (d *DB) checkAndBuildInternalBuckets() error {
 	return d.boltDB.Update(func(tx *bolt.Tx) error {
-		// Create meta data bucket
-		// metaBucket, createBucketErr := tx.CreateBucket(vars.InternalBuckectMetaDatas)
-		// // If no error the bucket does not exist
-		// if createBucketErr == nil {
-		// 	// Init the default indexes to none
-		// 	metaBucket.CreateBucket(vars.InternalMetaDataBuckectCollections)
-		// }
-		tx.CreateBucket(vars.InternalBuckectMetaDatas)
-		tx.CreateBucket(vars.InternalBuckectCollections)
+		if _, err := tx.CreateBucketIfNotExists(vars.InternalBuckectMetaDatas); err != nil {
+			return err
+		}
+		if _, err := tx.CreateBucketIfNotExists(vars.InternalBuckectCollections); err != nil {
+			return err
+		}
 		return nil
 	})
 }
@@ -58,7 +55,7 @@ func (d *DB) checkAndBuildInternalBuckets() error {
 func (d *DB) Use(colName string) (*collection.Collection, error) {
 	// Gets from in memory
 	if activeCol, found := d.collections[colName]; found {
-		activeCol.SetBolt(d.boltDB)
+		// activeCol.SetBolt(d.boltDB)
 		return activeCol, nil
 	}
 
