@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/alexandreStein/GoTinyDB/query"
 	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
 	"github.com/alexandreStein/GoTinyDB/vars"
 
@@ -31,11 +30,11 @@ func TestStringQuery(t *testing.T) {
 		col.Put(user.GetID(), user.GetContent())
 	}
 
-	buildTestQuery := func(limit int, reverted bool, getActions, keepActions []*query.Action) *query.Query {
+	buildTestQuery := func(limit int, reverted bool, getActions, keepActions []*Action) *Query {
 		if limit == 0 {
 			limit = 1
 		}
-		q := query.NewQuery().SetLimit(limit)
+		q := NewQuery().SetLimit(limit)
 		if reverted {
 			q.InvertOrder()
 		}
@@ -56,49 +55,49 @@ func TestStringQuery(t *testing.T) {
 
 	listOfTests := []struct {
 		name           string
-		query          *query.Query
+		query          *Query
 		expectedResult []string
 	}{
 		{
 			name: "Get Equal with limit 1",
 			query: buildTestQuery(1, false,
-				[]*query.Action{query.NewAction(query.Equal).CompareTo("North street")},
+				[]*Action{NewAction(Equal).CompareTo("North street")},
 				nil),
 			expectedResult: []string{"S_North_1"},
 		}, {
 			name: "Get Equal with limit 5",
 			query: buildTestQuery(5, false,
-				[]*query.Action{query.NewAction(query.Equal).CompareTo("North street")},
+				[]*Action{NewAction(Equal).CompareTo("North street")},
 				nil),
 			expectedResult: []string{"S_North_1", "S_North_6", "S_North_11", "S_North_16", "S_North_21"},
 		}, {
 			name: "Get Equal with limit 5 and reverted",
 			query: buildTestQuery(5, true,
-				[]*query.Action{query.NewAction(query.Equal).CompareTo("North street")},
+				[]*Action{NewAction(Equal).CompareTo("North street")},
 				nil),
 			expectedResult: []string{"S_North_21", "S_North_16", "S_North_11", "S_North_6", "S_North_1"},
 		}, {
 			name: "Get Greater and Equal - limit 15",
 			query: buildTestQuery(15, false,
-				[]*query.Action{query.NewAction(query.Greater).CompareTo("East street")},
+				[]*Action{NewAction(Greater).CompareTo("East street")},
 				nil),
 			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24", "S_East_29", "S_East_34", "S_East_39", "S_East_44", "S_East_49", "S_George_5", "S_George_10", "S_George_15", "S_George_20", "S_George_25"},
 		}, {
 			name: "Get Greater - limit 10",
 			query: buildTestQuery(10, false,
-				[]*query.Action{query.NewAction(query.Greater).CompareTo("East street").EqualWanted()},
+				[]*Action{NewAction(Greater).CompareTo("East street").EqualWanted()},
 				nil),
 			expectedResult: []string{"S_George_5", "S_George_10", "S_George_15", "S_George_20", "S_George_25", "S_George_30", "S_George_35", "S_George_40", "S_George_45", "S_North_1"},
 		}, {
 			name: "Get Less and Equal - limit 15",
 			query: buildTestQuery(15, false,
-				[]*query.Action{query.NewAction(query.Less).CompareTo("West street")},
+				[]*Action{NewAction(Less).CompareTo("West street")},
 				nil),
 			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23", "S_West_28", "S_West_33", "S_West_38", "S_West_43", "S_West_48", "S_South_2", "S_South_7", "S_South_12", "S_South_17", "S_South_22"},
 		}, {
 			name: "Get Less - limit 10",
 			query: buildTestQuery(10, false,
-				[]*query.Action{query.NewAction(query.Less).CompareTo("West street").EqualWanted()},
+				[]*Action{NewAction(Less).CompareTo("West street").EqualWanted()},
 				nil),
 			expectedResult: []string{"S_South_2", "S_South_7", "S_South_12", "S_South_17", "S_South_22", "S_South_27", "S_South_32", "S_South_37", "S_South_42", "S_South_47"},
 		}, {
@@ -108,38 +107,38 @@ func TestStringQuery(t *testing.T) {
 		}, {
 			name: "Greater than last",
 			query: buildTestQuery(5, false,
-				[]*query.Action{query.NewAction(query.Greater).CompareTo("Z")},
+				[]*Action{NewAction(Greater).CompareTo("Z")},
 				nil),
 			expectedResult: []string{},
 		}, {
 			name: "Less than first",
 			query: buildTestQuery(5, false,
-				[]*query.Action{query.NewAction(query.Less).CompareTo("A")},
+				[]*Action{NewAction(Less).CompareTo("A")},
 				nil),
 			expectedResult: []string{},
 		}, {
 			name: "Greater from start",
 			query: buildTestQuery(5, false,
-				[]*query.Action{query.NewAction(query.Greater).CompareTo("A")},
+				[]*Action{NewAction(Greater).CompareTo("A")},
 				nil),
 			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24"},
 		}, {
 			name: "Less from end",
 			query: buildTestQuery(5, false,
-				[]*query.Action{query.NewAction(query.Less).CompareTo("Z")},
+				[]*Action{NewAction(Less).CompareTo("Z")},
 				nil),
 			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23"},
 		}, {
 			name: "Greater from start and keep after E - limit 20",
 			query: buildTestQuery(100, false,
-				[]*query.Action{query.NewAction(query.Greater).CompareTo("A")},
-				[]*query.Action{query.NewAction(query.Greater).CompareTo("F")}),
+				[]*Action{NewAction(Greater).CompareTo("A")},
+				[]*Action{NewAction(Greater).CompareTo("F")}),
 			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24", "S_East_29", "S_East_34", "S_East_39", "S_East_44", "S_East_49"},
 		}, {
 			name: "Duplicated",
 			query: buildTestQuery(10, false,
-				[]*query.Action{query.NewAction(query.Equal).CompareTo("North street Dup")},
-				[]*query.Action{query.NewAction(query.Greater).CompareTo("North street Dup4")}).DistinctWanted(),
+				[]*Action{NewAction(Equal).CompareTo("North street Dup")},
+				[]*Action{NewAction(Greater).CompareTo("North street Dup4")}).DistinctWanted(),
 			expectedResult: []string{"DUP_1"},
 		},
 	}
@@ -232,11 +231,11 @@ func testIntList() [][]interface{} {
 // 		col.Put(user.GetID(), user.GetContent())
 // 	}
 //
-// 	buildTestQuery := func(limit int, reverted bool, getActions, keepActions []*query.Action) *query.Query {
+// 	buildTestQuery := func(limit int, reverted bool, getActions, keepActions []*Action) *Query {
 // 		if limit == 0 {
 // 			limit = 1
 // 		}
-// 		q := query.NewQuery().SetLimit(limit)
+// 		q := NewQuery().SetLimit(limit)
 // 		if reverted {
 // 			q.InvertOrder()
 // 		}
@@ -257,49 +256,49 @@ func testIntList() [][]interface{} {
 //
 // 	listOfTests := []struct {
 // 		name           string
-// 		query          *query.Query
+// 		query          *Query
 // 		expectedResult []string
 // 	}{
 // 		{
 // 			name: "Get Equal with limit 1",
 // 			query: buildTestQuery(1, false,
-// 				[]*query.Action{query.NewAction(query.Equal).CompareTo("North street")},
+// 				[]*Action{NewAction(Equal).CompareTo("North street")},
 // 				nil),
 // 			expectedResult: []string{"S_North_1"},
 // 		}, {
 // 			name: "Get Equal with limit 5",
 // 			query: buildTestQuery(5, false,
-// 				[]*query.Action{query.NewAction(query.Equal).CompareTo("North street")},
+// 				[]*Action{NewAction(Equal).CompareTo("North street")},
 // 				nil),
 // 			expectedResult: []string{"S_North_1", "S_North_6", "S_North_11", "S_North_16", "S_North_21"},
 // 		}, {
 // 			name: "Get Equal with limit 5 and reverted",
 // 			query: buildTestQuery(5, true,
-// 				[]*query.Action{query.NewAction(query.Equal).CompareTo("North street")},
+// 				[]*Action{NewAction(Equal).CompareTo("North street")},
 // 				nil),
 // 			expectedResult: []string{"S_North_21", "S_North_16", "S_North_11", "S_North_6", "S_North_1"},
 // 		}, {
 // 			name: "Get Greater and Equal - limit 15",
 // 			query: buildTestQuery(15, false,
-// 				[]*query.Action{query.NewAction(query.Greater).CompareTo("East street")},
+// 				[]*Action{NewAction(Greater).CompareTo("East street")},
 // 				nil),
 // 			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24", "S_East_29", "S_East_34", "S_East_39", "S_East_44", "S_East_49", "S_George_5", "S_George_10", "S_George_15", "S_George_20", "S_George_25"},
 // 		}, {
 // 			name: "Get Greater - limit 10",
 // 			query: buildTestQuery(10, false,
-// 				[]*query.Action{query.NewAction(query.Greater).CompareTo("East street").EqualWanted()},
+// 				[]*Action{NewAction(Greater).CompareTo("East street").EqualWanted()},
 // 				nil),
 // 			expectedResult: []string{"S_George_5", "S_George_10", "S_George_15", "S_George_20", "S_George_25", "S_George_30", "S_George_35", "S_George_40", "S_George_45", "S_North_1"},
 // 		}, {
 // 			name: "Get Less and Equal - limit 15",
 // 			query: buildTestQuery(15, false,
-// 				[]*query.Action{query.NewAction(query.Less).CompareTo("West street")},
+// 				[]*Action{NewAction(Less).CompareTo("West street")},
 // 				nil),
 // 			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23", "S_West_28", "S_West_33", "S_West_38", "S_West_43", "S_West_48", "S_South_2", "S_South_7", "S_South_12", "S_South_17", "S_South_22"},
 // 		}, {
 // 			name: "Get Less - limit 10",
 // 			query: buildTestQuery(10, false,
-// 				[]*query.Action{query.NewAction(query.Less).CompareTo("West street").EqualWanted()},
+// 				[]*Action{NewAction(Less).CompareTo("West street").EqualWanted()},
 // 				nil),
 // 			expectedResult: []string{"S_South_2", "S_South_7", "S_South_12", "S_South_17", "S_South_22", "S_South_27", "S_South_32", "S_South_37", "S_South_42", "S_South_47"},
 // 		}, {
@@ -309,38 +308,38 @@ func testIntList() [][]interface{} {
 // 		}, {
 // 			name: "Greater than last",
 // 			query: buildTestQuery(5, false,
-// 				[]*query.Action{query.NewAction(query.Greater).CompareTo("Z")},
+// 				[]*Action{NewAction(Greater).CompareTo("Z")},
 // 				nil),
 // 			expectedResult: []string{},
 // 		}, {
 // 			name: "Less than first",
 // 			query: buildTestQuery(5, false,
-// 				[]*query.Action{query.NewAction(query.Less).CompareTo("A")},
+// 				[]*Action{NewAction(Less).CompareTo("A")},
 // 				nil),
 // 			expectedResult: []string{},
 // 		}, {
 // 			name: "Greater from start",
 // 			query: buildTestQuery(5, false,
-// 				[]*query.Action{query.NewAction(query.Greater).CompareTo("A")},
+// 				[]*Action{NewAction(Greater).CompareTo("A")},
 // 				nil),
 // 			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24"},
 // 		}, {
 // 			name: "Less from end",
 // 			query: buildTestQuery(5, false,
-// 				[]*query.Action{query.NewAction(query.Less).CompareTo("Z")},
+// 				[]*Action{NewAction(Less).CompareTo("Z")},
 // 				nil),
 // 			expectedResult: []string{"S_West_3", "S_West_8", "S_West_13", "S_West_18", "S_West_23"},
 // 		}, {
 // 			name: "Greater from start and keep after E - limit 20",
 // 			query: buildTestQuery(100, false,
-// 				[]*query.Action{query.NewAction(query.Greater).CompareTo("A")},
-// 				[]*query.Action{query.NewAction(query.Greater).CompareTo("F")}),
+// 				[]*Action{NewAction(Greater).CompareTo("A")},
+// 				[]*Action{NewAction(Greater).CompareTo("F")}),
 // 			expectedResult: []string{"S_East_4", "S_East_9", "S_East_14", "S_East_19", "S_East_24", "S_East_29", "S_East_34", "S_East_39", "S_East_44", "S_East_49"},
 // 		}, {
 // 			name: "Duplicated",
 // 			query: buildTestQuery(10, false,
-// 				[]*query.Action{query.NewAction(query.Equal).CompareTo("North street Dup")},
-// 				[]*query.Action{query.NewAction(query.Greater).CompareTo("North street Dup4")}).DistinctWanted(),
+// 				[]*Action{NewAction(Equal).CompareTo("North street Dup")},
+// 				[]*Action{NewAction(Greater).CompareTo("North street Dup4")}).DistinctWanted(),
 // 			expectedResult: []string{"DUP_1"},
 // 		},
 // 	}

@@ -1,4 +1,4 @@
-package index
+package collection
 
 // Defines the different types of queries:
 const (

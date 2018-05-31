@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alexandreStein/GoTinyDB/index"
-	"github.com/alexandreStein/GoTinyDB/query"
 	"github.com/alexandreStein/GoTinyDB/vars"
 	"github.com/alexandreStein/gods/utils"
 	bolt "github.com/coreos/bbolt"
@@ -23,7 +21,7 @@ func NewCollection(db *bolt.DB, name string) *Collection {
 	c.Name = name
 	c.boltDB = db
 
-	c.Indexes = map[string]index.Index{}
+	c.Indexes = map[string]Index{}
 
 	// if err := c.load(); err != nil {
 	// 	return nil, fmt.Errorf("loading DB: %s", err.Error())
@@ -210,45 +208,45 @@ func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selec
 
 	switch indexType {
 	case utils.StringComparatorType:
-		c.Indexes[name] = index.NewString(name, selector)
+		c.Indexes[name] = NewStringIndex(name, selector)
 	case utils.IntComparatorType:
-		c.Indexes[name] = index.NewInt(name, selector)
+		c.Indexes[name] = NewIntIndex(name, selector)
 	case utils.Int8ComparatorType:
-		c.Indexes[name] = index.NewInt8(name, selector)
+		c.Indexes[name] = NewInt8Index(name, selector)
 	case utils.Int16ComparatorType:
-		c.Indexes[name] = index.NewInt16(name, selector)
+		c.Indexes[name] = NewInt16Index(name, selector)
 	case utils.Int32ComparatorType:
-		c.Indexes[name] = index.NewInt32(name, selector)
+		c.Indexes[name] = NewInt32Index(name, selector)
 	case utils.Int64ComparatorType:
-		c.Indexes[name] = index.NewInt64(name, selector)
+		c.Indexes[name] = NewInt64Index(name, selector)
 	case utils.UIntComparatorType:
-		c.Indexes[name] = index.NewUint(name, selector)
+		c.Indexes[name] = NewUintIndex(name, selector)
 	case utils.UInt8ComparatorType:
-		c.Indexes[name] = index.NewUint8(name, selector)
+		c.Indexes[name] = NewUint8Index(name, selector)
 	case utils.UInt16ComparatorType:
-		c.Indexes[name] = index.NewUint16(name, selector)
+		c.Indexes[name] = NewUint16Index(name, selector)
 	case utils.UInt32ComparatorType:
-		c.Indexes[name] = index.NewUint32(name, selector)
+		c.Indexes[name] = NewUint32Index(name, selector)
 	case utils.UInt64ComparatorType:
-		c.Indexes[name] = index.NewUint64(name, selector)
+		c.Indexes[name] = NewUint64Index(name, selector)
 	case utils.Float32ComparatorType:
-		c.Indexes[name] = index.NewFloat32(name, selector)
+		c.Indexes[name] = NewFloat32Index(name, selector)
 	case utils.Float64ComparatorType:
-		c.Indexes[name] = index.NewFloat64(name, selector)
+		c.Indexes[name] = NewFloat64Index(name, selector)
 	case utils.TimeComparatorType:
-		c.Indexes[name] = index.NewTime(name, selector)
+		c.Indexes[name] = NewTimeIndex(name, selector)
 	}
 
 	return c.save()
 }
 
 // GetIndex return the coreponding index.
-func (c *Collection) GetIndex(indexName string) index.Index {
+func (c *Collection) GetIndex(indexName string) Index {
 	return c.Indexes[indexName]
 }
 
 // Query run the given query to all the collection indexes.
-func (c *Collection) Query(q *query.Query) (ids []string) {
+func (c *Collection) Query(q *Query) (ids []string) {
 	if q == nil {
 		return
 	}

@@ -1,7 +1,6 @@
 package collection
 
 import (
-	"github.com/alexandreStein/GoTinyDB/index"
 	bolt "github.com/coreos/bbolt"
 )
 
@@ -10,7 +9,7 @@ type (
 	// stored. The design is similar to other NO-SQL database.
 	Collection struct {
 		Name    string
-		Indexes map[string]index.Index
+		Indexes map[string]Index
 
 		// path    string
 		boltDB *bolt.DB

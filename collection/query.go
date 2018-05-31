@@ -1,4 +1,4 @@
-package index
+package collection
 
 // func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 // 	if q == nil {
