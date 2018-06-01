@@ -1,7 +1,7 @@
 // +build go1.1
 // +build !go1.6
 
-package testing
+package GoTinyDB
 
 import (
 	"encoding/base64"

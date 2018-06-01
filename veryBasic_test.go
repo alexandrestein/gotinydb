@@ -5,12 +5,11 @@ import (
 	"os"
 	"testing"
 
-	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
 	"github.com/alexandreStein/gods/utils"
 )
 
 var (
-	rawExamples      = []internalTesting.TestValue{}
+	rawExamples      = []TestValue{}
 	defaultColName   = "col1"
 	usernameSelector = []string{"UserName"}
 )
@@ -63,7 +62,7 @@ func buildAndFeedDefaultDB(t *testing.T, path string) *DB {
 		return nil
 	}
 
-	for _, user := range internalTesting.GetUsersExample() {
+	for _, user := range GetUsersExample() {
 		putErr := col1.Put(user.GetID(), user)
 		if putErr != nil {
 			t.Errorf("puting the object: %s", putErr.Error())
@@ -82,9 +81,9 @@ func buildAndFeedDefaultDB(t *testing.T, path string) *DB {
 }
 
 func TestDB(t *testing.T) {
-	defer os.RemoveAll(internalTesting.Path)
-	rawExamples = internalTesting.GetRawExample()
-	db := buildAndFeedDefaultDB(t, internalTesting.Path)
+	defer os.RemoveAll(Path)
+	rawExamples = GetRawExample()
+	db := buildAndFeedDefaultDB(t, Path)
 	defer db.Close()
 
 	col1, getCollErr := db.Use(defaultColName)
@@ -93,8 +92,8 @@ func TestDB(t *testing.T) {
 		return
 	}
 
-	for _, user := range internalTesting.GetUsersExample() {
-		tmpUser := &internalTesting.UserTest{}
+	for _, user := range GetUsersExample() {
+		tmpUser := &UserTest{}
 		getAction := NewAction(Equal).SetSelector(usernameSelector)
 		queryObj := NewQuery().Get(getAction)
 		ids := col1.Query(queryObj)
@@ -132,7 +131,7 @@ func TestDB(t *testing.T) {
 		}
 	}
 
-	for _, user := range internalTesting.GetUsersExample() {
+	for _, user := range GetUsersExample() {
 		delUser := col1.Delete(user.GetID())
 		if delUser != nil {
 			t.Errorf("deleting the object: %s", delUser.Error())
@@ -147,8 +146,8 @@ func TestDB(t *testing.T) {
 		}
 	}
 
-	for _, user := range internalTesting.GetUsersExample() {
-		tmpUser := &internalTesting.UserTest{}
+	for _, user := range GetUsersExample() {
+		tmpUser := &UserTest{}
 		getErr := col1.Get(user.GetID(), tmpUser)
 		if getErr == nil {
 			t.Errorf("the object has been deleted but is was found: %v", tmpUser)

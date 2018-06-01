@@ -1,6 +1,6 @@
 // +build go1.6
 
-package testing
+package GoTinyDB
 
 import (
 	"crypto/rand"
