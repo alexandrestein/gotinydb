@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/alexandreStein/gods/utils"
+	"github.com/alexandrestein/gods/utils"
 )
 
 var (

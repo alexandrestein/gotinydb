@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/alexandreStein/gods/trees/btree"
-	"github.com/alexandreStein/gods/utils"
+	"github.com/alexandrestein/gods/trees/btree"
+	"github.com/alexandrestein/gods/utils"
 	bolt "github.com/coreos/bbolt"
 )
 

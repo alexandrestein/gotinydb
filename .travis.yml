@@ -1,6 +1,6 @@
 language: go
 
-go_import_path: github.com/alexandreStein/GoTinyDB
+go_import_path: github.com/alexandrestein/gotinydb
 
 go:
   # - "1.2.x"

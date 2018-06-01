@@ -2,15 +2,15 @@
 
 
 [[projects]]
-  name = "github.com/alexandreStein/gods"
+  name = "github.com/alexandrestein/gods"
   packages = [
     "containers",
     "trees",
     "trees/btree",
     "utils"
   ]
-  revision = "932b024ec989d1648611e33afd9f21d3a2009fb9"
-  version = "v1.0.0"
+  revision = "9f348be812d2f11cf0c07dc9652e86432573453a"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/coreos/bbolt"
@@ -33,6 +33,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "29a33d60a938e6a705f526ee546921a02d0af344a5e97277f769770cef191ccb"
+  inputs-digest = "b0d5c764912aeda847c98d91aae7721a52935b3dd4833e8b10b7bc8237d239e4"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -1,8 +1,8 @@
 package gotinydb
 
 import (
-	"github.com/alexandreStein/gods/trees/btree"
-	"github.com/alexandreStein/gods/utils"
+	"github.com/alexandrestein/gods/trees/btree"
+	"github.com/alexandrestein/gods/utils"
 )
 
 // NewStringIndex returns Index interface ready to manage string types

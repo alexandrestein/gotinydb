@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alexandreStein/gods/utils"
+	"github.com/alexandrestein/gods/utils"
 	bolt "github.com/coreos/bbolt"
 )
 

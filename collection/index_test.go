@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
-	"github.com/alexandreStein/GoTinyDB/vars"
+	internalTesting "github.com/alexandrestein/gotinydb/testing"
+	"github.com/alexandrestein/gotinydb/vars"
 
-	"github.com/alexandreStein/gods/utils"
+	"github.com/alexandrestein/gods/utils"
 	bolt "github.com/coreos/bbolt"
 )
 

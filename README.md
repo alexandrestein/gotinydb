@@ -1,6 +1,6 @@
 # GoTinyDB
 
-[![GoDoc](https://godoc.org/github.com/alexandreStein/GoTinyDB?status.svg)](https://godoc.org/github.com/alexandreStein/GoTinyDB) [![Build Status](https://travis-ci.org/alexandreStein/GoTinyDB.svg?branch=master)](https://travis-ci.org/alexandreStein/GoTinyDB)[![Go Report Card](https://goreportcard.com/badge/github.com/alexandreStein/GoTinyDB)](https://goreportcard.com/report/github.com/alexandreStein/GoTinyDB) [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb?status.svg)](https://godoc.org/github.com/alexandrestein/gotinydb) [![Build Status](https://travis-ci.org/alexandreStein/GoTinyDB.svg?branch=master)](https://travis-ci.org/alexandreStein/GoTinyDB)[![Go Report Card](https://goreportcard.com/badge/github.com/alexandrestein/gotinydb)](https://goreportcard.com/report/github.com/alexandrestein/gotinydb) [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 The goal is to have a farly simple database wich is light and don't needs to fit
 in RAM. It supports indexing for most of the basic Golang types.
@@ -8,7 +8,7 @@ in RAM. It supports indexing for most of the basic Golang types.
 ## Installing
 
 ```bash
-go get -u github.com/alexandreStein/GoTinyDB
+go get -u github.com/alexandrestein/gotinydb
 ```
 
 ## Getting Started
@@ -46,7 +46,7 @@ if err := col.SetIndex(ZipIndexName, utils.IntComparatorType, []string{"Address"
   log.Fatal(err)
 }
 ```
-There is many types of index. Take a look at the [index documentation](https://godoc.org/github.com/alexandreStein/GoTinyDB/index).
+There is many types of index. Take a look at the [index documentation](https://godoc.org/github.com/alexandrestein/gotinydb/index).
 
 ### Put some data in the collection:
 ```golang
@@ -117,11 +117,11 @@ We use [dep](https://github.com/golang/dep) or [vgo](https://github.com/golang/v
 The package is under heavy developement for now and is just for testing and developement at this point.
 Ones the design will be finalised the version will start at `1.0.0`.
 
-For futur the versions, see the [tags on this repository](https://github.com/alexandreStein/GoTinyDB/tags).
+For futur the versions, see the [tags on this repository](https://github.com/alexandrestein/gotinydb/tags).
 
 ## Authors
 
-* **Alexandre Stein** - [GitHub](https://github.com/alexandreStein)
+* **Alexandre Stein** - [GitHub](https://github.com/alexandrestein)
 
 <!-- See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project. -->
 
