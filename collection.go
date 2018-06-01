@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alexandreStein/GoTinyDB/vars"
 	"github.com/alexandreStein/gods/utils"
 	bolt "github.com/coreos/bbolt"
 )
@@ -53,9 +52,9 @@ func (c *Collection) Put(id string, value interface{}) error {
 	}
 
 	if insertErr := c.boltDB.Update(func(tx *bolt.Tx) error {
-		colBucket := tx.Bucket(vars.InternalBuckectCollections).Bucket([]byte(c.Name))
+		colBucket := tx.Bucket(InternalBuckectCollections).Bucket([]byte(c.Name))
 		if colBucket == nil {
-			colBucket, _ = tx.Bucket(vars.InternalBuckectCollections).CreateBucket([]byte(c.Name))
+			colBucket, _ = tx.Bucket(InternalBuckectCollections).CreateBucket([]byte(c.Name))
 		}
 		return colBucket.Put([]byte(id), valueAsBytes)
 	}); insertErr != nil {
@@ -110,7 +109,7 @@ func (c *Collection) Get(id string, value interface{}) error {
 	contentAsBytes := []byte{}
 
 	err := c.boltDB.View(func(tx *bolt.Tx) error {
-		colBucket := tx.Bucket(vars.InternalBuckectCollections).Bucket([]byte(c.Name))
+		colBucket := tx.Bucket(InternalBuckectCollections).Bucket([]byte(c.Name))
 		if colBucket == nil {
 			return fmt.Errorf("bucket of the collection %q does not exist", c.Name)
 		}
@@ -188,7 +187,7 @@ func (c *Collection) Delete(id string) error {
 	}
 
 	if err := c.boltDB.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(vars.InternalBuckectCollections).Bucket([]byte(c.Name)).Delete([]byte(id))
+		return tx.Bucket(InternalBuckectCollections).Bucket([]byte(c.Name)).Delete([]byte(id))
 	}); err != nil {
 		return fmt.Errorf("deleting on the DB: %s", err.Error())
 	}

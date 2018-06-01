@@ -1,5 +1,4 @@
-// Package vars provides some of the global elements of the database.
-package vars
+package GoTinyDB
 
 import (
 	"os"
@@ -10,10 +9,6 @@ const (
 	BlockSize      = 1024 * 1024 * 10 // 10MB
 	FilePermission = 0740             // u -> rwx | g -> r-- | o -> ---
 	TreeOrder      = 10
-
-	// IndexesDirName = "indexes"
-	// BoltFileName   = "bolt"
-	// LockFileName   = "lock"
 
 	OpenDBFlags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
 

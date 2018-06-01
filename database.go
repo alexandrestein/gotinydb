@@ -3,7 +3,6 @@ package GoTinyDB
 import (
 	"fmt"
 
-	"github.com/alexandreStein/GoTinyDB/vars"
 	bolt "github.com/coreos/bbolt"
 )
 
@@ -21,7 +20,7 @@ func Open(path string) (*DB, error) {
 	// }
 	// d.lockFile = lockFile
 
-	bolt, openBoltErr := bolt.Open(path, vars.FilePermission, nil)
+	bolt, openBoltErr := bolt.Open(path, FilePermission, nil)
 	if openBoltErr != nil {
 		return nil, fmt.Errorf("openning bolt: %v", openBoltErr.Error())
 	}
@@ -39,10 +38,10 @@ func Open(path string) (*DB, error) {
 
 func (d *DB) checkAndBuildInternalBuckets() error {
 	return d.boltDB.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists(vars.InternalBuckectMetaDatas); err != nil {
+		if _, err := tx.CreateBucketIfNotExists(InternalBuckectMetaDatas); err != nil {
 			return err
 		}
-		if _, err := tx.CreateBucketIfNotExists(vars.InternalBuckectCollections); err != nil {
+		if _, err := tx.CreateBucketIfNotExists(InternalBuckectCollections); err != nil {
 			return err
 		}
 		return nil

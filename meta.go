@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alexandreStein/GoTinyDB/vars"
 	bolt "github.com/coreos/bbolt"
 )
 
@@ -114,7 +113,7 @@ func (c *Collection) setIndexReferences(id string, refs []*IndexReference) error
 	}
 
 	if err := c.boltDB.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(vars.InternalBuckectMetaDatas).Put([]byte(id), refsAsBytes)
+		return tx.Bucket(InternalBuckectMetaDatas).Put([]byte(id), refsAsBytes)
 	}); err != nil {
 		return fmt.Errorf("saving references into DB: %s", err.Error())
 	}
@@ -143,7 +142,7 @@ func (c *Collection) getIndexReferences(id string) ([]*IndexReference, error) {
 	refsAsBytes := []byte{}
 
 	if viewErr := c.boltDB.View(func(tx *bolt.Tx) error {
-		refsAsBytes = tx.Bucket(vars.InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Get([]byte(id))
+		refsAsBytes = tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Get([]byte(id))
 		return nil
 	}); viewErr != nil {
 		return nil, fmt.Errorf("getting the references: %s", viewErr)
@@ -181,7 +180,7 @@ func (c *Collection) getIndexReferences(id string) ([]*IndexReference, error) {
 
 func (c *Collection) deleteIndexRefFile(id string) (err error) {
 	if err := c.boltDB.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(vars.InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Delete([]byte(id))
+		return tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Delete([]byte(id))
 	}); err != nil {
 		return err
 	}

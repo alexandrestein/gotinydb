@@ -4,20 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/alexandreStein/GoTinyDB/vars"
 	bolt "github.com/coreos/bbolt"
 )
 
 func (d *DB) setNewCol(colName string) error {
 	return d.boltDB.Update(func(tx *bolt.Tx) error {
 		// Get the list of collection from internal bucket
-		metaDataBucket := tx.Bucket(vars.InternalBuckectMetaDatas)
+		metaDataBucket := tx.Bucket(InternalBuckectMetaDatas)
 
 		if _, creatColMetaBucketErr := metaDataBucket.CreateBucket([]byte(colName)); creatColMetaBucketErr != nil {
 			return fmt.Errorf("can't create the meta data bucket for collection %q: %s", colName, creatColMetaBucketErr.Error())
 		}
 
-		v := metaDataBucket.Get(vars.InternalMetaDataCollectionsID)
+		v := metaDataBucket.Get(InternalMetaDataCollectionsID)
 
 		collectionsNames := []string{}
 		// If the response is empty there is no existing collections.
@@ -35,7 +34,7 @@ func (d *DB) setNewCol(colName string) error {
 			return fmt.Errorf("marshaling index names: %s", marshErr.Error())
 		}
 
-		if setErr := metaDataBucket.Put(vars.InternalMetaDataCollectionsID, colNamesAsBytes); setErr != nil {
+		if setErr := metaDataBucket.Put(InternalMetaDataCollectionsID, colNamesAsBytes); setErr != nil {
 			return fmt.Errorf("saving the collection names: %s", setErr.Error())
 		}
 
@@ -45,14 +44,14 @@ func (d *DB) setNewCol(colName string) error {
 
 func (d *DB) updateCollection(col *Collection) error {
 	return d.boltDB.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(vars.InternalBuckectMetaDatas)
+		bucket := tx.Bucket(InternalBuckectMetaDatas)
 
 		colAsBytes, marshErr := json.Marshal(col)
 		if marshErr != nil {
 			return marshErr
 		}
 
-		if setErr := bucket.Put([]byte(col.Name+vars.InternalMetaDataCollectionsIDSuffix), colAsBytes); setErr != nil {
+		if setErr := bucket.Put([]byte(col.Name+InternalMetaDataCollectionsIDSuffix), colAsBytes); setErr != nil {
 			return fmt.Errorf("saving the collection name %q: %s", col.Name, setErr.Error())
 		}
 
@@ -63,7 +62,7 @@ func (d *DB) updateCollection(col *Collection) error {
 func (d *DB) loadCollections() error {
 	return d.boltDB.View(func(tx *bolt.Tx) error {
 		// Get the list of collection from internal bucket
-		v := tx.Bucket(vars.InternalBuckectMetaDatas).Get(vars.InternalMetaDataCollectionsID)
+		v := tx.Bucket(InternalBuckectMetaDatas).Get(InternalMetaDataCollectionsID)
 
 		// If the response is empty there is no existing collections.
 		if len(v) == 0 {
@@ -89,7 +88,7 @@ func (d *DB) loadCollections() error {
 func (d *DB) loadCollection(name string) error {
 	err := d.boltDB.View(func(tx *bolt.Tx) error {
 		// The value is a JSON repesentation of the collection
-		v := tx.Bucket(vars.InternalBuckectMetaDatas).Get([]byte(name))
+		v := tx.Bucket(InternalBuckectMetaDatas).Get([]byte(name))
 
 		col := new(Collection)
 		if len(v) != 0 {

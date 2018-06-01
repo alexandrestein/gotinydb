@@ -3,7 +3,7 @@ package GoTinyDB
 import (
 	"os"
 
-	"github.com/alexandreStein/GoTinyDB/vars"
+	"gitea.interlab-net.com/alexandre/db/vars"
 )
 
 func (c *Collection) save() error {

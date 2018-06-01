@@ -97,13 +97,12 @@ func TestDB(t *testing.T) {
 		tmpUser := &internalTesting.UserTest{}
 		getAction := NewAction(Equal).SetSelector(usernameSelector)
 		queryObj := NewQuery().Get(getAction)
-		userID := ""
-		if ids := col1.Query(queryObj); len(ids) != 1 {
+		ids := col1.Query(queryObj)
+		if len(ids) != 1 {
 			t.Errorf("query did not responde the expected id\nexpected %q\nhad %v", user.GetID(), ids)
 			return
-		} else {
-			userID = ids[0]
 		}
+		userID := ids[0]
 		if userID != user.GetID() {
 			t.Errorf("getting the id of %q but had %q", userID, user.GetID())
 			return
