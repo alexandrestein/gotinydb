@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/alexandreStein/GoTinyDB/collection"
 	"github.com/alexandreStein/GoTinyDB/vars"
 	bolt "github.com/coreos/bbolt"
 )
@@ -44,7 +43,7 @@ func (d *DB) setNewCol(colName string) error {
 	})
 }
 
-func (d *DB) updateCollection(col *collection.Collection) error {
+func (d *DB) updateCollection(col *Collection) error {
 	return d.boltDB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(vars.InternalBuckectMetaDatas)
 
@@ -92,7 +91,7 @@ func (d *DB) loadCollection(name string) error {
 		// The value is a JSON repesentation of the collection
 		v := tx.Bucket(vars.InternalBuckectMetaDatas).Get([]byte(name))
 
-		col := new(collection.Collection)
+		col := new(Collection)
 		if len(v) != 0 {
 			uErr := json.Unmarshal(v, &col)
 			if uErr != nil {

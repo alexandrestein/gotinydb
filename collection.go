@@ -1,7 +1,4 @@
-// Package collection is the "storage structur" of the database package.
-// As most of the NO-SQL databases collections are the main part of the
-// databases.
-package collection
+package GoTinyDB
 
 import (
 	"bytes"

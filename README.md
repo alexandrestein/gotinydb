@@ -77,11 +77,11 @@ have the form of `*bytes.Buffer`.
 // to 100 responses starting with elements with ZIP code are the closest from 5000
 selector := []string{"Address","ZIP"}
 limit := 100
-q := query.NewQuery().SetLimit(limit)
+q := NewQuery().SetLimit(limit)
 // This defines the elements you want to retreive
-wantAction := query.NewAction(query.Greater).SetSelector(selector).CompareTo(5000)
+wantAction := NewAction(Greater).SetSelector(selector).CompareTo(5000)
 // This will removes ids from the list if match
-doesNotWantAction := query.NewAction(query.Greater).SetSelector(selector).CompareTo(6000)
+doesNotWantAction := NewAction(Greater).SetSelector(selector).CompareTo(6000)
 
 // Actualy do the query and get the IDs
 ids := col.Query(q.Get(wantAction).Keep(doesNotWantAction))

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/alexandreStein/GoTinyDB/collection"
 	"github.com/alexandreStein/gods/utils"
 )
 
@@ -14,7 +13,7 @@ const (
 	CreationIndexName = "creation"
 )
 
-func SetIndexes(t *testing.T, col *collection.Collection) error {
+func SetIndexes(t *testing.T, col *Collection) error {
 	if err := col.SetIndex(UserNameIndexName, utils.StringComparatorType, []string{"UserName"}); err != nil {
 		t.Error(err)
 		return err

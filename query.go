@@ -1,4 +1,4 @@
-package collection
+package GoTinyDB
 
 // func (i *structIndex) RunQuery(q *query.Query) (ids []string) {
 // 	if q == nil {

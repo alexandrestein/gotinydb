@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/alexandreStein/GoTinyDB/query"
 	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
 	"github.com/alexandreStein/gods/utils"
 )
@@ -96,8 +95,8 @@ func TestDB(t *testing.T) {
 
 	for _, user := range internalTesting.GetUsersExample() {
 		tmpUser := &internalTesting.UserTest{}
-		getAction := query.NewAction(query.Equal).SetSelector(usernameSelector)
-		queryObj := query.NewQuery().Get(getAction)
+		getAction := NewAction(Equal).SetSelector(usernameSelector)
+		queryObj := NewQuery().Get(getAction)
 		userID := ""
 		if ids := col1.Query(queryObj); len(ids) != 1 {
 			t.Errorf("query did not responde the expected id\nexpected %q\nhad %v", user.GetID(), ids)

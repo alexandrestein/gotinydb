@@ -3,7 +3,6 @@ package GoTinyDB
 import (
 	"fmt"
 
-	"github.com/alexandreStein/GoTinyDB/collection"
 	"github.com/alexandreStein/GoTinyDB/vars"
 	bolt "github.com/coreos/bbolt"
 )
@@ -13,7 +12,7 @@ import (
 // be located in the directory.
 func Open(path string) (*DB, error) {
 	d := new(DB)
-	d.collections = map[string]*collection.Collection{}
+	d.collections = map[string]*Collection{}
 	d.path = path
 
 	// lockFile, addLockErr := os.OpenFile(d.path+"/"+vars.LockFileName, vars.OpenDBFlags, vars.FilePermission)
@@ -52,7 +51,7 @@ func (d *DB) checkAndBuildInternalBuckets() error {
 
 // Use will try to get the collection from active ones. If not active it loads
 // it from drive and if not existing it builds it.
-func (d *DB) Use(colName string) (*collection.Collection, error) {
+func (d *DB) Use(colName string) (*Collection, error) {
 	// Gets from in memory
 	if activeCol, found := d.collections[colName]; found {
 		// activeCol.SetBolt(d.boltDB)
@@ -60,7 +59,7 @@ func (d *DB) Use(colName string) (*collection.Collection, error) {
 	}
 
 	// Build a new collection
-	col := collection.NewCollection(d.boltDB, colName)
+	col := NewCollection(d.boltDB, colName)
 
 	if err := d.setNewCol(colName); err != nil {
 		return nil, fmt.Errorf("setting the metadata: %s", err.Error())

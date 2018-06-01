@@ -1,4 +1,4 @@
-package collection
+package GoTinyDB
 
 import (
 	bolt "github.com/coreos/bbolt"

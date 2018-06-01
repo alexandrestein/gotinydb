@@ -1,4 +1,4 @@
-package collection
+package GoTinyDB
 
 // Defines the different types of queries:
 const (
