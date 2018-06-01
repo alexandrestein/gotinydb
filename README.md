@@ -2,8 +2,7 @@
 
 [![GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb?status.svg)](https://godoc.org/github.com/alexandrestein/gotinydb) [![Build Status](https://travis-ci.org/alexandreStein/GoTinyDB.svg?branch=master)](https://travis-ci.org/alexandreStein/GoTinyDB) [![Go Report Card](https://goreportcard.com/badge/github.com/alexandrestein/gotinydb)](https://goreportcard.com/report/github.com/alexandrestein/gotinydb) [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-The goal is to have a farly simple database wich is light and don't needs to fit
-in RAM. It supports indexing for most of the basic Golang types.
+The goal is to have a farly simple database wich is light and don't needs to fit in RAM. It supports indexing for most of the basic Golang types.
 
 <!-- ## Installing
 
@@ -96,9 +95,9 @@ with the Get function. -->
 
 ## Built With
 
-* [Gods](https://github.com/emirpasic/gods) - The B-Tree implementation (redirected with `dep` or `vgo` because pull request not accepted yet)
-* [Structs](https://github.com/fatih/structs) - The package used to cut objects in
-part for indexing
+* [bbolt](https://github.com/coreos/bbolt) - It is the storage engine
+* [Gods](https://github.com/emirpasic/gods) - We use a fork of it
+* [Structs](https://github.com/fatih/structs) - The package used to cut objects in part for indexing
 
 ## To Do
 
