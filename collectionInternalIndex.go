@@ -1,33 +1,22 @@
 package gotinydb
 
-import "fmt"
-
-func (c *Collection) updateIndex(id string, newValue interface{}) error {
-	refs, getIndexRefErr := c.getIndexReferences(id)
-	if getIndexRefErr != nil {
-		return fmt.Errorf("getting the index references: %s", getIndexRefErr.Error())
-	}
+func (c *Collection) updateIndex(id string, index Index, newValue interface{}) error {
+	refs := c.getIndexReferences(id)
 
 	// Clean old values
 	c.updateIndexAfterDelete(id, refs)
 
+	// Build the reference
 	newRefs := []*IndexReference{}
-	for indexName, index := range c.Indexes {
-		if newValue != nil {
-			index.Put(newValue, id)
-			newRefs = append(newRefs, newIndexReference(indexName, newValue))
-		}
-	}
+	index.Put(newValue, id)
+	newRefs = append(newRefs, newIndexReference(index.getName(), newValue))
 
 	return c.setIndexReferences(id, newRefs)
 }
 
 func (c *Collection) updateIndexAfterDelete(id string, refs []*IndexReference) error {
 	if refs == nil {
-		tmpRefs, getRefsErr := c.getIndexReferences(id)
-		if getRefsErr != nil {
-			return fmt.Errorf("can't get the index references of %q: %s", id, getRefsErr.Error())
-		}
+		tmpRefs := c.getIndexReferences(id)
 		refs = tmpRefs
 	}
 

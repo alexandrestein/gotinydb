@@ -1,36 +1,9 @@
 package gotinydb
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
-)
-
-type (
-	// IndexReference is design to make easy clean up of the index after update
-	// or delete.
-	// The identifaction of the references are the coresponding ID.
-	IndexReference struct {
-		IndexName string
-		Value     interface{}
-
-		StringValue  string    `json:",omitempty"`
-		IntValue     int       `json:",omitempty"`
-		Int8aVlue    int8      `json:",omitempty"`
-		Int16Value   int16     `json:",omitempty"`
-		Int32Value   int32     `json:",omitempty"`
-		Int64Value   int64     `json:",omitempty"`
-		UintValue    uint      `json:",omitempty"`
-		Uint8Value   uint8     `json:",omitempty"`
-		Uint16Value  uint16    `json:",omitempty"`
-		Uint32Value  uint32    `json:",omitempty"`
-		Uint64Value  uint64    `json:",omitempty"`
-		Float32Value float32   `json:",omitempty"`
-		Float64Value float64   `json:",omitempty"`
-		TimeValue    time.Time `json:",omitempty"`
-	}
 )
 
 func newIndexReference(indexName string, value interface{}) *IndexReference {
@@ -107,18 +80,20 @@ func (c *Collection) setIndexReferences(id string, refs []*IndexReference) error
 	// if encodeErr != nil {
 	// 	return fmt.Errorf("encoding %q references: %s", id, encodeErr.Error())
 	// }
-	refsAsBytes, marshalErr := json.Marshal(refs)
-	if marshalErr != nil {
-		return fmt.Errorf("converting the references to JSON: %s", marshalErr.Error())
-	}
+	// refsAsBytes, marshalErr := json.Marshal(refs)
+	// if marshalErr != nil {
+	// 	return fmt.Errorf("converting the references to JSON: %s", marshalErr.Error())
+	// }
+	//
+	// if err := c.boltDB.Update(func(tx *bolt.Tx) error {
+	// 	return tx.Bucket(InternalBuckectReferences).Put([]byte(id), refsAsBytes)
+	// }); err != nil {
+	// 	return fmt.Errorf("saving references into DB: %s", err.Error())
+	// }
 
-	if err := c.boltDB.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(InternalBuckectMetaDatas).Put([]byte(id), refsAsBytes)
-	}); err != nil {
-		return fmt.Errorf("saving references into DB: %s", err.Error())
-	}
-
-	return nil
+	return c.boltDB.Update(func(tx *bolt.Tx) error {
+		return setObjectReferences(tx, c.Name, id, refs)
+	})
 }
 
 // func (c *Collection) getIndexReferences(id string) ([]*IndexReference, error) {
@@ -131,31 +106,38 @@ func (c *Collection) setIndexReferences(id string, refs []*IndexReference) error
 // 	return references, nil
 // }
 
-func (c *Collection) getIndexReferences(id string) ([]*IndexReference, error) {
-	// file, openErr := c.getIndexRefFile(id, update)
-	// if openErr != nil {
-	// 	return nil, nil, openErr
-	// }
-	// if file == nil {
-	// 	return nil, []*IndexReference{}, nil
-	// }
-	refsAsBytes := []byte{}
-
-	if viewErr := c.boltDB.View(func(tx *bolt.Tx) error {
-		refsAsBytes = tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Get([]byte(id))
+func (c *Collection) getIndexReferences(id string) []*IndexReference {
+	var refs []*IndexReference
+	c.boltDB.View(func(tx *bolt.Tx) error {
+		refs = getObjectReferences(tx, c.Name, id)
 		return nil
-	}); viewErr != nil {
-		return nil, fmt.Errorf("getting the references: %s", viewErr)
-	}
+	})
 
-	refs := []*IndexReference{}
-
-	decodeErr := json.Unmarshal(refsAsBytes, &refs)
-	if decodeErr != nil {
-		return []*IndexReference{}, nil
-	}
-
-	return refs, nil
+	return refs
+	// // file, openErr := c.getIndexRefFile(id, update)
+	// // if openErr != nil {
+	// // 	return nil, nil, openErr
+	// // }
+	// // if file == nil {
+	// // 	return nil, []*IndexReference{}, nil
+	// // }
+	// refsAsBytes := []byte{}
+	//
+	// if viewErr := c.boltDB.View(func(tx *bolt.Tx) error {
+	// 	refsAsBytes = tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Get([]byte(id))
+	// 	return nil
+	// }); viewErr != nil {
+	// 	return nil, fmt.Errorf("getting the references: %s", viewErr)
+	// }
+	//
+	// refs := []*IndexReference{}
+	//
+	// decodeErr := json.Unmarshal(refsAsBytes, &refs)
+	// if decodeErr != nil {
+	// 	return []*IndexReference{}, nil
+	// }
+	//
+	// return refs, nil
 }
 
 // func (c *Collection) getIndexRefFile(id string, update bool) (ret *os.File, err error) {
@@ -178,11 +160,15 @@ func (c *Collection) getIndexReferences(id string) ([]*IndexReference, error) {
 // 	// return indexMetaFile, nil
 // }
 
-func (c *Collection) deleteIndexRefFile(id string) (err error) {
-	if err := c.boltDB.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Delete([]byte(id))
-	}); err != nil {
-		return err
-	}
-	return nil
+func (c *Collection) deleteIndexRef(id string) (err error) {
+	return c.boltDB.Update(func(tx *bolt.Tx) error {
+		return getCollectionMetaBucket(tx, c.Name).Delete([]byte(id))
+	})
+
+	// if err := c.boltDB.Update(func(tx *bolt.Tx) error {
+	// 	return tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Delete([]byte(id))
+	// }); err != nil {
+	// 	return err
+	// }
+	// return nil
 }

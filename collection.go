@@ -52,10 +52,7 @@ func (c *Collection) Put(id string, value interface{}) error {
 	}
 
 	if insertErr := c.boltDB.Update(func(tx *bolt.Tx) error {
-		colBucket := tx.Bucket(InternalBuckectCollections).Bucket([]byte(c.Name))
-		if colBucket == nil {
-			colBucket, _ = tx.Bucket(InternalBuckectCollections).CreateBucket([]byte(c.Name))
-		}
+		colBucket := getCollectionBucket(tx, c.Name)
 		return colBucket.Put([]byte(id), valueAsBytes)
 	}); insertErr != nil {
 		return insertErr
@@ -64,7 +61,7 @@ func (c *Collection) Put(id string, value interface{}) error {
 	indexErrors := map[string]error{}
 	for indexName, index := range c.Indexes {
 		if val, apply := index.Apply(value); apply {
-			if updateErr := c.updateIndex(id, val); updateErr != nil {
+			if updateErr := c.updateIndex(id, index, val); updateErr != nil {
 				indexErrors[indexName] = updateErr
 			}
 		}
@@ -109,7 +106,7 @@ func (c *Collection) Get(id string, value interface{}) error {
 	contentAsBytes := []byte{}
 
 	err := c.boltDB.View(func(tx *bolt.Tx) error {
-		colBucket := tx.Bucket(InternalBuckectCollections).Bucket([]byte(c.Name))
+		colBucket := getCollectionBucket(tx, c.Name)
 		if colBucket == nil {
 			return fmt.Errorf("bucket of the collection %q does not exist", c.Name)
 		}
@@ -177,17 +174,14 @@ func (c *Collection) Get(id string, value interface{}) error {
 func (c *Collection) Delete(id string) error {
 
 	// Take care of cleaning the index
-	refs, getRefsErr := c.getIndexReferences(id)
-	if getRefsErr != nil {
-		return fmt.Errorf("getting the index references: %s", getRefsErr.Error())
-	}
+	refs := c.getIndexReferences(id)
 
 	if err := c.updateIndexAfterDelete(id, refs); err != nil {
 		return fmt.Errorf("updating index: %s", err.Error())
 	}
 
 	if err := c.boltDB.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(InternalBuckectCollections).Bucket([]byte(c.Name)).Delete([]byte(id))
+		return getCollectionBucket(tx, c.Name).Delete([]byte(id))
 	}); err != nil {
 		return fmt.Errorf("deleting on the DB: %s", err.Error())
 	}

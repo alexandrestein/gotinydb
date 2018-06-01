@@ -115,225 +115,225 @@ func testLoadIndex(t *testing.T, index Index, indexSavedContent []byte) {
 	}
 }
 
-func TestStringIndex(t *testing.T) {
-	i := NewStringIndex(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewStringIndex(Path, []string{})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestIntIndex(t *testing.T) {
-	i := NewIntIndex(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewIntIndex(Path, []string{})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestInt8Index(t *testing.T) {
-	i := NewInt8Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewInt8Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestInt16Index(t *testing.T) {
-	i := NewInt16Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewInt16Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestInt32Index(t *testing.T) {
-	i := NewInt32Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewInt32Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestInt64Index(t *testing.T) {
-	i := NewInt64Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewInt64Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestUIntIndex(t *testing.T) {
-	i := NewUintIndex(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewUintIndex(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestUInt8Index(t *testing.T) {
-	i := NewUint8Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewUint8Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestUInt16Index(t *testing.T) {
-	i := NewUint16Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewUint16Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestUInt32Index(t *testing.T) {
-	i := NewUint32Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewUint32Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestUInt64Index(t *testing.T) {
-	i := NewUint64Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewUint64Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestFloat32Index(t *testing.T) {
-	i := NewFloat32Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewFloat32Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestFloat64Index(t *testing.T) {
-	i := NewFloat64Index(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewFloat64Index(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestTimeIndex(t *testing.T) {
-	i := NewTimeIndex(Path+"/indexTest", []string{"IndexedValue"})
-	i.getTree().Clear()
-	indexContent := testSaveIndex(t, i)
-
-	i.getTree().Clear()
-
-	i = NewTimeIndex(Path+"/indexTest", []string{"IndexedValue"})
-	testLoadIndex(t, i, indexContent)
-}
-
-func TestUpdate(t *testing.T) {
-	i := NewStringIndex(Path+"/indexTest", []string{})
-	i.getTree().Clear()
-
-	// Insert for the first time
-	for _, val := range testStringList() {
-		i.Put(val.IndexedValue, val.ObjectID)
-	}
-	for _, val := range testSameValueStringList() {
-		i.Put(val.IndexedValue, val.ObjectID)
-	}
-
-	// Update with the oposite values
-	for y, val := range testStringList() {
-		i.Put(testStringList()[len(testStringList())-1-y].IndexedValue, val.ObjectID)
-		i.RemoveID(val.IndexedValue, val.ObjectID)
-	}
-
-	// Do the checks
-	for y, val := range testStringList() {
-		// Get the ids back
-		ids, found := i.Get(val.IndexedValue)
-		if !found {
-			t.Errorf("not found")
-			return
-		}
-
-		// Check that the first indexed value has the last id position
-		if !reflect.DeepEqual(ids, []string{testStringList()[len(testStringList())-1-y].ObjectID}) {
-			t.Errorf("update not done. Expecting %v and had: %v", testStringList()[len(testStringList())-1-y].ObjectID, ids)
-			return
-		}
-	}
-}
-
-func TestDuplicatedStringValue(t *testing.T) {
-	i := NewStringIndex(Path+"/indexTest", []string{})
-	i.getTree().Clear()
-
-	// Add the regular ones
-	for _, val := range testStringList() {
-		i.Put(val.IndexedValue, val.ObjectID)
-	}
-
-	list := testSameValueStringList()
-	for _, val := range list {
-		i.Put(val.IndexedValue, val.ObjectID)
-	}
-
-	if i.getTree().Size() != 27 {
-		t.Errorf("the size must be 27 and is %d", i.getTree().Size())
-		return
-	}
-
-	ids, found := i.Get("multiple IDs indexed")
-	if !found {
-		t.Errorf("the ids are not found by the indexed value")
-		return
-	}
-
-	if !reflect.DeepEqual(ids, []string{"id100", "id110", "id120", "id130", "id140", "id150", "id160", "id170", "id180", "id190"}) {
-		t.Errorf("the ids are not correct: %v", ids)
-		return
-	}
-}
+// func TestStringIndex(t *testing.T) {
+// 	i := NewStringIndex(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewStringIndex(Path, []string{})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestIntIndex(t *testing.T) {
+// 	i := NewIntIndex(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewIntIndex(Path, []string{})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestInt8Index(t *testing.T) {
+// 	i := NewInt8Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewInt8Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestInt16Index(t *testing.T) {
+// 	i := NewInt16Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewInt16Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestInt32Index(t *testing.T) {
+// 	i := NewInt32Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewInt32Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestInt64Index(t *testing.T) {
+// 	i := NewInt64Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewInt64Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestUIntIndex(t *testing.T) {
+// 	i := NewUintIndex(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewUintIndex(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestUInt8Index(t *testing.T) {
+// 	i := NewUint8Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewUint8Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestUInt16Index(t *testing.T) {
+// 	i := NewUint16Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewUint16Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestUInt32Index(t *testing.T) {
+// 	i := NewUint32Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewUint32Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestUInt64Index(t *testing.T) {
+// 	i := NewUint64Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewUint64Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestFloat32Index(t *testing.T) {
+// 	i := NewFloat32Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewFloat32Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestFloat64Index(t *testing.T) {
+// 	i := NewFloat64Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewFloat64Index(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestTimeIndex(t *testing.T) {
+// 	i := NewTimeIndex(Path+"/indexTest", []string{"IndexedValue"})
+// 	i.getTree().Clear()
+// 	indexContent := testSaveIndex(t, i)
+//
+// 	i.getTree().Clear()
+//
+// 	i = NewTimeIndex(Path+"/indexTest", []string{"IndexedValue"})
+// 	testLoadIndex(t, i, indexContent)
+// }
+//
+// func TestUpdate(t *testing.T) {
+// 	i := NewStringIndex(Path+"/indexTest", []string{})
+// 	i.getTree().Clear()
+//
+// 	// Insert for the first time
+// 	for _, val := range testStringList() {
+// 		i.Put(val.IndexedValue, val.ObjectID)
+// 	}
+// 	for _, val := range testSameValueStringList() {
+// 		i.Put(val.IndexedValue, val.ObjectID)
+// 	}
+//
+// 	// Update with the oposite values
+// 	for y, val := range testStringList() {
+// 		i.Put(testStringList()[len(testStringList())-1-y].IndexedValue, val.ObjectID)
+// 		i.RemoveID(val.IndexedValue, val.ObjectID)
+// 	}
+//
+// 	// Do the checks
+// 	for y, val := range testStringList() {
+// 		// Get the ids back
+// 		ids, found := i.Get(val.IndexedValue)
+// 		if !found {
+// 			t.Errorf("not found")
+// 			return
+// 		}
+//
+// 		// Check that the first indexed value has the last id position
+// 		if !reflect.DeepEqual(ids, []string{testStringList()[len(testStringList())-1-y].ObjectID}) {
+// 			t.Errorf("update not done. Expecting %v and had: %v", testStringList()[len(testStringList())-1-y].ObjectID, ids)
+// 			return
+// 		}
+// 	}
+// }
+//
+// func TestDuplicatedStringValue(t *testing.T) {
+// 	i := NewStringIndex(Path+"/indexTest", []string{})
+// 	i.getTree().Clear()
+//
+// 	// Add the regular ones
+// 	for _, val := range testStringList() {
+// 		i.Put(val.IndexedValue, val.ObjectID)
+// 	}
+//
+// 	list := testSameValueStringList()
+// 	for _, val := range list {
+// 		i.Put(val.IndexedValue, val.ObjectID)
+// 	}
+//
+// 	if i.getTree().Size() != 27 {
+// 		t.Errorf("the size must be 27 and is %d", i.getTree().Size())
+// 		return
+// 	}
+//
+// 	ids, found := i.Get("multiple IDs indexed")
+// 	if !found {
+// 		t.Errorf("the ids are not found by the indexed value")
+// 		return
+// 	}
+//
+// 	if !reflect.DeepEqual(ids, []string{"id100", "id110", "id120", "id130", "id140", "id150", "id160", "id170", "id180", "id190"}) {
+// 		t.Errorf("the ids are not correct: %v", ids)
+// 		return
+// 	}
+// }
 
 func testGetAllLists() (ret []*TestStruct) {
 	ret = append(ret, testStringList()...)

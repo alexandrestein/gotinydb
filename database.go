@@ -38,12 +38,15 @@ func Open(path string) (*DB, error) {
 
 func (d *DB) checkAndBuildInternalBuckets() error {
 	return d.boltDB.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists(InternalBuckectMetaDatas); err != nil {
-			return err
-		}
-		if _, err := tx.CreateBucketIfNotExists(InternalBuckectCollections); err != nil {
-			return err
-		}
+		getInternalMetaBucket(tx)
+		getInternalCollectionsBucket(tx)
+
+		// if _, err := tx.CreateBucketIfNotExists(InternalBuckectMetaDatas); err != nil {
+		// 	return err
+		// }
+		// if _, err := tx.CreateBucketIfNotExists(InternalBuckectCollections); err != nil {
+		// 	return err
+		// }
 		return nil
 	})
 }
@@ -57,18 +60,20 @@ func (d *DB) Use(colName string) (*Collection, error) {
 		return activeCol, nil
 	}
 
-	// Build a new collection
-	col := NewCollection(d.boltDB, colName)
+	// // Build a new collection
+	// col := NewCollection(d.boltDB, colName)
 
-	if err := d.setNewCol(colName); err != nil {
+	col, err := d.setNewCol(colName)
+	if err != nil {
 		return nil, fmt.Errorf("setting the metadata: %s", err.Error())
 	}
-	if err := d.updateCollection(col); err != nil {
-		return nil, fmt.Errorf("setting the collection: %s", err.Error())
-	}
+
+	// if err := d.updateCollection(col); err != nil {
+	// 	return nil, fmt.Errorf("setting the collection: %s", err.Error())
+	// }
 
 	// Save the collection
-	d.collections[colName] = col
+	// d.collections[colName] = col
 
 	return col, nil
 

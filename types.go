@@ -2,6 +2,7 @@ package gotinydb
 
 import (
 	"context"
+	"time"
 
 	"github.com/alexandreStein/gods/trees/btree"
 	"github.com/alexandreStein/gods/utils"
@@ -92,4 +93,27 @@ type (
 
 	// ActionType defines the type of action to perform.
 	ActionType string
+
+	// IndexReference is design to make easy clean up of the index after update
+	// or delete.
+	// The identifaction of the references are the coresponding ID.
+	IndexReference struct {
+		IndexName string
+		Value     interface{}
+
+		StringValue  string    `json:",omitempty"`
+		IntValue     int       `json:",omitempty"`
+		Int8aVlue    int8      `json:",omitempty"`
+		Int16Value   int16     `json:",omitempty"`
+		Int32Value   int32     `json:",omitempty"`
+		Int64Value   int64     `json:",omitempty"`
+		UintValue    uint      `json:",omitempty"`
+		Uint8Value   uint8     `json:",omitempty"`
+		Uint16Value  uint16    `json:",omitempty"`
+		Uint32Value  uint32    `json:",omitempty"`
+		Uint64Value  uint64    `json:",omitempty"`
+		Float32Value float32   `json:",omitempty"`
+		Float64Value float64   `json:",omitempty"`
+		TimeValue    time.Time `json:",omitempty"`
+	}
 )
