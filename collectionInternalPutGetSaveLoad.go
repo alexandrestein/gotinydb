@@ -2,8 +2,6 @@ package GoTinyDB
 
 import (
 	"os"
-
-	"gitea.interlab-net.com/alexandre/db/vars"
 )
 
 func (c *Collection) save() error {
@@ -105,7 +103,7 @@ func (c *Collection) buildDir() error {
 }
 
 func isDirOK(givenPath string) bool {
-	dirFile, dirFileErr := os.OpenFile(givenPath, os.O_RDONLY, vars.FilePermission)
+	dirFile, dirFileErr := os.OpenFile(givenPath, os.O_RDONLY, FilePermission)
 	if dirFileErr != nil {
 		if os.IsNotExist(dirFileErr) {
 		}
