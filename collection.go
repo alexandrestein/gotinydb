@@ -201,24 +201,24 @@ func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selec
 		c.Indexes[name] = NewStringIndex(name, selector)
 	case utils.IntComparatorType:
 		c.Indexes[name] = NewIntIndex(name, selector)
-	case utils.Int8ComparatorType:
-		c.Indexes[name] = NewInt8Index(name, selector)
-	case utils.Int16ComparatorType:
-		c.Indexes[name] = NewInt16Index(name, selector)
-	case utils.Int32ComparatorType:
-		c.Indexes[name] = NewInt32Index(name, selector)
-	case utils.Int64ComparatorType:
-		c.Indexes[name] = NewInt64Index(name, selector)
+	// case utils.Int8ComparatorType:
+	// 	c.Indexes[name] = NewInt8Index(name, selector)
+	// case utils.Int16ComparatorType:
+	// 	c.Indexes[name] = NewInt16Index(name, selector)
+	// case utils.Int32ComparatorType:
+	// 	c.Indexes[name] = NewInt32Index(name, selector)
+	// case utils.Int64ComparatorType:
+	// 	c.Indexes[name] = NewInt64Index(name, selector)
 	case utils.UIntComparatorType:
 		c.Indexes[name] = NewUintIndex(name, selector)
-	case utils.UInt8ComparatorType:
-		c.Indexes[name] = NewUint8Index(name, selector)
-	case utils.UInt16ComparatorType:
-		c.Indexes[name] = NewUint16Index(name, selector)
-	case utils.UInt32ComparatorType:
-		c.Indexes[name] = NewUint32Index(name, selector)
-	case utils.UInt64ComparatorType:
-		c.Indexes[name] = NewUint64Index(name, selector)
+	// case utils.UInt8ComparatorType:
+	// 	c.Indexes[name] = NewUint8Index(name, selector)
+	// case utils.UInt16ComparatorType:
+	// 	c.Indexes[name] = NewUint16Index(name, selector)
+	// case utils.UInt32ComparatorType:
+	// 	c.Indexes[name] = NewUint32Index(name, selector)
+	// case utils.UInt64ComparatorType:
+	// 	c.Indexes[name] = NewUint64Index(name, selector)
 	case utils.Float32ComparatorType:
 		c.Indexes[name] = NewFloat32Index(name, selector)
 	case utils.Float64ComparatorType:
