@@ -1,36 +1,35 @@
-package GoTinyDB
+package gotinydb
 
-import (
-	"os"
-)
-
-// The values
 const (
-	BlockSize      = 1024 * 1024 * 10 // 10MB
-	FilePermission = 0740             // u -> rwx | g -> r-- | o -> ---
-	TreeOrder      = 10
+	// TreeOrder defines the index tree
+	TreeOrder = 10
 
-	OpenDBFlags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
-
-	GetFlags = os.O_RDONLY
-	PutFlags = os.O_RDWR | os.O_CREATE | os.O_TRUNC
+	// FilePermission defines the database file permission
+	FilePermission = 0740 // u -> rwx | g -> r-- | o -> ---
 )
 
-// Internal buckets
+// Thoses constants defines the different types of action to perform at query
+const (
+	Equal   ActionType = "eq"
+	Greater ActionType = "gr"
+	Less    ActionType = "le"
+)
+
+// Internal common buckets and IDs
 var (
+	// Root buckets
 	InternalBuckectMetaDatas   = []byte("_metas")
 	InternalBuckectCollections = []byte("_collections")
-)
 
-// Defines the nested bucket inside MetaDatas bucket.
-var (
+	// Defines the nested bucket inside MetaDatas bucket.
 	InternalMetaDataBuckectCollections = InternalBuckectCollections
-	// InternalMetaDataBuckectIndexes     = []byte("_indexes")
+
+	// Defines the IDs used to get internal values from the store
+	InternalMetaDataCollectionsID       = InternalBuckectCollections
+	InternalMetaDataCollectionsIDSuffix = ".collection"
 )
 
-// Defines the IDs used to get internal values from the store
-var (
-	InternalMetaDataCollectionsID = []byte("collections")
-
-	InternalMetaDataCollectionsIDSuffix = ".collection"
+// This varable defines the deferent an error string
+const (
+	NotFoundString = "not found"
 )

@@ -1,1 +1,1 @@
-package GoTinyDB
+package gotinydb

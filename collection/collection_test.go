@@ -1,4 +1,4 @@
-package GoTinyDB
+package gotinydb
 
 // func insertAndCheck(t *testing.T, col *Collection, values []internalTesting.TestValue) {
 // 	insert(t, col, values)

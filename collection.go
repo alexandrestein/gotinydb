@@ -1,4 +1,4 @@
-package GoTinyDB
+package gotinydb
 
 import (
 	"bytes"
@@ -233,7 +233,7 @@ func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selec
 		c.Indexes[name] = NewTimeIndex(name, selector)
 	}
 
-	return c.save()
+	return nil
 }
 
 // GetIndex return the coreponding index.

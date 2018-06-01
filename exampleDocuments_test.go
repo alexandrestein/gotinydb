@@ -1,4 +1,4 @@
-package GoTinyDB
+package gotinydb
 
 import (
 	"bytes"
@@ -78,18 +78,18 @@ func init() {
 	Path = os.TempDir() + "/dbTest-" + fmt.Sprintf("%d", randNum)
 }
 
-func (self *UserTest) GetID() string {
-	return self.ID
+func (u *UserTest) GetID() string {
+	return u.ID
 }
-func (self *UserTest) GetContent() interface{} {
-	return self
+func (u *UserTest) GetContent() interface{} {
+	return u
 }
-func (self *UserTest) New() interface{} {
+func (u *UserTest) New() interface{} {
 	return new(UserTest)
 }
-func (self *UserTest) IsEqual(with interface{}) bool {
-	if !reflect.DeepEqual(self.GetContent(), with) {
-		userMap := structs.Map(self)
+func (u *UserTest) IsEqual(with interface{}) bool {
+	if !reflect.DeepEqual(u.GetContent(), with) {
+		userMap := structs.Map(u)
 		tmpUserMap := structs.Map(with)
 
 		var notEqualField string
@@ -116,34 +116,34 @@ func (self *UserTest) IsEqual(with interface{}) bool {
 	return true
 }
 
-func (self *CompleteUser) GetID() string {
-	return self.ID
+func (c *CompleteUser) GetID() string {
+	return c.ID
 }
-func (self *CompleteUser) GetContent() interface{} {
-	return self
+func (c *CompleteUser) GetContent() interface{} {
+	return c
 }
-func (self *CompleteUser) New() interface{} {
+func (c *CompleteUser) New() interface{} {
 	return new(CompleteUser)
 }
-func (self *CompleteUser) IsEqual(with interface{}) bool {
-	return reflect.DeepEqual(self.GetContent(), with)
+func (c *CompleteUser) IsEqual(with interface{}) bool {
+	return reflect.DeepEqual(c.GetContent(), with)
 }
 
-func (self *RawTest) GetID() string {
-	return self.ID
+func (r *RawTest) GetID() string {
+	return r.ID
 }
-func (self *RawTest) GetContent() interface{} {
-	return self.Content
+func (r *RawTest) GetContent() interface{} {
+	return r.Content
 }
-func (self *RawTest) New() interface{} {
+func (r *RawTest) New() interface{} {
 	return bytes.NewBuffer(nil)
 }
-func (self *RawTest) IsEqual(with interface{}) bool {
+func (r *RawTest) IsEqual(with interface{}) bool {
 	buff, ok := with.(*bytes.Buffer)
 	if !ok {
 		return false
 	}
-	return reflect.DeepEqual(self.GetContent(), buff.Bytes())
+	return reflect.DeepEqual(r.GetContent(), buff.Bytes())
 }
 
 func GetUsersExample() []TestValue {
@@ -250,4 +250,17 @@ func GetCompleteUsersExampleStreetNamesOnly() []TestValue {
 		&CompleteUser{ID: "DUP_1", Add: &Add{Street: &Street{Name: "North street Dup2"}}},
 		&CompleteUser{ID: "DUP_1", Add: &Add{Street: &Street{Name: "North street Dup3"}}},
 	}
+}
+
+func GetRawExample() []TestValue {
+	return []TestValue{
+		&RawTest{"ID_RAW_1", genRand(1024)},
+		&RawTest{"ID_RAW_2", genRand(512)},
+	}
+}
+
+func genRand(size int) []byte {
+	buf := make([]byte, size)
+	rand.Read(buf)
+	return buf
 }

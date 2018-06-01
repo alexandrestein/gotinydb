@@ -1,4 +1,4 @@
-package GoTinyDB
+package gotinydb
 
 import (
 	"github.com/alexandreStein/gods/trees/btree"
