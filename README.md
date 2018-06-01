@@ -5,7 +5,7 @@
 The goal is to have a farly simple database wich is light and don't needs to fit
 in RAM. It supports indexing for most of the basic Golang types.
 
-## Installing
+<!-- ## Installing
 
 ```bash
 go get -u github.com/alexandrestein/gotinydb
@@ -92,7 +92,7 @@ for i, id := range ids {
 }
 ```
 This returns only a list of IDs. It's up to the caller to get the values he want
-with the Get function.
+with the Get function. -->
 
 ## Built With
 
@@ -102,7 +102,7 @@ part for indexing
 
 ## To Do
 
-* Build write serialiser at the object level (at this point there is no concurancy protection)
+* everything...
 
 ## Contributing
 
