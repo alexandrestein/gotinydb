@@ -1,4 +1,4 @@
-package index
+package GoTinyDB
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	internalTesting "github.com/alexandreStein/GoTinyDB/testing"
 	"github.com/alexandreStein/gods/utils"
 )
 
@@ -117,185 +116,161 @@ func testLoadIndex(t *testing.T, index Index, indexSavedContent []byte) {
 }
 
 func TestStringIndex(t *testing.T) {
-	i := NewString(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewStringIndex(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewString(internalTesting.Path, []string{})
+	i = NewStringIndex(Path, []string{})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestIntIndex(t *testing.T) {
-	i := NewInt(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewIntIndex(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt(internalTesting.Path, []string{})
+	i = NewIntIndex(Path, []string{})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestInt8Index(t *testing.T) {
-	i := NewInt8(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewInt8Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt8(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewInt8Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestInt16Index(t *testing.T) {
-	i := NewInt16(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewInt16Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt16(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewInt16Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestInt32Index(t *testing.T) {
-	i := NewInt32(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewInt32Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt32(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewInt32Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestInt64Index(t *testing.T) {
-	i := NewInt64(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewInt64Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewInt64(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewInt64Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestUIntIndex(t *testing.T) {
-	i := NewUint(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewUintIndex(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewUintIndex(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestUInt8Index(t *testing.T) {
-	i := NewUint8(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewUint8Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint8(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewUint8Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestUInt16Index(t *testing.T) {
-	i := NewUint16(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewUint16Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint16(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewUint16Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestUInt32Index(t *testing.T) {
-	i := NewUint32(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewUint32Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint32(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewUint32Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestUInt64Index(t *testing.T) {
-	i := NewUint64(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewUint64Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewUint64(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewUint64Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestFloat32Index(t *testing.T) {
-	i := NewFloat32(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewFloat32Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewFloat32(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewFloat32Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestFloat64Index(t *testing.T) {
-	i := NewFloat64(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewFloat64Index(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewFloat64(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewFloat64Index(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
 func TestTimeIndex(t *testing.T) {
-	i := NewTime(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i := NewTimeIndex(Path+"/indexTest", []string{"IndexedValue"})
 	i.getTree().Clear()
 	indexContent := testSaveIndex(t, i)
 
 	i.getTree().Clear()
 
-	i = NewTime(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
+	i = NewTimeIndex(Path+"/indexTest", []string{"IndexedValue"})
 	testLoadIndex(t, i, indexContent)
 }
 
-// func TestRemoveIdFromAll(t *testing.T) {
-// 	i := NewString(internalTesting.Path+"/indexTest", []string{"IndexedValue"})
-// 	i.getTree().Clear()
-// 	list := testStringList()
-//
-// 	list = append(list, testSameValueStringList()...)
-//
-// 	for _, val := range list {
-// 		i.Put(val.IndexedValue, val.ObjectID)
-// 	}
-//
-// 	for _, val := range list {
-// 		rmErr := i.RemoveIDFromAll(val.ObjectID)
-// 		if rmErr != nil {
-// 			t.Errorf("removing id %s: %s", val.ObjectID, rmErr.Error())
-// 			return
-// 		}
-// 	}
-//
-// 	if size := i.getTree().Size(); size != 0 {
-// 		t.Errorf("size must be 0 and has %d", size)
-// 	}
-// }
-
 func TestUpdate(t *testing.T) {
-	i := NewString(internalTesting.Path+"/indexTest", []string{})
+	i := NewStringIndex(Path+"/indexTest", []string{})
 	i.getTree().Clear()
 
 	// Insert for the first time
@@ -330,7 +305,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDuplicatedStringValue(t *testing.T) {
-	i := NewString(internalTesting.Path+"/indexTest", []string{})
+	i := NewStringIndex(Path+"/indexTest", []string{})
 	i.getTree().Clear()
 
 	// Add the regular ones
@@ -427,7 +402,7 @@ func testSameValueStringList() []*TestStruct {
 
 // func TestStringQuery(t *testing.T) {
 // 	selector := []string{"Add", "Street", "Name"}
-// 	i := NewStringIndex(internalTesting.Path, selector)
+// 	i := NewStringIndex(Path, selector)
 // 	for _, val := range internalTesting.GetCompleteUsersExampleStreetNamesOnly() {
 // 		user := val.(*internalTesting.CompleteUser)
 // 		i.Put(user.Add.Street.Name, val.GetID())
