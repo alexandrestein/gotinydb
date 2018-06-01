@@ -72,8 +72,8 @@ func (d *DB) Use(colName string) (*Collection, error) {
 	// 	return nil, fmt.Errorf("setting the collection: %s", err.Error())
 	// }
 
-	// Save the collection
-	// d.collections[colName] = col
+	// Save the collection into the object for future calls
+	d.collections[colName] = col
 
 	return col, nil
 

@@ -18,6 +18,7 @@ func (d *DB) setNewCol(colName string) (*Collection, error) {
 		}
 
 		col = NewCollection(d.boltDB, colName)
+		// Add metadata
 		setNamesErr := saveCollection(tx, col)
 		if setNamesErr != nil {
 			return setNamesErr

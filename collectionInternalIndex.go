@@ -3,8 +3,10 @@ package gotinydb
 func (c *Collection) updateIndex(id string, index Index, newValue interface{}) error {
 	refs := c.getIndexReferences(id)
 
-	// Clean old values
-	c.updateIndexAfterDelete(id, refs)
+	if refs == nil {
+		// Clean old values
+		c.updateIndexAfterDelete(id, refs)
+	}
 
 	// Build the reference
 	newRefs := []*IndexReference{}

@@ -73,7 +73,7 @@ var (
 	}
 	getCollections = func(tx *bolt.Tx) map[string]*Collection {
 		collectionsMapAsBytes := getInternalMetaBucket(tx).Get(internalBuckectCollections)
-		var cols map[string]*Collection
+		cols := map[string]*Collection{}
 		// If the response is empty return a empty list
 		if len(collectionsMapAsBytes) == 0 {
 			return cols
@@ -138,6 +138,9 @@ var (
 	}
 	getObjectReferences = func(tx *bolt.Tx, colName, id string) []*IndexReference {
 		b := getCollectionMetaBucket(tx, colName)
+		if b == nil {
+			return nil
+		}
 		// Get the reference of the given ID in the given collection
 		refsAsBytes := b.Get([]byte(id))
 		var refs []*IndexReference
