@@ -29,7 +29,7 @@ func (q *Query) DistinctWanted() *Query {
 // Get defines the action to perform to get IDs
 func (q *Query) Get(a *Action) *Query {
 	if q.GetActions == nil {
-		q.GetActions = []*Action{a}
+		q.GetActions = []*Action{}
 	}
 	q.GetActions = append(q.GetActions, a)
 	return q

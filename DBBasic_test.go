@@ -11,7 +11,8 @@ import (
 var (
 	rawExamples      = []TestValue{}
 	defaultColName   = "col1"
-	usernameSelector = []string{"UserName"}
+	indexName        = "UserName"
+	usernameSelector = []string{indexName}
 )
 
 // func TestIndex(t *testing.T) {
@@ -57,7 +58,7 @@ func buildAndFeedDefaultDB(t *testing.T, path string) *DB {
 		return nil
 	}
 
-	if err := col1.SetIndex("UserName", utils.StringComparatorType, usernameSelector); err != nil {
+	if err := col1.SetIndex(indexName, utils.StringComparatorType, usernameSelector); err != nil {
 		t.Errorf("setting index: %s", err.Error())
 		return nil
 	}
@@ -77,6 +78,11 @@ func buildAndFeedDefaultDB(t *testing.T, path string) *DB {
 		}
 	}
 
+	// iter := db.collections[defaultColName].Indexes[indexName].getTree().Iterator()
+	// for iter.Next() {
+	// 	fmt.Println("iter", iter.Key(), iter.Value())
+	// }
+
 	return db
 }
 
@@ -94,7 +100,7 @@ func TestDB(t *testing.T) {
 
 	for _, user := range GetUsersExample() {
 		tmpUser := &UserTest{}
-		getAction := NewAction(Equal).SetSelector(usernameSelector)
+		getAction := NewAction(Equal).SetSelector(usernameSelector).CompareTo(user.(*UserTest).UserName)
 		queryObj := NewQuery().Get(getAction)
 		ids := col1.Query(queryObj)
 		if len(ids) != 1 {

@@ -3,23 +3,21 @@ package gotinydb
 func (c *Collection) updateIndex(id string, index Index, newValue interface{}) error {
 	refs := c.getIndexReferences(id)
 
-	if refs == nil {
+	if refs != nil {
 		// Clean old values
 		c.updateIndexAfterDelete(id, refs)
 	}
 
 	// Build the reference
-	newRefs := []*IndexReference{}
 	index.Put(newValue, id)
-	newRefs = append(newRefs, newIndexReference(index.getName(), newValue))
+	refs = append(refs, newIndexReference(index.getName(), newValue))
 
-	return c.setIndexReferences(id, newRefs)
+	return c.setIndexReferences(id, refs)
 }
 
 func (c *Collection) updateIndexAfterDelete(id string, refs []*IndexReference) error {
 	if refs == nil {
-		tmpRefs := c.getIndexReferences(id)
-		refs = tmpRefs
+		refs = c.getIndexReferences(id)
 	}
 
 	for _, ref := range refs {
