@@ -104,63 +104,63 @@ var (
 	// 	return names
 	// }
 
-	getCollectionBucket = func(tx *bolt.Tx, colName string) *bolt.Bucket {
-		// Create the bucket if not exist
-		internalBucket := getInternalCollectionsBucket(tx)
-		b := internalBucket.Bucket([]byte(colName))
-		if b == nil {
-			b, _ = internalBucket.CreateBucketIfNotExists([]byte(colName))
-		}
-		return b
-	}
-	getCollectionMetaBucket = func(tx *bolt.Tx, colName string) *bolt.Bucket {
-		// Create the bucket if not exist
-		internalBucket := getInternalMetaBucket(tx)
-		b := internalBucket.Bucket([]byte(colName))
-		if b == nil {
-			b, _ = internalBucket.CreateBucketIfNotExists([]byte(colName))
-		}
-		return b
-	}
-	setObjectReferences = func(tx *bolt.Tx, colName, id string, refs []*IndexReference) error {
-		// Built JSON
-		refsAsBytes, marshalErr := json.Marshal(refs)
-		if marshalErr != nil {
-			return fmt.Errorf("marshaling object references: %s", marshalErr.Error())
-		}
-
-		// Saves the references into database
-		b := getCollectionMetaBucket(tx, colName)
-		if putErr := b.Put([]byte(id), refsAsBytes); putErr != nil {
-			return fmt.Errorf("inserting reference into DB: %s", putErr.Error())
-		}
-		return nil
-	}
-	getObjectReferences = func(tx *bolt.Tx, colName, id string) []*IndexReference {
-		b := getCollectionMetaBucket(tx, colName)
-		if b == nil {
-			return nil
-		}
-		// Get the reference of the given ID in the given collection
-		refsAsBytes := b.Get([]byte(id))
-		var refs []*IndexReference
-		// If the response is empty return a empty list
-		if len(refsAsBytes) == 0 {
-			return refs
-		}
-		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-			return nil
-		}
-		return refs
-	}
-
-	// // Defines the nested bucket inside MetaDatas bucket.
-	// InternalMetaDataBuckectCollections          = InternalBuckectCollections
-	// InternalMetaDataCollectionBuckectReferences = []byte("_refs")
-	//
-	// // Defines the IDs used to get internal values from the store
-	// InternalMetaDataCollectionsID       = InternalBuckectCollections
-	InternalMetaDataCollectionsIDSuffix = ".collection"
+// 	getCollectionBucket = func(tx *bolt.Tx, colName string) *bolt.Bucket {
+// 		// Create the bucket if not exist
+// 		internalBucket := getInternalCollectionsBucket(tx)
+// 		b := internalBucket.Bucket([]byte(colName))
+// 		if b == nil {
+// 			b, _ = internalBucket.CreateBucketIfNotExists([]byte(colName))
+// 		}
+// 		return b
+// 	}
+// 	getCollectionMetaBucket = func(tx *bolt.Tx, colName string) *bolt.Bucket {
+// 		// Create the bucket if not exist
+// 		internalBucket := getInternalMetaBucket(tx)
+// 		b := internalBucket.Bucket([]byte(colName))
+// 		if b == nil {
+// 			b, _ = internalBucket.CreateBucketIfNotExists([]byte(colName))
+// 		}
+// 		return b
+// 	}
+// 	setObjectReferences = func(tx *bolt.Tx, colName, id string, refs []*IndexReference) error {
+// 		// Built JSON
+// 		refsAsBytes, marshalErr := json.Marshal(refs)
+// 		if marshalErr != nil {
+// 			return fmt.Errorf("marshaling object references: %s", marshalErr.Error())
+// 		}
+//
+// 		// Saves the references into database
+// 		b := getCollectionMetaBucket(tx, colName)
+// 		if putErr := b.Put([]byte(id), refsAsBytes); putErr != nil {
+// 			return fmt.Errorf("inserting reference into DB: %s", putErr.Error())
+// 		}
+// 		return nil
+// 	}
+// 	getObjectReferences = func(tx *bolt.Tx, colName, id string) []*IndexReference {
+// 		b := getCollectionMetaBucket(tx, colName)
+// 		if b == nil {
+// 			return nil
+// 		}
+// 		// Get the reference of the given ID in the given collection
+// 		refsAsBytes := b.Get([]byte(id))
+// 		var refs []*IndexReference
+// 		// If the response is empty return a empty list
+// 		if len(refsAsBytes) == 0 {
+// 			return refs
+// 		}
+// 		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
+// 			return nil
+// 		}
+// 		return refs
+// 	}
+//
+// 	// // Defines the nested bucket inside MetaDatas bucket.
+// 	// InternalMetaDataBuckectCollections          = InternalBuckectCollections
+// 	// InternalMetaDataCollectionBuckectReferences = []byte("_refs")
+// 	//
+// 	// // Defines the IDs used to get internal values from the store
+// 	// InternalMetaDataCollectionsID       = InternalBuckectCollections
+// 	InternalMetaDataCollectionsIDSuffix = ".collection"
 )
 
 // This varable defines the deferent an error string

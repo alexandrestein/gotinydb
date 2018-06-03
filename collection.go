@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alexandrestein/gods/utils"
 	bolt "github.com/coreos/bbolt"
 )
 
@@ -17,7 +16,7 @@ func NewCollection(db *bolt.DB, name string) *Collection {
 	c.Name = name
 	c.boltDB = db
 
-	c.Indexes = map[string]Index{}
+	c.Indexes = []Index{}
 
 	// if err := c.load(); err != nil {
 	// 	return nil, fmt.Errorf("loading DB: %s", err.Error())
@@ -34,6 +33,41 @@ func NewCollection(db *bolt.DB, name string) *Collection {
 // If record already exists it updates it.
 // If the goal is to store stream of bytes you need to send []byte{} inside
 // the interface.
+func (c *Collection) Close() error {
+	fmt.Println("Close Collection")
+	return nil
+}
+func (c *Collection) getDataBucket(tx *bolt.Tx) (*bolt.Bucket, error) {
+	return c.getBucket(tx, true)
+
+}
+func (c *Collection) getRefsBucket(tx *bolt.Tx) (*bolt.Bucket, error) {
+	return c.getBucket(tx, false)
+}
+func (c *Collection) getRefs(tx *bolt.Tx, id string) ([]*IndexReference, error) {
+	refBucket, getBucketErr := c.getRefsBucket(tx)
+	if getBucketErr != nil {
+		return nil, getBucketErr
+	}
+
+	content := refBucket.Get([]byte(id))
+	refs := []*IndexReference{}
+	jsonErr := json.Unmarshal(content, refs)
+	if jsonErr != nil {
+		return nil, jsonErr
+	}
+	return refs, nil
+}
+func (c *Collection) getBucket(tx *bolt.Tx, data bool) (*bolt.Bucket, error) {
+	name := ""
+	if data {
+		name = "data"
+	} else {
+		name = "refs"
+	}
+
+	return tx.CreateBucketIfNotExists([]byte(name))
+}
 func (c *Collection) Put(id string, value interface{}) error {
 	isBin := false
 	valueAsBytes := []byte{}
@@ -52,17 +86,20 @@ func (c *Collection) Put(id string, value interface{}) error {
 	}
 
 	if insertErr := c.boltDB.Update(func(tx *bolt.Tx) error {
-		colBucket := getCollectionBucket(tx, c.Name)
+		colBucket, colErr := c.getDataBucket(tx)
+		if colErr != nil {
+			return colErr
+		}
 		return colBucket.Put([]byte(id), valueAsBytes)
 	}); insertErr != nil {
 		return insertErr
 	}
 
 	indexErrors := map[string]error{}
-	for indexName, index := range c.Indexes {
+	for _, index := range c.Indexes {
 		if val, apply := index.Apply(value); apply {
 			if updateErr := c.updateIndex(id, index, val); updateErr != nil {
-				indexErrors[indexName] = updateErr
+				indexErrors[index.getName()] = updateErr
 			}
 		}
 	}
@@ -106,9 +143,9 @@ func (c *Collection) Get(id string, value interface{}) error {
 	contentAsBytes := []byte{}
 
 	err := c.boltDB.View(func(tx *bolt.Tx) error {
-		colBucket := getCollectionBucket(tx, c.Name)
-		if colBucket == nil {
-			return fmt.Errorf("bucket of the collection %q does not exist", c.Name)
+		colBucket, colBucketErr := c.getDataBucket(tx)
+		if colBucketErr != nil {
+			return colBucketErr
 		}
 
 		contentAsBytes = colBucket.Get([]byte(id))
@@ -172,68 +209,78 @@ func (c *Collection) Get(id string, value interface{}) error {
 
 // Delete removes the coresponding object and index references.
 func (c *Collection) Delete(id string) error {
+	c.boltDB.Update(func(tx *bolt.Tx) error {
+		bucket, getBucketErr := c.getDataBucket(tx)
+		if getBucketErr != nil {
+			return getBucketErr
+		}
 
-	// Take care of cleaning the index
-	refs := c.getIndexReferences(id)
-
-	if err := c.updateIndexAfterDelete(id, refs); err != nil {
-		return fmt.Errorf("updating index: %s", err.Error())
-	}
-
-	if err := c.boltDB.Update(func(tx *bolt.Tx) error {
-		return getCollectionBucket(tx, c.Name).Delete([]byte(id))
-	}); err != nil {
-		return fmt.Errorf("deleting on the DB: %s", err.Error())
-	}
+		return bucket.Delete([]byte(id))
+	})
+	// refs := c.getIndexReferences(id)
+	//
+	// if err := c.updateIndexAfterDelete(id, refs); err != nil {
+	// 	return fmt.Errorf("updating index: %s", err.Error())
+	// }
+	//
+	// if err := c.boltDB.Update(func(tx *bolt.Tx) error {
+	// 	bucket, getBucketErr := c.getDataBucket(tx)
+	// 	if getBucketErr != nil {
+	// 		return getBucketErr
+	// 	}
+	// 	return bucket.Delete([]byte(id))
+	// }); err != nil {
+	// 	return fmt.Errorf("deleting on the DB: %s", err.Error())
+	// }
 
 	return nil
 	// return c.deleteIndexRefFile(id)
 }
 
-// SetIndex adds new index to the collection
-func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selector []string) error {
-	if c.Indexes[name] != nil {
-		return fmt.Errorf("index %q already exists", name)
-	}
+// // SetIndex adds new index to the collection
+// func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selector []string) error {
+// 	if c.Indexes[name] != nil {
+// 		return fmt.Errorf("index %q already exists", name)
+// 	}
+//
+// 	switch indexType {
+// 	case utils.StringComparatorType:
+// 		c.Indexes[name] = NewStringIndex(name, selector)
+// 	case utils.IntComparatorType:
+// 		c.Indexes[name] = NewIntIndex(name, selector)
+// 	// case utils.Int8ComparatorType:
+// 	// 	c.Indexes[name] = NewInt8Index(name, selector)
+// 	// case utils.Int16ComparatorType:
+// 	// 	c.Indexes[name] = NewInt16Index(name, selector)
+// 	// case utils.Int32ComparatorType:
+// 	// 	c.Indexes[name] = NewInt32Index(name, selector)
+// 	// case utils.Int64ComparatorType:
+// 	// 	c.Indexes[name] = NewInt64Index(name, selector)
+// 	case utils.UIntComparatorType:
+// 		c.Indexes[name] = NewUintIndex(name, selector)
+// 	// case utils.UInt8ComparatorType:
+// 	// 	c.Indexes[name] = NewUint8Index(name, selector)
+// 	// case utils.UInt16ComparatorType:
+// 	// 	c.Indexes[name] = NewUint16Index(name, selector)
+// 	// case utils.UInt32ComparatorType:
+// 	// 	c.Indexes[name] = NewUint32Index(name, selector)
+// 	// case utils.UInt64ComparatorType:
+// 	// 	c.Indexes[name] = NewUint64Index(name, selector)
+// 	case utils.Float32ComparatorType:
+// 		c.Indexes[name] = NewFloat32Index(name, selector)
+// 	case utils.Float64ComparatorType:
+// 		c.Indexes[name] = NewFloat64Index(name, selector)
+// 	case utils.TimeComparatorType:
+// 		c.Indexes[name] = NewTimeIndex(name, selector)
+// 	}
+//
+// 	return nil
+// }
 
-	switch indexType {
-	case utils.StringComparatorType:
-		c.Indexes[name] = NewStringIndex(name, selector)
-	case utils.IntComparatorType:
-		c.Indexes[name] = NewIntIndex(name, selector)
-	// case utils.Int8ComparatorType:
-	// 	c.Indexes[name] = NewInt8Index(name, selector)
-	// case utils.Int16ComparatorType:
-	// 	c.Indexes[name] = NewInt16Index(name, selector)
-	// case utils.Int32ComparatorType:
-	// 	c.Indexes[name] = NewInt32Index(name, selector)
-	// case utils.Int64ComparatorType:
-	// 	c.Indexes[name] = NewInt64Index(name, selector)
-	case utils.UIntComparatorType:
-		c.Indexes[name] = NewUintIndex(name, selector)
-	// case utils.UInt8ComparatorType:
-	// 	c.Indexes[name] = NewUint8Index(name, selector)
-	// case utils.UInt16ComparatorType:
-	// 	c.Indexes[name] = NewUint16Index(name, selector)
-	// case utils.UInt32ComparatorType:
-	// 	c.Indexes[name] = NewUint32Index(name, selector)
-	// case utils.UInt64ComparatorType:
-	// 	c.Indexes[name] = NewUint64Index(name, selector)
-	case utils.Float32ComparatorType:
-		c.Indexes[name] = NewFloat32Index(name, selector)
-	case utils.Float64ComparatorType:
-		c.Indexes[name] = NewFloat64Index(name, selector)
-	case utils.TimeComparatorType:
-		c.Indexes[name] = NewTimeIndex(name, selector)
-	}
-
-	return nil
-}
-
-// GetIndex return the coreponding index.
-func (c *Collection) GetIndex(indexName string) Index {
-	return c.Indexes[indexName]
-}
+// // GetIndex return the coreponding index.
+// func (c *Collection) GetIndex(indexName string) Index {
+// 	return c.Indexes[indexName]
+// }
 
 // Query run the given query to all the collection indexes.
 func (c *Collection) Query(q *Query) (ids []string) {

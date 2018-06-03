@@ -26,13 +26,22 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["blake2b"]
+  revision = "df8d4716b3472e4a531c33cedbe537dae921a1a9"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "cpu",
+    "unix"
+  ]
   revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b0d5c764912aeda847c98d91aae7721a52935b3dd4833e8b10b7bc8237d239e4"
+  inputs-digest = "e38d30da6cb889fca90c1aa6b61ac94de32d31c5abf3c9735ed9a5a1722033af"
   solver-name = "gps-cdcl"
   solver-version = 1

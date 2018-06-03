@@ -3,28 +3,50 @@ package gotinydb
 import (
 	"fmt"
 
-	bolt "github.com/coreos/bbolt"
+	"golang.org/x/crypto/blake2b"
 )
 
-func (d *DB) setNewCol(colName string) (*Collection, error) {
-	var col *Collection
-	d.boltDB.Update(func(tx *bolt.Tx) error {
-		// Get the collections names
-		cols := getCollections(tx)
-		for name, _ := range cols {
-			if colName == name {
-				return fmt.Errorf("collection name %q allready exists", colName)
-			}
-		}
+func (d *DB) buildID(name string, col bool) []byte {
+	prefix := ""
+	if col {
+		prefix = "col"
+	} else {
+		prefix = "index"
+	}
 
-		col = NewCollection(d.boltDB, colName)
-		// Add metadata
-		setNamesErr := saveCollection(tx, col)
-		if setNamesErr != nil {
-			return setNamesErr
-		}
-		return nil
-	})
+	data := []byte(fmt.Sprintf("%s_%s", prefix, name))
+	hash := blake2b.Sum512(data)
+	return []byte(hash[:])
+}
+func (d *DB) buildIDString(name string, col bool) string {
+	return fmt.Sprintf("%x", d.buildID(name, col))
+}
+
+func (d *DB) setNewCol(colName string) (*Collection, error) {
+	db, getErr := d.getDB(d.buildIDString(colName, true))
+	if getErr != nil {
+		return nil, getErr
+	}
+	col := NewCollection(db, colName)
+	// d.boltDB.Update(func(tx *bolt.Tx) error {
+	// 	// Get the collections names
+	// 	cols := getCollections(tx)
+	// 	for name, _ := range cols {
+	// 		if colName == name {
+	// 			return fmt.Errorf("collection name %q allready exists", colName)
+	// 		}
+	// 	}
+	//
+	// 	col = NewCollection(d.boltDB, colName)
+	// 	// Add metadata
+	// 	setNamesErr := saveCollection(tx, col)
+	// 	if setNamesErr != nil {
+	// 		return setNamesErr
+	// 	}
+	// 	return nil
+	// })
+	// return col, nil
+
 	return col, nil
 }
 
@@ -45,34 +67,14 @@ func (d *DB) setNewCol(colName string) (*Collection, error) {
 // 	})
 // }
 
-func (d *DB) loadCollections() error {
-	return d.boltDB.View(func(tx *bolt.Tx) error {
-		d.collections = getCollections(tx)
-
-		return nil
-		// // Get the list of collection from internal bucket
-		// v := tx.Bucket(InternalBuckectMetaDatas).Get(InternalMetaDataCollectionsID)
-		//
-		// // If the response is empty there is no existing collections.
-		// if len(v) == 0 {
-		// 	return nil
-		// }
-		//
-		// indexNames := []string{}
-		// uErr := json.Unmarshal(v, &indexNames)
-		// if uErr != nil {
-		// 	return fmt.Errorf("unmarshaling collections names %s: %s", string(v), uErr.Error())
-		// }
-		//
-		// for _, indexName := range indexNames {
-		// 	if err := d.loadCollection(indexName); err != nil {
-		// 		return err
-		// 	}
-		// }
-		//
-		// return nil
-	})
-}
+// func (d *DB) loadCollections() error {
+// 	// return d.boltDB.View(func(tx *bolt.Tx) error {
+// 	// 	d.collections = getCollections(tx)
+// 	//
+// 	// 	return nil
+// 	// 	})
+// 	return nil
+// }
 
 // func (d *DB) loadCollection(name string) error {
 // 	err := d.boltDB.View(func(tx *bolt.Tx) error {

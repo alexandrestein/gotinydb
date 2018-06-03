@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"fmt"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
@@ -91,9 +92,10 @@ func (c *Collection) setIndexReferences(id string, refs []*IndexReference) error
 	// 	return fmt.Errorf("saving references into DB: %s", err.Error())
 	// }
 
-	return c.boltDB.Update(func(tx *bolt.Tx) error {
-		return setObjectReferences(tx, c.Name, id, refs)
-	})
+	// return c.boltDB.Update(func(tx *bolt.Tx) error {
+	// 	return setObjectReferences(tx, c.Name, id, refs)
+	// })
+	return fmt.Errorf("sdvsdvffjgh,vx scs")
 }
 
 // func (c *Collection) getIndexReferences(id string) ([]*IndexReference, error) {
@@ -106,39 +108,43 @@ func (c *Collection) setIndexReferences(id string, refs []*IndexReference) error
 // 	return references, nil
 // }
 
-func (c *Collection) getIndexReferences(id string) []*IndexReference {
-	var refs []*IndexReference
-	c.boltDB.View(func(tx *bolt.Tx) error {
-		refs = getObjectReferences(tx, c.Name, id)
-		return nil
-	})
-
-	return refs
-	// // file, openErr := c.getIndexRefFile(id, update)
-	// // if openErr != nil {
-	// // 	return nil, nil, openErr
-	// // }
-	// // if file == nil {
-	// // 	return nil, []*IndexReference{}, nil
-	// // }
-	// refsAsBytes := []byte{}
-	//
-	// if viewErr := c.boltDB.View(func(tx *bolt.Tx) error {
-	// 	refsAsBytes = tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Get([]byte(id))
-	// 	return nil
-	// }); viewErr != nil {
-	// 	return nil, fmt.Errorf("getting the references: %s", viewErr)
-	// }
-	//
-	// refs := []*IndexReference{}
-	//
-	// decodeErr := json.Unmarshal(refsAsBytes, &refs)
-	// if decodeErr != nil {
-	// 	return []*IndexReference{}, nil
-	// }
-	//
-	// return refs, nil
-}
+// func (c *Collection) getIndexReferences(id string) []*IndexReference {
+// 	var refs []*IndexReference
+// 	c.boltDB.View(func(tx *bolt.Tx) error {
+// 		bucket, getBucketErr:=c.getRefsBucket(tx).Get(id)
+// 		if getBucketErr != nil {
+//
+// 		}
+// 		refs = getObjectReferences(tx, c.Name, id)
+// 		return nil
+// 	})
+//
+// 	return refs
+// 	// // file, openErr := c.getIndexRefFile(id, update)
+// 	// // if openErr != nil {
+// 	// // 	return nil, nil, openErr
+// 	// // }
+// 	// // if file == nil {
+// 	// // 	return nil, []*IndexReference{}, nil
+// 	// // }
+// 	// refsAsBytes := []byte{}
+// 	//
+// 	// if viewErr := c.boltDB.View(func(tx *bolt.Tx) error {
+// 	// 	refsAsBytes = tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Get([]byte(id))
+// 	// 	return nil
+// 	// }); viewErr != nil {
+// 	// 	return nil, fmt.Errorf("getting the references: %s", viewErr)
+// 	// }
+// 	//
+// 	// refs := []*IndexReference{}
+// 	//
+// 	// decodeErr := json.Unmarshal(refsAsBytes, &refs)
+// 	// if decodeErr != nil {
+// 	// 	return []*IndexReference{}, nil
+// 	// }
+// 	//
+// 	// return refs, nil
+// }
 
 // func (c *Collection) getIndexRefFile(id string, update bool) (ret *os.File, err error) {
 // 	log.Print("getIndexRef")
@@ -160,10 +166,16 @@ func (c *Collection) getIndexReferences(id string) []*IndexReference {
 // 	// return indexMetaFile, nil
 // }
 
-func (c *Collection) deleteIndexRef(id string) (err error) {
-	return c.boltDB.Update(func(tx *bolt.Tx) error {
-		return getCollectionMetaBucket(tx, c.Name).Delete([]byte(id))
-	})
+func (c *Collection) deleteIndexRef(tx *bolt.Tx, id string) (err error) {
+	// return c.boltDB.Update(func(tx *bolt.Tx) error {
+	// 	return getCollectionMetaBucket(tx, c.Name).Delete([]byte(id))
+	// })
+
+	bucket, getBucketErr := c.getRefsBucket(tx)
+	if getBucketErr != nil {
+		return getBucketErr
+	}
+	return bucket.Delete([]byte(id))
 
 	// if err := c.boltDB.Update(func(tx *bolt.Tx) error {
 	// 	return tx.Bucket(InternalBuckectMetaDatas).Bucket([]byte(c.Name)).Delete([]byte(id))

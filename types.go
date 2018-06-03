@@ -13,15 +13,18 @@ type (
 	// DB is the main element of the package it defines the all database.
 	DB struct {
 		collections map[string]*Collection
-		boltDB      *bolt.DB
-		path        string
+		// indexes        map[string]Index
+		metaDB *bolt.DB
+		// collextionsDBs map[string]*bolt.DB
+		// indexesDBs     map[string]*bolt.DB
+		path string
 	}
 
 	// Collection define the main element of the database. This is where data are
 	// stored. The design is similar to other NO-SQL database.
 	Collection struct {
 		Name    string
-		Indexes map[string]Index
+		Indexes []Index
 
 		boltDB *bolt.DB
 	}
