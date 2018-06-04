@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alexandrestein/gods/utils"
 	bolt "github.com/coreos/bbolt"
 )
 
@@ -34,15 +35,14 @@ func NewCollection(db *bolt.DB, name string) *Collection {
 // If the goal is to store stream of bytes you need to send []byte{} inside
 // the interface.
 func (c *Collection) Close() error {
-	fmt.Println("Close Collection")
-	return nil
+	return c.boltDB.Close()
 }
 func (c *Collection) getDataBucket(tx *bolt.Tx) (*bolt.Bucket, error) {
-	return c.getBucket(tx, true)
+	return c.getBucket(tx, data)
 
 }
 func (c *Collection) getRefsBucket(tx *bolt.Tx) (*bolt.Bucket, error) {
-	return c.getBucket(tx, false)
+	return c.getBucket(tx, refs)
 }
 func (c *Collection) getRefs(tx *bolt.Tx, id string) ([]*IndexReference, error) {
 	refBucket, getBucketErr := c.getRefsBucket(tx)
@@ -58,12 +58,22 @@ func (c *Collection) getRefs(tx *bolt.Tx, id string) ([]*IndexReference, error) 
 	}
 	return refs, nil
 }
-func (c *Collection) getBucket(tx *bolt.Tx, data bool) (*bolt.Bucket, error) {
+func (c *Collection) getBucket(tx *bolt.Tx, t bucketName) (*bolt.Bucket, error) {
 	name := ""
-	if data {
-		name = "data"
-	} else {
-		name = "refs"
+	switch t {
+	case meta:
+		name = string(meta)
+	case data:
+		name = string(data)
+	case refs:
+		name = string(refs)
+	case index:
+		name = string(index)
+	}
+
+	bucket := tx.Bucket([]byte(name))
+	if bucket != nil {
+		return bucket, nil
 	}
 
 	return tx.CreateBucketIfNotExists([]byte(name))
@@ -152,15 +162,24 @@ func (c *Collection) Get(id string, value interface{}) error {
 		return nil
 	})
 	if err != nil {
+		if err == bolt.ErrTxNotWritable {
+			fmt.Println("not writable")
+		}
 		return err
 	}
 
+	if len(contentAsBytes) == 0 {
+		return fmt.Errorf("object %s does not exist", id)
+	}
+
 	if givenBuffer, ok := value.(*bytes.Buffer); ok {
-		if len(contentAsBytes) != 0 {
-			givenBuffer.Write(contentAsBytes)
-			return nil
+		n, writeErr := givenBuffer.Write(contentAsBytes)
+		if writeErr != nil {
+			return writeErr
 		}
-		return fmt.Errorf("content of %q is empty or not present", id)
+		if n != len(contentAsBytes) {
+			return fmt.Errorf("write uncompleted has %d but %d writen", len(contentAsBytes), n)
+		}
 	}
 
 	uMarshalErr := json.Unmarshal(contentAsBytes, value)
@@ -235,6 +254,10 @@ func (c *Collection) Delete(id string) error {
 
 	return nil
 	// return c.deleteIndexRefFile(id)
+}
+
+func (c *Collection) SetIndex(name string, indexType utils.ComparatorType, selector []string) error {
+	return nil
 }
 
 // // SetIndex adds new index to the collection

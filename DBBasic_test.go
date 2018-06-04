@@ -2,6 +2,7 @@ package gotinydb
 
 import (
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -124,9 +125,79 @@ func TestBaseCollection(t *testing.T) {
 		return
 	}
 
+	if err := db.Close(); err != nil {
+		t.Error(err)
+		return
+	}
+
+	db, err = Open(Path)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	col, colErr = db.Use("test collection")
+	if colErr != nil {
+		t.Error(colErr)
+		return
+	}
+
+	recoveredTestUser := struct {
+		Email, Pass string
+	}{}
+	getErr := col.Get(userID, &recoveredTestUser)
+	if getErr != nil {
+		t.Error(getErr)
+		return
+	}
+
+	if !reflect.DeepEqual(testUser, recoveredTestUser) {
+		t.Errorf("returned object is not equal: \n%v\n%v", testUser, recoveredTestUser)
+		return
+	}
+
 	delErr := col.Delete(userID)
 	if delErr != nil {
 		t.Error(delErr)
+		return
+	}
+
+	recoveredTestUser = struct {
+		Email, Pass string
+	}{}
+	getErr = col.Get(userID, &recoveredTestUser)
+	if getErr == nil {
+		t.Errorf("should return not exist error")
+		return
+	}
+}
+
+func TestIndexCollection(t *testing.T) {
+	defer os.RemoveAll(Path)
+	db, err := Open(Path)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer db.Close()
+
+	col, colErr := db.Use("test collection")
+	if colErr != nil {
+		t.Error(colErr)
+		return
+	}
+
+	// col.SetIndex()
+
+	userID := "user@example.com"
+	testUser := struct {
+		Email, Pass string
+	}{
+		userID, "password",
+	}
+
+	putErr := col.Put(userID, &testUser)
+	if putErr != nil {
+		t.Error(putErr)
 		return
 	}
 }

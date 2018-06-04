@@ -54,16 +54,17 @@ func (d *DB) loadCollections() error {
 	}
 	return nil
 }
-func (d *DB) loadIndexes(curs *bolt.Cursor) error {
-	for k, v := curs.First(); k != nil; k, v = curs.Next() {
-		indexes := &structIndex{}
-		err := json.Unmarshal(v, indexes)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+
+// func (d *DB) loadIndexes(curs *bolt.Cursor) error {
+// 	for k, v := curs.First(); k != nil; k, v = curs.Next() {
+// 		indexes := &structIndex{}
+// 		err := json.Unmarshal(v, indexes)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
 // func (d *DB) loadFromDB(key, value interface{})error   {
 //

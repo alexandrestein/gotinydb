@@ -1,29 +1,27 @@
 package gotinydb
 
-import (
-	"fmt"
-
-	"golang.org/x/crypto/blake2b"
-)
-
-func (d *DB) buildID(name string, col bool) []byte {
-	prefix := ""
-	if col {
-		prefix = "col"
-	} else {
-		prefix = "index"
-	}
-
-	data := []byte(fmt.Sprintf("%s_%s", prefix, name))
-	hash := blake2b.Sum512(data)
-	return []byte(hash[:])
-}
-func (d *DB) buildIDString(name string, col bool) string {
-	return fmt.Sprintf("%x", d.buildID(name, col))
-}
+// func (d *DB) buildID(name string, t bucketName) []byte {
+// 	prefix := ""
+// 	switch t {
+// 	case condition:
+//
+// 	}
+// 	if col {
+// 		prefix = "col"
+// 	} else {
+// 		prefix = "index"
+// 	}
+//
+// 	data := []byte(fmt.Sprintf("%s_%s", prefix, name))
+// 	hash := blake2b.Sum512(data)
+// 	return []byte(hash[:])
+// }
+// func (d *DB) buildIDString(name string, col bool) string {
+// 	return fmt.Sprintf("%x", d.buildID(name, col))
+// }
 
 func (d *DB) setNewCol(colName string) (*Collection, error) {
-	db, getErr := d.getDB(d.buildIDString(colName, true))
+	db, getErr := d.getDB(colName)
 	if getErr != nil {
 		return nil, getErr
 	}

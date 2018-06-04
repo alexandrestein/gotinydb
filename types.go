@@ -10,6 +10,8 @@ import (
 )
 
 type (
+	bucketName string
+
 	// DB is the main element of the package it defines the all database.
 	DB struct {
 		collections map[string]*Collection
@@ -30,11 +32,14 @@ type (
 	}
 
 	structIndex struct {
-		tree      *btree.Tree
+		boltDB    *bolt.DB
+		getBucket func(tx *bolt.Tx) (*bolt.Bucket, error)
 		selector  []string
 		name      string
-		indexType utils.ComparatorType
+		indexType IndexType
 	}
+
+	IndexType int
 
 	// Index is the main interface of the package. it provides the functions to manage
 	// those indexes
@@ -104,17 +109,17 @@ type (
 		IndexName string
 		Value     interface{}
 
-		StringValue  string    `json:",omitempty"`
-		IntValue     int       `json:",omitempty"`
-		Int8aVlue    int8      `json:",omitempty"`
-		Int16Value   int16     `json:",omitempty"`
-		Int32Value   int32     `json:",omitempty"`
-		Int64Value   int64     `json:",omitempty"`
-		UintValue    uint      `json:",omitempty"`
-		Uint8Value   uint8     `json:",omitempty"`
-		Uint16Value  uint16    `json:",omitempty"`
-		Uint32Value  uint32    `json:",omitempty"`
-		Uint64Value  uint64    `json:",omitempty"`
+		StringValue string `json:",omitempty"`
+		IntValue    int    `json:",omitempty"`
+		// Int8aVlue    int8      `json:",omitempty"`
+		// Int16Value   int16     `json:",omitempty"`
+		// Int32Value   int32     `json:",omitempty"`
+		// Int64Value   int64     `json:",omitempty"`
+		UintValue uint `json:",omitempty"`
+		// Uint8Value   uint8     `json:",omitempty"`
+		// Uint16Value  uint16    `json:",omitempty"`
+		// Uint32Value  uint32    `json:",omitempty"`
+		// Uint64Value  uint64    `json:",omitempty"`
 		Float32Value float32   `json:",omitempty"`
 		Float64Value float64   `json:",omitempty"`
 		TimeValue    time.Time `json:",omitempty"`

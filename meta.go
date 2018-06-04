@@ -13,24 +13,24 @@ func newIndexReference(indexName string, value interface{}) *IndexReference {
 		ref.StringValue = typedValue
 	} else if typedValue, ok := value.(int); ok {
 		ref.IntValue = typedValue
-	} else if typedValue, ok := value.(int8); ok {
-		ref.Int8aVlue = typedValue
-	} else if typedValue, ok := value.(int16); ok {
-		ref.Int16Value = typedValue
-	} else if typedValue, ok := value.(int32); ok {
-		ref.Int32Value = typedValue
-	} else if typedValue, ok := value.(int64); ok {
-		ref.Int64Value = typedValue
+		// } else if typedValue, ok := value.(int8); ok {
+		// 	ref.Int8aVlue = typedValue
+		// } else if typedValue, ok := value.(int16); ok {
+		// 	ref.Int16Value = typedValue
+		// } else if typedValue, ok := value.(int32); ok {
+		// 	ref.Int32Value = typedValue
+		// } else if typedValue, ok := value.(int64); ok {
+		// 	ref.Int64Value = typedValue
 	} else if typedValue, ok := value.(uint); ok {
 		ref.UintValue = typedValue
-	} else if typedValue, ok := value.(uint8); ok {
-		ref.Uint8Value = typedValue
-	} else if typedValue, ok := value.(uint16); ok {
-		ref.Uint16Value = typedValue
-	} else if typedValue, ok := value.(uint32); ok {
-		ref.Uint32Value = typedValue
-	} else if typedValue, ok := value.(uint64); ok {
-		ref.Uint64Value = typedValue
+		// } else if typedValue, ok := value.(uint8); ok {
+		// 	ref.Uint8Value = typedValue
+		// } else if typedValue, ok := value.(uint16); ok {
+		// 	ref.Uint16Value = typedValue
+		// } else if typedValue, ok := value.(uint32); ok {
+		// 	ref.Uint32Value = typedValue
+		// } else if typedValue, ok := value.(uint64); ok {
+		// 	ref.Uint64Value = typedValue
 	} else if typedValue, ok := value.(float32); ok {
 		ref.Float32Value = typedValue
 	} else if typedValue, ok := value.(float64); ok {
@@ -47,24 +47,24 @@ func (ref *IndexReference) GetValue() interface{} {
 		return ref.StringValue
 	} else if ref.IntValue != 0 {
 		return ref.IntValue
-	} else if ref.Int8aVlue != 0 {
-		return ref.Int8aVlue
-	} else if ref.Int16Value != 0 {
-		return ref.Int16Value
-	} else if ref.Int32Value != 0 {
-		return ref.Int32Value
-	} else if ref.Int64Value != 0 {
-		return ref.Int64Value
+		// } else if ref.Int8aVlue != 0 {
+		// 	return ref.Int8aVlue
+		// } else if ref.Int16Value != 0 {
+		// 	return ref.Int16Value
+		// } else if ref.Int32Value != 0 {
+		// 	return ref.Int32Value
+		// } else if ref.Int64Value != 0 {
+		// 	return ref.Int64Value
 	} else if ref.UintValue != 0 {
 		return ref.UintValue
-	} else if ref.Uint8Value != 0 {
-		return ref.Uint8Value
-	} else if ref.Uint16Value != 0 {
-		return ref.Uint16Value
-	} else if ref.Uint32Value != 0 {
-		return ref.Uint32Value
-	} else if ref.Uint64Value != 0 {
-		return ref.Uint64Value
+		// } else if ref.Uint8Value != 0 {
+		// 	return ref.Uint8Value
+		// } else if ref.Uint16Value != 0 {
+		// 	return ref.Uint16Value
+		// } else if ref.Uint32Value != 0 {
+		// 	return ref.Uint32Value
+		// } else if ref.Uint64Value != 0 {
+		// 	return ref.Uint64Value
 	} else if ref.Float32Value != 0 {
 		return ref.Float32Value
 	} else if ref.Float64Value != 0 {

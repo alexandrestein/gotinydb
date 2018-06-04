@@ -70,7 +70,7 @@ func (i *structIndex) getTree() *btree.Tree {
 	return i.tree
 }
 
-func (i *structIndex) Type() utils.ComparatorType {
+func (i *structIndex) Type() IndexType {
 	return i.indexType
 }
 
@@ -92,6 +92,22 @@ func (i *structIndex) Load(content []byte) error {
 	return nil
 }
 
+func (i *structIndex) valueIntoBytes(value interface{}) ([]byte, error) {
+	switch i.indexType {
+	case StringIndexType:
+		valAsString, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("unvalid type")
+		}
+		return []byte(valAsString)
+	case IntIndexType:
+		alAsString, ok := value.(int)
+		if !ok {
+			return nil, fmt.Errorf("unvalid type")
+		}
+		return []byte(fmt.Fprintf("%x", format))
+	}
+}
 func (i *structIndex) RemoveID(value interface{}, objectID string) error {
 	savedIDs, found := i.Get(value)
 	if !found {
