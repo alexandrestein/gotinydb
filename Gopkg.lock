@@ -2,15 +2,10 @@
 
 
 [[projects]]
-  name = "github.com/alexandrestein/gods"
-  packages = [
-    "containers",
-    "trees",
-    "trees/btree",
-    "utils"
-  ]
-  revision = "9f348be812d2f11cf0c07dc9652e86432573453a"
-  version = "v1.0.1"
+  branch = "master"
+  name = "github.com/AndreasBriese/bbloom"
+  packages = ["."]
+  revision = "28f7e881ca57bc00e028f9ede9f0d9104cfeef5e"
 
 [[projects]]
   name = "github.com/coreos/bbolt"
@@ -19,16 +14,51 @@
   version = "v1.3.0"
 
 [[projects]]
-  name = "github.com/fatih/structs"
-  packages = ["."]
-  revision = "a720dfa8df582c51dee1b36feabb906bde1588bd"
-  version = "v1.0"
+  name = "github.com/dgraph-io/badger"
+  packages = [
+    ".",
+    "options",
+    "protos",
+    "skl",
+    "table",
+    "y"
+  ]
+  revision = "3ff1bfbb11c02c78c11269096669396c2d2cbbd3"
+  version = "v1.5.0"
 
 [[projects]]
   branch = "master"
-  name = "golang.org/x/crypto"
-  packages = ["blake2b"]
-  revision = "df8d4716b3472e4a531c33cedbe537dae921a1a9"
+  name = "github.com/dgryski/go-farm"
+  packages = ["."]
+  revision = "2de33835d10275975374b37b2dcfd22c9020a1f5"
+
+[[projects]]
+  name = "github.com/golang/protobuf"
+  packages = ["proto"]
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/minio/highwayhash"
+  packages = ["."]
+  revision = "85fc8a2dacad36a6beb2865793cd81363a496696"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = [
+    "context",
+    "internal/timeseries",
+    "trace"
+  ]
+  revision = "1e491301e022f8f977054da4c2d852decd59571f"
 
 [[projects]]
   branch = "master"
@@ -42,6 +72,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e38d30da6cb889fca90c1aa6b61ac94de32d31c5abf3c9735ed9a5a1722033af"
+  inputs-digest = "99871ef9f0e65a913da009b79c132108e1271637837a59692399cd004085e736"
   solver-name = "gps-cdcl"
   solver-version = 1
