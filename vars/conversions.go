@@ -6,15 +6,19 @@ import (
 	"time"
 )
 
+// StringToBytes converter from a string to bytes slice.
+// If an error is returned it's has the form of ErrWrongType
 func StringToBytes(input interface{}) ([]byte, error) {
 	typedInput, ok := input.(string)
 	if !ok {
-		return nil, WrongType
+		return nil, ErrWrongType
 	}
 
 	return []byte(typedInput), nil
 }
 
+// IntToBytes converter from a int or uint of any size (int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64)
+// to bytes slice. If an error is returned it's has the form of ErrWrongType
 func IntToBytes(input interface{}) ([]byte, error) {
 	typedValue := uint64(0)
 	switch input.(type) {
@@ -39,7 +43,7 @@ func IntToBytes(input interface{}) ([]byte, error) {
 	case uint64:
 		typedValue = input.(uint64)
 	default:
-		return nil, WrongType
+		return nil, ErrWrongType
 	}
 
 	bs := make([]byte, 8)
@@ -47,6 +51,8 @@ func IntToBytes(input interface{}) ([]byte, error) {
 	return bs, nil
 }
 
+// FloatToBytes converter from a float32 or float64 to bytes slice.
+// If an error is returned it's has the form of ErrWrongType
 func FloatToBytes(input interface{}) ([]byte, error) {
 	var bigFloat *big.Float
 	switch input.(type) {
@@ -57,7 +63,7 @@ func FloatToBytes(input interface{}) ([]byte, error) {
 		typedValue := input.(float64)
 		bigFloat = big.NewFloat(typedValue)
 	default:
-		return nil, WrongType
+		return nil, ErrWrongType
 	}
 
 	uint64Val, _ := bigFloat.Uint64()
@@ -67,10 +73,12 @@ func FloatToBytes(input interface{}) ([]byte, error) {
 	return bs, nil
 }
 
+// TimeToBytes converter from a time struct to bytes slice.
+// If an error is returned it's has the form of ErrWrongType
 func TimeToBytes(input interface{}) ([]byte, error) {
 	typedInput, ok := input.(time.Time)
 	if !ok {
-		return nil, WrongType
+		return nil, ErrWrongType
 	}
 
 	return typedInput.MarshalBinary()

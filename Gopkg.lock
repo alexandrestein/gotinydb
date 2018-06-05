@@ -8,10 +8,10 @@
   revision = "28f7e881ca57bc00e028f9ede9f0d9104cfeef5e"
 
 [[projects]]
-  name = "github.com/coreos/bbolt"
+  name = "github.com/boltdb/bolt"
   packages = ["."]
-  revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
-  version = "v1.3.0"
+  revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
+  version = "v1.3.1"
 
 [[projects]]
   name = "github.com/dgraph-io/badger"
@@ -23,14 +23,20 @@
     "table",
     "y"
   ]
-  revision = "3ff1bfbb11c02c78c11269096669396c2d2cbbd3"
-  version = "v1.5.0"
+  revision = "690400e629977977ecddfa8ab3a7f9285e1041a8"
+  version = "v1.5.1"
 
 [[projects]]
   branch = "master"
   name = "github.com/dgryski/go-farm"
   packages = ["."]
   revision = "2de33835d10275975374b37b2dcfd22c9020a1f5"
+
+[[projects]]
+  name = "github.com/fatih/structs"
+  packages = ["."]
+  revision = "a720dfa8df582c51dee1b36feabb906bde1588bd"
+  version = "v1.0"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -72,6 +78,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "99871ef9f0e65a913da009b79c132108e1271637837a59692399cd004085e736"
+  inputs-digest = "7acb6a4bcccb3a7d8ed1030b858fc601ba56dca2a8a8be54c3734d4ba695e240"
   solver-name = "gps-cdcl"
   solver-version = 1

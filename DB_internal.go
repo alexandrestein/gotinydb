@@ -3,9 +3,10 @@ package gotinydb
 import (
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
-	bolt "github.com/coreos/bbolt"
+	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
 )
 
@@ -27,12 +28,12 @@ func (d *DB) initBadger() error {
 }
 
 func (d *DB) loadCollections() error {
-	colsNames, getColsNameErr := d.getCollectionsNames()
-	if getColsNameErr != nil {
-		return getColsNameErr
+	colsIDs, getColsIDsErr := d.getCollectionsIDs()
+	if getColsIDsErr != nil {
+		return getColsIDsErr
 	}
-	for _, colName := range colsNames {
-		col, err := d.loadCollection(colName)
+	for _, colID := range colsIDs {
+		col, err := d.getCollection(colID)
 		if err != nil {
 			return err
 		}
@@ -43,20 +44,38 @@ func (d *DB) loadCollections() error {
 	return nil
 }
 
-func (d *DB) loadCollection(colName string) (*Collection, error) {
+func (d *DB) getCollection(colID string) (*Collection, error) {
 	c := new(Collection)
 	c.Store = d.ValueStore
-	db, openDBerr := bolt.Open(d.Path+"/collections/"+colName, vars.FilePermission, nil)
-	// db, openDBerr := bolt.Open(d.Path+"/collections/"+colName, vars.FilePermission, &bolt.Options{Timeout: time.Second * 1})
+
+	// db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
+	db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, &bolt.Options{Timeout: time.Second * 1})
 	if openDBerr != nil {
 		return nil, openDBerr
 	}
 	c.DB = db
 
+	// Try to load the collection informations
+	if err := c.loadInfos(); err != nil {
+		// If not exists try to build it
+		if err == vars.ErrNotFound {
+			err = c.init(colID)
+			// Error after at build
+			if err != nil {
+				return nil, err
+			}
+			// No error return the new Collection pointer
+			return c, nil
+		}
+		// Other error than not found
+		return nil, err
+	}
+
+	// The collection is loaded and database is ready
 	return c, nil
 }
 
-func (d *DB) getCollectionsNames() ([]string, error) {
+func (d *DB) getCollectionsIDs() ([]string, error) {
 	files, err := ioutil.ReadDir(d.Path + "/collections")
 	if err != nil {
 		return nil, err
