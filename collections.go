@@ -72,6 +72,9 @@ func (c *Collection) Get(id string, pointer interface{}) error {
 	if err := c.Store.View(func(txn *badger.Txn) error {
 		item, getError := txn.Get(idAsBytes)
 		if getError != nil {
+			if getError == badger.ErrKeyNotFound {
+				return vars.ErrNotFound
+			}
 			return getError
 		}
 

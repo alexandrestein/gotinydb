@@ -49,7 +49,8 @@ func (c *Collection) init(name string) error {
 
 func (c *Collection) buildStoreID(id string) []byte {
 	compositeID := fmt.Sprintf("%s_%s", c.Name, id)
-	return []byte(vars.BuildID(compositeID))
+	objectID := vars.BuildID(compositeID)
+	return []byte(fmt.Sprintf("%s_%s", c.ID[:4], objectID))
 }
 
 func (c *Collection) putIntoIndexes(id string, content interface{}) error {

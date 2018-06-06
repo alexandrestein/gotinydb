@@ -1,12 +1,16 @@
 package gotinydb
 
 import (
+	"bytes"
+	"crypto/rand"
 	"crypto/sha1"
 	"fmt"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/alexandrestein/gotinydb/vars"
 )
 
 var (
@@ -108,7 +112,21 @@ func TestPutGetAndDeleteObjectCollection(t *testing.T) {
 		t.Error("given object and retreive on are not equal")
 		return
 	}
+
+	if delErr := c.Delete("testID"); delErr != nil {
+		t.Error(delErr)
+		return
+	}
+
+	retrieveTestUser = struct {
+		Login, Pass string
+	}{}
+	if getErr := c.Get("testID", &retrieveTestUser); getErr != vars.ErrNotFound {
+		t.Error(getErr)
+		return
+	}
 }
+
 func TestPutGetAndDeleteBinCollection(t *testing.T) {
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
@@ -124,8 +142,36 @@ func TestPutGetAndDeleteBinCollection(t *testing.T) {
 		return
 	}
 
-	if err := c.Put("testID", nil); err != nil {
+	content := make([]byte, 1000)
+	if _, readRandErr := rand.Read(content); readRandErr != nil {
+		t.Error(readRandErr)
+		return
+	}
+
+	if err := c.Put("testID", content); err != nil {
 		t.Error(err)
+		return
+	}
+
+	retrieveContent := bytes.NewBuffer(nil)
+	if getErr := c.Get("testID", retrieveContent); getErr != nil {
+		t.Error(getErr)
+		return
+	}
+
+	if !reflect.DeepEqual(retrieveContent.Bytes(), content) {
+		t.Error("given object and retreive on are not equal")
+		return
+	}
+
+	if delErr := c.Delete("testID"); delErr != nil {
+		t.Error(delErr)
+		return
+	}
+
+	retrieveContent = bytes.NewBuffer(nil)
+	if getErr := c.Get("testID", retrieveContent); getErr != vars.ErrNotFound {
+		t.Error(getErr)
 		return
 	}
 }
