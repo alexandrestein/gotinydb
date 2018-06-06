@@ -9,14 +9,19 @@ import (
 
 func (c *Collection) loadInfos() error {
 	return c.DB.View(func(tx *bolt.Tx) error {
+
 		bucket := tx.Bucket([]byte("config"))
 		if bucket == nil {
 			return vars.ErrNotFound
 		}
 
 		name := string(bucket.Get([]byte("name")))
+		id := string(bucket.Get([]byte("id")))
 		c.Name = name
-		c.ID = fmt.Sprintf("%x", c.buildStoreID(name))
+		if vars.BuildIDAsString(name) != id {
+			return fmt.Errorf("ID and name not consistent. Name is %q with fingerprint %q but had %x", name, vars.BuildIDAsString(name), string(id))
+		}
+		c.ID = vars.BuildIDAsString(name)
 
 		return nil
 	})
@@ -31,14 +36,23 @@ func (c *Collection) init(name string) error {
 			}
 		}
 
-		tx.Bucket([]byte("config")).Put([]byte("name"), []byte(name))
+		confBucket := tx.Bucket([]byte("config"))
+		if confBucket == nil {
+			return fmt.Errorf("bucket error")
+		}
+		if err := confBucket.Put([]byte("name"), []byte(name)); err != nil {
+			return err
+		}
+		if err := confBucket.Put([]byte("id"), []byte(vars.BuildIDAsString(name))); err != nil {
+			return err
+		}
 		return nil
 	})
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
 	compositeID := fmt.Sprintf("%s_%s", c.Name, id)
-	return vars.BuildID(compositeID)
+	return vars.BuildIDAsBytes(compositeID)
 }
 
 func (c *Collection) putIntoIndexes(id string, content interface{}) error {

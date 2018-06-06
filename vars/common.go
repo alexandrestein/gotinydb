@@ -19,14 +19,18 @@ var (
 	ErrEmptyID = fmt.Errorf("empty ID")
 )
 
-// BuildID builds an ID as a slice of bytes from the given string
-func BuildID(id string) []byte {
+// buildID builds an ID as a slice of bytes from the given string
+func buildID(id string) []byte {
 	key := make([]byte, highwayhash.Size)
 	hash := highwayhash.Sum128([]byte(id), key)
 	return []byte(hash[:])
 }
 
-// BuildIDAsString does same as above but returns ID as hexadecimal representation into a string
+// BuildIDAsString builds an ID of 128bits (16 bytes) as hexadecimal representation as string
 func BuildIDAsString(id string) string {
-	return fmt.Sprintf("%x", BuildID(id))
+	return fmt.Sprintf("%x", buildID(id))
+}
+
+func BuildIDAsBytes(id string) []byte {
+	return []byte(BuildIDAsString(id))
 }

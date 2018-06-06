@@ -42,12 +42,11 @@ func (d *DB) Use(colName string) (*Collection, error) {
 		}
 	}
 
-	c, loadErr := d.getCollection(colName)
+	c, loadErr := d.getCollection("", colName)
 	if loadErr != nil {
 		return nil, loadErr
 	}
 
-	c.Name = colName
 	d.Collections = append(d.Collections, c)
 
 	return c, nil

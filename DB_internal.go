@@ -1,9 +1,9 @@
 package gotinydb
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -33,7 +33,7 @@ func (d *DB) loadCollections() error {
 		return getColsIDsErr
 	}
 	for _, colID := range colsIDs {
-		col, err := d.getCollection(colID)
+		col, err := d.getCollection(colID, "")
 		if err != nil {
 			return err
 		}
@@ -44,16 +44,25 @@ func (d *DB) loadCollections() error {
 	return nil
 }
 
-func (d *DB) getCollection(colID string) (*Collection, error) {
+func (d *DB) getCollection(colID, colName string) (*Collection, error) {
+	if colID == "" {
+		colID = vars.BuildIDAsString(colName)
+	}
+
 	c := new(Collection)
 	c.Store = d.ValueStore
+	c.ID = colID
+	c.Name = colName
+	fmt.Println("name and ID", colName, colID)
+	fmt.Println("path", d.Path+"/collections/"+colID)
 
-	// db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
-	db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, &bolt.Options{Timeout: time.Second * 1})
+	db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
 	if openDBerr != nil {
 		return nil, openDBerr
 	}
 	c.DB = db
+
+	fmt.Println("HOLDED")
 
 	// Try to load the collection informations
 	if err := c.loadInfos(); err != nil {
