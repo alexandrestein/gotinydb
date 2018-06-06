@@ -16,7 +16,7 @@ func (c *Collection) loadInfos() error {
 
 		name := string(bucket.Get([]byte("name")))
 		c.Name = name
-		c.ID = fmt.Sprintf("%x", c.buildStoreID(name))
+		c.ID = vars.BuildIDAsString(name)
 
 		return nil
 	})
@@ -38,7 +38,7 @@ func (c *Collection) init(name string) error {
 
 func (c *Collection) buildStoreID(id string) []byte {
 	compositeID := fmt.Sprintf("%s_%s", c.Name, id)
-	return vars.BuildID(compositeID)
+	return []byte(vars.BuildIDAsString(compositeID))
 }
 
 func (c *Collection) putIntoIndexes(id string, content interface{}) error {
