@@ -1,9 +1,9 @@
 package gotinydb
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -33,7 +33,7 @@ func (d *DB) loadCollections() error {
 		return getColsIDsErr
 	}
 	for _, colID := range colsIDs {
-		col, err := d.getCollection(colID)
+		col, err := d.getCollection(colID, "")
 		if err != nil {
 			return err
 		}
@@ -44,12 +44,20 @@ func (d *DB) loadCollections() error {
 	return nil
 }
 
-func (d *DB) getCollection(colID string) (*Collection, error) {
+func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c := new(Collection)
 	c.Store = d.ValueStore
 
-	// db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
-	db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, &bolt.Options{Timeout: time.Second * 1})
+	if colID == "" && colName == "" {
+		return nil, fmt.Errorf("name and ID can't be empty")
+	} else if colID == "" {
+		colID = vars.BuildID(colName)
+	}
+
+	c.ID = colID
+	c.Name = colName
+
+	db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
 	if openDBerr != nil {
 		return nil, openDBerr
 	}
@@ -59,7 +67,10 @@ func (d *DB) getCollection(colID string) (*Collection, error) {
 	if err := c.loadInfos(); err != nil {
 		// If not exists try to build it
 		if err == vars.ErrNotFound {
-			err = c.init(colID)
+			if colName == "" {
+				return nil, fmt.Errorf("init collection but have empty name")
+			}
+			err = c.init(colName)
 			// Error after at build
 			if err != nil {
 				return nil, err

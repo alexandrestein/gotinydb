@@ -5,7 +5,7 @@ import (
 )
 
 func TestBuildID(t *testing.T) {
-	if id := BuildIDAsString("testString"); id != "570ad690bccc19cb28d2af1e9ccac359" {
+	if id := BuildID("testString"); id != "VwrWkLzMGcso0q8enMrDWQ" {
 		t.Error("returned ID, is not correct", id)
 	}
 }

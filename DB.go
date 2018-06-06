@@ -38,17 +38,15 @@ func Open(path string) (*DB, error) {
 func (d *DB) Use(colName string) (*Collection, error) {
 	for _, col := range d.Collections {
 		if col.Name == colName {
-			// if col.Name == colName || col.ID == colName {
 			return col, nil
 		}
 	}
-	
-	c, loadErr := d.getCollection(colName)
+
+	c, loadErr := d.getCollection("", colName)
 	if loadErr != nil {
 		return nil, loadErr
 	}
 
-	c.Name = colName
 	d.Collections = append(d.Collections, c)
 
 	return c, nil

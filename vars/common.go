@@ -1,6 +1,7 @@
 package vars
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 
@@ -27,6 +28,6 @@ func buildID(id string) []byte {
 }
 
 // BuildIDAsString does same as above but returns ID as hexadecimal representation into a string
-func BuildIDAsString(id string) string {
-	return fmt.Sprintf("%x", buildID(id))
+func BuildID(id string) string {
+	return base64.RawURLEncoding.EncodeToString(buildID(id))
 }

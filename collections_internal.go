@@ -16,7 +16,7 @@ func (c *Collection) loadInfos() error {
 
 		name := string(bucket.Get([]byte("name")))
 		c.Name = name
-		c.ID = vars.BuildIDAsString(name)
+		c.ID = vars.BuildID(name)
 
 		return nil
 	})
@@ -31,14 +31,23 @@ func (c *Collection) init(name string) error {
 			}
 		}
 
-		tx.Bucket([]byte("config")).Put([]byte("name"), []byte(name))
+		confBucket := tx.Bucket([]byte("config"))
+		if confBucket == nil {
+			return fmt.Errorf("bucket does not exist")
+		}
+		if err := confBucket.Put([]byte("name"), []byte(name)); err != nil {
+			return err
+		}
+		if err := confBucket.Put([]byte("id"), []byte(c.ID)); err != nil {
+			return err
+		}
 		return nil
 	})
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
 	compositeID := fmt.Sprintf("%s_%s", c.Name, id)
-	return []byte(vars.BuildIDAsString(compositeID))
+	return []byte(vars.BuildID(compositeID))
 }
 
 func (c *Collection) putIntoIndexes(id string, content interface{}) error {
