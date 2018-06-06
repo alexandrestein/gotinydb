@@ -45,16 +45,19 @@ func (d *DB) loadCollections() error {
 }
 
 func (d *DB) getCollection(colID, colName string) (*Collection, error) {
-	if colID == "" {
-		colID = vars.BuildIDAsString(colName)
-	}
-
 	c := new(Collection)
 	c.Store = d.ValueStore
 	c.ID = colID
 	c.Name = colName
-	fmt.Println("name and ID", colName, colID)
-	fmt.Println("path", d.Path+"/collections/"+colID)
+
+	if colID == "" && colName == "" {
+		return nil, fmt.Errorf("name and ID can't be empty")
+	} else if colID == "" {
+		colID = vars.BuildID(colName)
+	}
+
+	c.ID = colID
+	c.Name = colName
 
 	db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
 	if openDBerr != nil {
@@ -62,13 +65,14 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	}
 	c.DB = db
 
-	fmt.Println("HOLDED")
-
 	// Try to load the collection informations
 	if err := c.loadInfos(); err != nil {
 		// If not exists try to build it
 		if err == vars.ErrNotFound {
-			err = c.init(colID)
+			if colName == "" {
+				return nil, fmt.Errorf("init collection but have empty name")
+			}
+			err = c.init(colName)
 			// Error after at build
 			if err != nil {
 				return nil, err

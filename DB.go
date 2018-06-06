@@ -37,7 +37,7 @@ func Open(path string) (*DB, error) {
 // Use build or get a Collection pointer
 func (d *DB) Use(colName string) (*Collection, error) {
 	for _, col := range d.Collections {
-		if col.Name == colName || col.ID == colName {
+		if col.Name == colName {
 			return col, nil
 		}
 	}

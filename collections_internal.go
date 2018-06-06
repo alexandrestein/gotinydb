@@ -18,10 +18,7 @@ func (c *Collection) loadInfos() error {
 		name := string(bucket.Get([]byte("name")))
 		id := string(bucket.Get([]byte("id")))
 		c.Name = name
-		if vars.BuildIDAsString(name) != id {
-			return fmt.Errorf("ID and name not consistent. Name is %q with fingerprint %q but had %x", name, vars.BuildIDAsString(name), string(id))
-		}
-		c.ID = vars.BuildIDAsString(name)
+		c.ID = string(id)
 
 		return nil
 	})
@@ -38,12 +35,12 @@ func (c *Collection) init(name string) error {
 
 		confBucket := tx.Bucket([]byte("config"))
 		if confBucket == nil {
-			return fmt.Errorf("bucket error")
+			return fmt.Errorf("bucket does not exist")
 		}
 		if err := confBucket.Put([]byte("name"), []byte(name)); err != nil {
 			return err
 		}
-		if err := confBucket.Put([]byte("id"), []byte(vars.BuildIDAsString(name))); err != nil {
+		if err := confBucket.Put([]byte("id"), []byte(c.ID)); err != nil {
 			return err
 		}
 		return nil
@@ -52,7 +49,7 @@ func (c *Collection) init(name string) error {
 
 func (c *Collection) buildStoreID(id string) []byte {
 	compositeID := fmt.Sprintf("%s_%s", c.Name, id)
-	return vars.BuildIDAsBytes(compositeID)
+	return []byte(vars.BuildID(compositeID))
 }
 
 func (c *Collection) putIntoIndexes(id string, content interface{}) error {

@@ -61,10 +61,10 @@ func TestCreateCollection(t *testing.T) {
 
 	// Test that the name and the ID of the collection are right
 	if c.Name != "testCol" {
-		t.Error("collection has a bad name")
+		t.Errorf("collection has a bad name %q", c.Name)
 	}
-	if c.ID != "4877b478786bce75b2cacf3c075ccfb2" {
-		t.Error("collection has a bad ID")
+	if c.ID != "SHe0eHhrznWyys88B1zPsg" {
+		t.Errorf("collection has a bad ID %q", c.ID)
 	}
 
 	if err := c.Put("testID", nil); err != nil {
@@ -171,14 +171,13 @@ func TestLoadCollection(t *testing.T) {
 		t.Error(useErr)
 		return
 	}
-	fmt.Println("FINI")
 
 	// Test that the name and the ID of the collection are right
 	if c.Name != "testCol" {
-		t.Error("collection has a bad name")
+		t.Errorf("collection has a bad name %q", c.Name)
 	}
-	if c.ID != "4877b478786bce75b2cacf3c075ccfb2" {
-		t.Error("collection has a bad ID")
+	if c.ID != "SHe0eHhrznWyys88B1zPsg" {
+		t.Errorf("collection has a bad ID %q", c.ID)
 	}
 
 	retrieveTestUser := struct {
