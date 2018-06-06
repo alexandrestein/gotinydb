@@ -2,8 +2,10 @@ package gotinydb
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -117,4 +119,108 @@ func (c *Collection) Delete(id string) error {
 	return c.Store.Update(func(txn *badger.Txn) error {
 		return txn.Delete(c.buildStoreID(id))
 	})
+}
+
+// SetIndex enable the collection to index field or sub field
+func (c *Collection) SetIndex(i *Index) error {
+	c.Indexes = append(c.Indexes, i)
+	if err := c.DB.Update(func(tx *bolt.Tx) error {
+		_, createErr := tx.CreateBucket([]byte(i.Name))
+		if createErr != nil {
+			return createErr
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Query run the given query to all the collection indexes
+func (c *Collection) Query(q *Query) (ids []string) {
+	if q == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+	defer cancel()
+
+	getIDsChan := make(chan []string, 16)
+	getIDs := []string{}
+	cleanIDsChan := make(chan []string, 16)
+	cleanIDs := []string{}
+
+	for _, index := range c.Indexes {
+		go index.RunQuery(ctx, q.GetActions, getIDsChan)
+		go index.RunQuery(ctx, q.CleanActions, cleanIDsChan)
+	}
+
+	getDone, cleanDone := false, false
+
+	for {
+		select {
+		case retIDs, ok := <-getIDsChan:
+			if ok {
+				getIDs = append(getIDs, retIDs...)
+			} else {
+				getDone = true
+			}
+
+			if getDone && cleanDone {
+				goto afterFilters
+			}
+		case retIDs, ok := <-cleanIDsChan:
+			if ok {
+				cleanIDs = append(cleanIDs, retIDs...)
+			} else {
+				cleanDone = true
+			}
+
+			if getDone && cleanDone {
+				goto afterFilters
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+
+afterFilters:
+	ids = getIDs
+
+	// Clean the retreived IDs of the clean selection
+	for j := len(ids) - 1; j >= 0; j-- {
+		for _, cleanID := range cleanIDs {
+			if len(ids) <= j {
+				continue
+			}
+			if ids[j] == cleanID {
+				ids = append(ids[:j], ids[j+1:]...)
+				continue
+			}
+		}
+		if q.Distinct {
+			keys := make(map[string]bool)
+			list := []string{}
+			if _, value := keys[ids[j]]; !value {
+				keys[ids[j]] = true
+				list = append(list, ids[j])
+			}
+			ids = list
+		}
+	}
+
+	// Do the limit
+	if len(ids) > q.Limit {
+		ids = ids[:q.Limit]
+	}
+
+	// Reverts the result if wanted
+	if q.InvertedOrder {
+		for i := len(ids)/2 - 1; i >= 0; i-- {
+			opp := len(ids) - 1 - i
+			ids[i], ids[opp] = ids[opp], ids[i]
+		}
+	}
+
+	return ids
 }
