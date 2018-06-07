@@ -2,8 +2,8 @@ package gotinydb
 
 import (
 	"context"
+	"log"
 
-	"github.com/alexandrestein/gods/trees/btree"
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/fatih/structs"
 )
@@ -14,6 +14,11 @@ type (
 		Name     string
 		Selector []string
 		Type     vars.IndexType
+
+		getIDFunc  func(indexedValue []byte) ([]string, error)
+		getIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) ([]string, error)
+		addIDFunc  func(indexedValue []byte, id string) error
+		rmIDFunc   func(indexedValue []byte, id string) error
 	}
 )
 
@@ -55,6 +60,7 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 	return contentToIndex, true
 }
 
+// RunQuery runs the given query on the given index
 func (i *Index) RunQuery(ctx context.Context, actions []*Action, retChan chan []string) {
 	responseChan := make(chan []string, 16)
 	defer close(retChan)
@@ -66,7 +72,7 @@ func (i *Index) RunQuery(ctx context.Context, actions []*Action, retChan chan []
 
 	nbToWait := 0
 	for _, action := range actions {
-		if !i.doesApply(action.Selector) {
+		if !i.doesApply(action) {
 			continue
 		}
 
@@ -77,7 +83,7 @@ func (i *Index) RunQuery(ctx context.Context, actions []*Action, retChan chan []
 	ret := []string{}
 
 	for {
-		select {structIndex
+		select {
 		case ids := <-responseChan:
 			ret = append(ret, ids...)
 			retChan <- ret
@@ -99,54 +105,38 @@ func getIDs(ctx context.Context, i *Index, action *Action, responseChan chan []s
 func (i *Index) runQuery(action *Action) (ids []string) {
 	// If equal just this leave will be send
 	if action.GetType() == Equal {
-		tmpIDs, found := i.Get(action.CompareToValue)
-		if found {
-			ids = tmpIDs
+		tmpIDs, getErr := i.getIDFunc(action.ValueToCompareAsBytes())
+		if getErr != nil {
+			log.Printf("Index.runQuery: %s\n", getErr.Error())
+			return []string{}
 		}
-		return
+		return tmpIDs
 	}
-
-	var iterator btree.Iterator
-	var iteratorInit bool
-	var nextFunc (func() bool)
-	var keyFound bool
 
 	if action.GetType() == Greater {
-		_, keyAfter, found := i.tree.GetClosestKeys(action.CompareToValue)
-		keyFound = found
-		if keyAfter != nil {
-			iterator, _ = i.tree.IteratorAt(keyAfter)
-			iteratorInit = true
+		ids, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
+		if getIdsErr != nil {
+			log.Println(getIdsErr)
+			return ids
 		}
-		nextFunc = iterator.Next
 	} else if action.GetType() == Less {
-		keyBefore, _, found := i.tree.GetClosestKeys(action.CompareToValue)
-		keyFound = found
-		if keyBefore != nil {
-			iterator, _ = i.tree.IteratorAt(keyBefore)
-			iteratorInit = true
+		ids, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
+		if getIdsErr != nil {
+			log.Println(getIdsErr)
+			return ids
 		}
-		nextFunc = iterator.Prev
-	}
-
-	// Check if the caller want more or less with equal option
-	if keyFound {
-		if !action.KeepEqual {
-			ids = append(ids, iterator.Value().([]string)...)
-		}
-	} else {
-		if iteratorInit {
-			ids = append(ids, iterator.Value().([]string)...)
-		}
-	}
-
-	if !iteratorInit {
-		return
-	}
-
-	for nextFunc() {
-		ids = append(ids, iterator.Value().([]string)...)
 	}
 
 	return
+}
+
+// doesApply check the action selector to define if yes or not the index
+// needs to be called
+func (i *Index) doesApply(action *Action) bool {
+	for j, fieldName := range i.Selector {
+		if action.selector[j] != fieldName {
+			return false
+		}
+	}
+	return true
 }

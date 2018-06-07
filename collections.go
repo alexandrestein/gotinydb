@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"reflect"
 	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
@@ -133,6 +135,125 @@ func (c *Collection) SetIndex(i *Index) error {
 	}); err != nil {
 		return err
 	}
+
+	i.getIDFunc = func(indexedValue []byte) (ids []string, err error) {
+		if err := c.DB.View(func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte(i.Name))
+			tmpIDs, parseIDsErr := i.parseIDs(bucket.Get(indexedValue))
+			if parseIDsErr != nil {
+				return parseIDsErr
+			}
+
+			ids = tmpIDs
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		return ids, nil
+	}
+
+	i.getIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIds []string, err error) {
+		if err := c.DB.View(func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte(i.Name))
+			// Initiate the cursor (iterator)
+			iter := bucket.Cursor()
+			// Go to the requested position
+			firstIndexedValueAsByte, _ := iter.Seek(indexedValue)
+			firstIndexedValue, parseIDsErr := i.parseIDs(firstIndexedValueAsByte)
+			if parseIDsErr != nil {
+				log.Println(parseIDsErr)
+				return parseIDsErr
+			}
+
+			// if the asked value is found
+			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
+				allIds = append(allIds, firstIndexedValue...)
+			}
+
+			var nextFunc func() (key []byte, value []byte)
+			if increasing {
+				nextFunc = iter.Next
+			} else {
+				nextFunc = iter.Prev
+			}
+
+			for {
+				if len(allIds) >= nb {
+					return nil
+				}
+
+				_, idsAsByte := nextFunc()
+				ids, parseIDsErr := i.parseIDs(idsAsByte)
+				if parseIDsErr != nil {
+					log.Println(parseIDsErr)
+					continue
+				}
+				allIds = append(allIds, ids...)
+			}
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		return allIds, nil
+	}
+
+	i.addIDFunc = func(indexedValue []byte, id string) error {
+		return c.DB.Update(func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte(i.Name))
+
+			idsAsBytes := bucket.Get(indexedValue)
+			ids, parseIDsErr := i.parseIDs(idsAsBytes)
+			if parseIDsErr != nil {
+				return parseIDsErr
+			}
+
+			ids = append(ids, id)
+			var formatErr error
+			idsAsBytes, formatErr = i.formatIDs(ids)
+			if formatErr != nil {
+				return formatErr
+			}
+
+			return bucket.Put(indexedValue, idsAsBytes)
+		})
+	}
+	i.rmIDFunc = func(indexedValue []byte, idToRemove string) error {
+		return c.DB.Update(func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte(i.Name))
+
+			// Get the saved IDs of the given field value
+			idsAsBytes := bucket.Get(indexedValue)
+			// Convert the slice of byte to slice of strings
+			ids, parseIDsErr := i.parseIDs(idsAsBytes)
+			if parseIDsErr != nil {
+				return parseIDsErr
+			}
+
+			// Save the slot where the ID is found
+			slotsToClean := []int{}
+			for j, id := range ids {
+				if id == idToRemove {
+					slotsToClean = append(slotsToClean, j)
+				}
+			}
+
+			// Remove the pointed values from the above loop
+			for j := len(slotsToClean) - 1; j > 0; j-- {
+				n := slotsToClean[j]
+				ids = append(ids[:n], ids[n+1:]...)
+			}
+
+			// Format and save the new list of IDs for the given indexed value
+			var formatErr error
+			idsAsBytes, formatErr = i.formatIDs(ids)
+			if formatErr != nil {
+				return formatErr
+			}
+
+			return bucket.Put(indexedValue, idsAsBytes)
+		})
+	}
+
 	return nil
 }
 
@@ -142,7 +263,7 @@ func (c *Collection) Query(q *Query) (ids []string) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	getIDsChan := make(chan []string, 16)
@@ -151,8 +272,8 @@ func (c *Collection) Query(q *Query) (ids []string) {
 	cleanIDs := []string{}
 
 	for _, index := range c.Indexes {
-		go index.RunQuery(ctx, q.GetActions, getIDsChan)
-		go index.RunQuery(ctx, q.CleanActions, cleanIDsChan)
+		go index.RunQuery(ctx, q.getActions, getIDsChan)
+		go index.RunQuery(ctx, q.cleanActions, cleanIDsChan)
 	}
 
 	getDone, cleanDone := false, false
@@ -198,7 +319,7 @@ afterFilters:
 				continue
 			}
 		}
-		if q.Distinct {
+		if q.distinct {
 			keys := make(map[string]bool)
 			list := []string{}
 			if _, value := keys[ids[j]]; !value {
@@ -210,17 +331,17 @@ afterFilters:
 	}
 
 	// Do the limit
-	if len(ids) > q.Limit {
-		ids = ids[:q.Limit]
+	if len(ids) > q.limit {
+		ids = ids[:q.limit]
 	}
 
-	// Reverts the result if wanted
-	if q.InvertedOrder {
-		for i := len(ids)/2 - 1; i >= 0; i-- {
-			opp := len(ids) - 1 - i
-			ids[i], ids[opp] = ids[opp], ids[i]
-		}
-	}
+	// // Reverts the result if wanted
+	// if q.InvertedOrder {
+	// 	for i := len(ids)/2 - 1; i >= 0; i-- {
+	// 		opp := len(ids) - 1 - i
+	// 		ids[i], ids[opp] = ids[opp], ids[i]
+	// 	}
+	// }
 
 	return ids
 }

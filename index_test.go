@@ -49,7 +49,17 @@ func TestStringIndex(t *testing.T) {
 		}
 	}
 
-	
+	for i := 2000; i > 0; i-- {
+		randInt := rand.Intn(2000)
+		getAction := NewAction(Equal).CompareTo(list[randInt]).SetSelector([]string{"Login"})
+		queryObj := NewQuery().SetLimit(1).Get(getAction)
+
+		ids := c.Query(queryObj)
+		if len(ids) != 1 {
+			t.Errorf("response retured other there one ID: %v", ids)
+			return
+		}
+	}
 }
 
 func buildRandLogins(n int) (ret []string) {
