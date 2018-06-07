@@ -108,7 +108,6 @@ func (i *Index) runQuery(action *Action) (ids []string) {
 		tmpIDs, getErr := i.getIDFunc(action.ValueToCompareAsBytes())
 		if getErr != nil {
 			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
-			log.Println(string(action.ValueToCompareAsBytes()))
 			return []string{}
 		}
 		return tmpIDs

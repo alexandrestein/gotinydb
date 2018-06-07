@@ -276,6 +276,11 @@ func (c *Collection) Query(q *Query) (ids []string) {
 	cleanIDsChan := make(chan []string, 16)
 	cleanIDs := []string{}
 
+	// If no index stop the query
+	if len(c.Indexes) <= 0 {
+		return
+	}
+
 	for _, index := range c.Indexes {
 		go index.RunQuery(ctx, q.getActions, getIDsChan)
 		go index.RunQuery(ctx, q.cleanActions, cleanIDsChan)

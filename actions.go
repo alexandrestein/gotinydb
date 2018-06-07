@@ -19,6 +19,7 @@ func (a *Action) CompareTo(val interface{}) *Action {
 	return a
 }
 
+// ValueToCompareAsBytes returns a slice of bytes defining the value to compare
 func (a *Action) ValueToCompareAsBytes() []byte {
 	switch a.compareToValue.(type) {
 	case string:
