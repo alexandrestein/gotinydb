@@ -57,18 +57,22 @@ func (c *Collection) putIntoIndexes(id string, content interface{}) error {
 	indexErrors := map[string]error{}
 	for _, index := range c.Indexes {
 		if val, apply := index.Apply(content); apply {
-
-			// Insert the value into the index
-			if err := c.DB.Update(func(tx *bolt.Tx) error {
-				indexBucket := tx.Bucket([]byte(index.Name))
-				if indexBucket == nil {
-					return vars.ErrNotFound
-				}
-
-				return indexBucket.Put(val, []byte(id))
-			}); err != nil {
-				return err
+			putInIndexErr := index.addIDFunc(val, id)
+			if putInIndexErr != nil {
+				return putInIndexErr
 			}
+
+			// // Insert the value into the index
+			// if err := c.DB.Update(func(tx *bolt.Tx) error {
+			// 	indexBucket := tx.Bucket([]byte(index.Name))
+			// 	if indexBucket == nil {
+			// 		return vars.ErrNotFound
+			// 	}
+
+			// 	return indexBucket.Put(val, []byte(id))
+			// }); err != nil {
+			// 	return err
+			// }
 			// if updateErr := c.updateIndex(id, index, val); updateErr != nil {
 			// 	indexErrors[indexName] = updateErr
 			// }

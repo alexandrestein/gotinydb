@@ -55,6 +55,7 @@ func (c *Collection) Put(id string, content interface{}) error {
 
 	return nil
 }
+
 func (c *Collection) put(id string, content []byte) error {
 	if mainInsertErr := c.Store.Update(func(txn *badger.Txn) error {
 		return txn.Set(c.buildStoreID(id), content)
@@ -203,7 +204,7 @@ func (c *Collection) SetIndex(i *Index) error {
 
 			idsAsBytes := bucket.Get(indexedValue)
 			ids, parseIDsErr := i.parseIDs(idsAsBytes)
-			if parseIDsErr != nil {
+			if parseIDsErr != nil && len(idsAsBytes) != 0 {
 				return parseIDsErr
 			}
 
@@ -217,6 +218,7 @@ func (c *Collection) SetIndex(i *Index) error {
 			return bucket.Put(indexedValue, idsAsBytes)
 		})
 	}
+
 	i.rmIDFunc = func(indexedValue []byte, idToRemove string) error {
 		return c.DB.Update(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(i.Name))
