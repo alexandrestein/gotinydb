@@ -115,17 +115,19 @@ func (i *Index) runQuery(action *Action) (ids []string) {
 	}
 
 	if action.GetType() == Greater {
-		ids, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
+		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
-			return ids
+			return tmpIDs
 		}
+		ids = tmpIDs
 	} else if action.GetType() == Less {
-		ids, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
+		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Less: %s\n", getIdsErr.Error())
-			return ids
+			return tmpIDs
 		}
+		ids = tmpIDs
 	}
 
 	return

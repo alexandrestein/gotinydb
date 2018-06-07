@@ -8,7 +8,7 @@ go:
   - tip
 
 before_install:
-  - go get -t -v ./...
+  - go get -t ./...
 
 script:
   - ./test_script.sh  

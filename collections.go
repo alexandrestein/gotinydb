@@ -153,22 +153,21 @@ func (c *Collection) SetIndex(i *Index) error {
 		return ids, nil
 	}
 
-	i.getIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIds []string, err error) {
+	i.getIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs []string, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(i.Name))
 			// Initiate the cursor (iterator)
 			iter := bucket.Cursor()
 			// Go to the requested position
-			firstIndexedValueAsByte, _ := iter.Seek(indexedValue)
-			firstIndexedValue, parseIDsErr := i.parseIDs(firstIndexedValueAsByte)
+			firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
+			firstIDsValue, parseIDsErr := i.parseIDs(firstIDsAsByte)
 			if parseIDsErr != nil {
-				log.Println(parseIDsErr)
 				return parseIDsErr
 			}
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
-				allIds = append(allIds, firstIndexedValue...)
+				allIDs = append(allIDs, firstIDsValue...)
 			}
 
 			var nextFunc func() (key []byte, value []byte)
@@ -179,23 +178,27 @@ func (c *Collection) SetIndex(i *Index) error {
 			}
 
 			for {
-				if len(allIds) >= nb {
+				if len(allIDs) >= nb {
+					allIDs = allIDs[:nb]
 					return nil
 				}
 
-				_, idsAsByte := nextFunc()
+				indexedValue, idsAsByte := nextFunc()
+				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
+					break
+				}
 				ids, parseIDsErr := i.parseIDs(idsAsByte)
 				if parseIDsErr != nil {
 					log.Println(parseIDsErr)
 					continue
 				}
-				allIds = append(allIds, ids...)
+				allIDs = append(allIDs, ids...)
 			}
 			return nil
 		}); err != nil {
 			return nil, err
 		}
-		return allIds, nil
+		return allIDs, nil
 	}
 
 	i.addIDFunc = func(indexedValue []byte, id string) error {
