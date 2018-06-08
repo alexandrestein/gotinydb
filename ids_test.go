@@ -1,7 +1,6 @@
 package gotinydb
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/alexandrestein/gotinydb/vars"
@@ -33,44 +32,31 @@ func TestIDsIterators(t *testing.T) {
 		tree.ReplaceOrInsert(ids.treeItem())
 	}
 
-	fmt.Println("len", tree.Len())
+	iter, ret := iterator(20)
+	tree.Ascend(iter)
+	if len(ret.IDs) != 20 {
+		t.Errorf("returned value are not long as expected")
+		return
+	}
 
-	idsAsBytes, _ := vars.IntToBytes(-2)
-	ids := NewIDs(idsAsBytes)
-	fmt.Println("ids", ids)
-
-	// iter, ret := iterator(20)
-	// tree.Ascend(iter)
-	// if len(ret.IDs) != 20 {
-	// 	t.Errorf("returned value are not long as expected")
-	// 	return
-	// }
-
-	// iter, ret = iterator(10)
-	// tree.Descend(iter)
-	// if len(ret.IDs) != 10 {
-	// 	t.Errorf("returned value are not long as expected")
-	// 	return
-	// }
+	iter, ret = iterator(10)
+	tree.Descend(iter)
+	if len(ret.IDs) != 10 {
+		t.Errorf("returned value are not long as expected")
+		return
+	}
 
 	small, big := buildSmallAndBig()
 
-	// iter, ret = iterator(10)
-	// tree.AscendGreaterOrEqual(small, iter)
-	// for i, ids := range ret.IDs {
-	// 	fmt.Println("ids, AscendGreaterOrEqual: ", i, ids.bytes)
-	// }
-	// if len(ret.IDs) != 10 {
-	// 	t.Errorf("returned value are not long as expected")
-	// 	return
-	// }
-
-	iter, ret := iterator(10)
-	fmt.Println("small", small)
-	tree.AscendLessThan(small, iter)
-	for i, ids := range ret.IDs {
-		fmt.Println("ids, AscendLessThan: ", i, ids.bytes)
+	iter, ret = iterator(10)
+	tree.AscendGreaterOrEqual(small, iter)
+	if len(ret.IDs) != 10 {
+		t.Errorf("returned value are not long as expected")
+		return
 	}
+
+	iter, ret = iterator(10)
+	tree.AscendLessThan(small, iter)
 	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
 		return
@@ -78,9 +64,6 @@ func TestIDsIterators(t *testing.T) {
 
 	iter, ret = iterator(10)
 	tree.DescendRange(big, small, iter)
-	for i, ids := range ret.IDs {
-		fmt.Println("ids, DescendRange: ", i, ids.bytes)
-	}
 	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
 		return

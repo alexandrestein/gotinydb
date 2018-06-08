@@ -1,7 +1,7 @@
 package gotinydb
 
 import (
-	"fmt"
+	"bytes"
 
 	"github.com/google/btree"
 )
@@ -118,7 +118,7 @@ func (i *IDs) Less(compareToItem btree.Item) bool {
 		return false
 	}
 
-	n := vars.CompareBytes(i.bytes, compareTo.bytes)
+	n := bytes.Compare(i.bytes, compareTo.bytes)
 	if n < 0 {
 		return true
 	}
@@ -135,13 +135,11 @@ func iterator(maxResponse int) (func(next btree.Item) (over bool), *queryRespons
 
 	return func(next btree.Item) bool {
 		if len(ret.IDs) >= maxResponse {
-			fmt.Println("false 1")
 			return false
 		}
 
 		nextAsIDs, ok := next.(*IDs)
 		if !ok {
-			fmt.Println("false 2")
 			return false
 		}
 
