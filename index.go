@@ -62,7 +62,7 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 }
 
 // Query do the given actions and ad it to the tree
-func (i *Index) Query(ctx context.Context, action *Action, responseTree *btree.BTree, finishedChan chan bool) {
+func (i *Index) Query(ctx context.Context, get bool, action *Action, responseTree *btree.BTree, finishedChan chan bool) {
 	// Make sure to reply as over
 	defer func() {
 		finishedChan <- true
@@ -101,9 +101,12 @@ func (i *Index) Query(ctx context.Context, action *Action, responseTree *btree.B
 	}
 
 addToTree:
-
 	for _, idsObj := range ids {
-		responseTree.ReplaceOrInsert(idsObj)
+		if get {
+			responseTree.ReplaceOrInsert(idsObj)
+		} else {
+			responseTree.Delete(idsObj)
+		}
 	}
 
 	return

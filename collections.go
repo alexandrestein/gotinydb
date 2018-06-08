@@ -271,7 +271,7 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 
 	for _, index := range c.Indexes {
 		for _, action := range q.getActions {
-			go index.Query(ctx, action, tree, finishedChan)
+			go index.Query(ctx, true, action, tree, finishedChan)
 			nbToDo++
 		}
 	}
@@ -281,15 +281,43 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 		case <-finishedChan:
 			nbToDo--
 			if nbToDo <= 0 {
-				goto GetDone
+				goto getDone
 			}
 		case <-ctx.Done():
-			return nil, fmt.Errorf("context timeout")
+			return nil, fmt.Errorf("get context timeout")
 		}
 
 	}
 
-GetDone:
+getDone:
+	ctx2, cancel2 := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel2()
+
+	for _, index := range c.Indexes {
+		for _, action := range q.cleanActions {
+			go index.Query(ctx2, false, action, tree, finishedChan)
+			nbToDo++
+		}
+	}
+
+	for {
+		select {
+		case <-finishedChan:
+			nbToDo--
+			if nbToDo <= 0 {
+				goto cleanDone
+			}
+		case <-ctx2.Done():
+			return nil, fmt.Errorf("clean context timeout")
+		}
+
+	}
+
+cleanDone:
+
+	fn, ret := iterator(q.limit)
+	tree.Ascend(fn)
+	fmt.Println("ids", ret)
 
 	return
 }
