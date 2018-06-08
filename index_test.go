@@ -3,7 +3,6 @@ package gotinydb
 import (
 	cryptoRand "crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"os"
 	"testing"
@@ -69,7 +68,11 @@ func TestStringIndex(t *testing.T) {
 		getAction := NewAction(Equal).CompareTo(list[randInt]).SetSelector([]string{"Login"})
 		queryObj := NewQuery().SetLimit(1).Get(getAction)
 
-		ids := c.Query(queryObj)
+		ids, err := c.Query(queryObj)
+		if err != nil {
+			t.Error(err)
+			return
+		}
 		if len(ids) != 1 {
 			t.Errorf("response returned other there one ID: %v", ids)
 			return
@@ -127,65 +130,21 @@ func TestStringIndexGreater(t *testing.T) {
 		getAction := NewAction(Greater).CompareTo(list[randInt]).SetSelector([]string{"Login"}).EqualWanted()
 		queryObj := NewQuery().SetLimit(10).Get(getAction)
 
-		ids := c.Query(queryObj)
-		if len(ids) <= 0 {
-			t.Errorf("the list of ID is probably to short: %v", ids)
+		ids, err := c.Query(queryObj)
+		if err != nil {
+			t.Error(err)
 			return
 		}
-		for j, id := range ids {
+		for _, id := range ids {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)
 			if getErr != nil {
 				t.Error(getErr.Error())
 				return
 			}
-			if testing.Verbose() {
-				fmt.Printf("greater user %d: %v\n", j, user)
-			}
-		}
-	}
-}
-func TestStringIndexLess(t *testing.T) {
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
-	db, openDBerr := Open(testPath)
-	if openDBerr != nil {
-		t.Error(openDBerr)
-		return
-	}
-	defer db.Close()
-	c, userErr := db.Use("testCol")
-	if userErr != nil {
-		t.Error(userErr)
-		return
-	}
-
-	// Build the index
-	index := new(Index)
-	index.Name = "test index"
-	index.Selector = []string{"Login"}
-	index.Type = vars.StringIndex
-	c.SetIndex(index)
-
-	// Build a list of "user"
-	list := buildRandLogins(2000)
-	// Loop on users to insert it into the database
-	for i, name := range list {
-		id := vars.BuildID(name)
-		user := struct{ Login, Pass string }{name, vars.BuildID(name + name)}
-		if err := c.Put(id, user); err != nil {
-			t.Error(err)
-			return
-		}
-
-		// Add some duplicated field to have multiple IDs for one field value
-		if i%3 == 0 {
-			id := vars.BuildID(name + "_bis")
-			user := struct{ Login, Pass string }{name, vars.BuildID(name + name + name)}
-			if err := c.Put(id, user); err != nil {
-				t.Error(err)
-				return
-			}
+			// if testing.Verbose() {
+			// 	fmt.Printf("user %d: %v\n", j, user)
+			// }
 		}
 	}
 
@@ -195,91 +154,21 @@ func TestStringIndexLess(t *testing.T) {
 		getAction := NewAction(Less).CompareTo(list[randInt]).SetSelector([]string{"Login"})
 		queryObj := NewQuery().SetLimit(10).Get(getAction)
 
-		ids := c.Query(queryObj)
-		if len(ids) <= 0 {
-			t.Errorf("the list of ID is probably to short: %v", ids)
-			return
-		}
-		for j, id := range ids {
-			user := struct{ Login, Pass string }{}
-			getErr := c.Get(id, &user)
-			if getErr != nil {
-				t.Error(getErr.Error())
-				return
-			}
-			if testing.Verbose() {
-				fmt.Printf("less user %d: %v\n", j, user)
-			}
-		}
-	}
-}
-
-func TestStringIndexGreaterButLess(t *testing.T) {
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
-	db, openDBerr := Open(testPath)
-	if openDBerr != nil {
-		t.Error(openDBerr)
-		return
-	}
-	defer db.Close()
-	c, userErr := db.Use("testCol")
-	if userErr != nil {
-		t.Error(userErr)
-		return
-	}
-
-	// Build the index
-	index := new(Index)
-	index.Name = "test index"
-	index.Selector = []string{"Login"}
-	index.Type = vars.StringIndex
-	c.SetIndex(index)
-
-	// Build a list of "user"
-	list := buildRandLogins(2000)
-	// Loop on users to insert it into the database
-	for i, name := range list {
-		id := vars.BuildID(name)
-		user := struct{ Login, Pass string }{name, vars.BuildID(name + name)}
-		if err := c.Put(id, user); err != nil {
+		ids, err := c.Query(queryObj)
+		if err != nil {
 			t.Error(err)
 			return
 		}
-
-		// Add some duplicated field to have multiple IDs for one field value
-		if i%3 == 0 {
-			id := vars.BuildID(name + "_bis")
-			user := struct{ Login, Pass string }{name, vars.BuildID(name + name + name)}
-			if err := c.Put(id, user); err != nil {
-				t.Error(err)
-				return
-			}
-		}
-	}
-
-	// Query Login greater but clean less
-	for i := 20; i > 0; i-- {
-		randInt := rand.Intn(2000)
-		getAction := NewAction(Greater).CompareTo(list[randInt]).SetSelector([]string{"Login"}).EqualWanted()
-		cleanAction := NewAction(Greater).CompareTo(list[randInt+5]).SetSelector([]string{"Login"})
-		queryObj := NewQuery().SetLimit(10).Get(getAction).Clean(cleanAction)
-
-		ids := c.Query(queryObj)
-		if len(ids) <= 0 {
-			t.Errorf("the list of ID is probably to short: %v", ids)
-			return
-		}
-		for j, id := range ids {
+		for _, id := range ids {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)
 			if getErr != nil {
 				t.Error(getErr.Error())
 				return
 			}
-			if testing.Verbose() {
-				fmt.Printf("greater but less user %d: %v\n", j, user)
-			}
+			// if testing.Verbose() {
+			// 	fmt.Printf("user %d: %v\n", j, user)
+			// }
 		}
 	}
 }

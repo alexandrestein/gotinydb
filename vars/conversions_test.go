@@ -1,6 +1,7 @@
 package vars
 
 import (
+	"bytes"
 	"testing"
 	"time"
 )
@@ -59,6 +60,18 @@ func TestIntConversion(t *testing.T) {
 		return
 	}
 
+	neg, _ := IntToBytes(-1)
+	pos, _ := IntToBytes(1)
+	if bytes.Compare(neg, pos) >= 0 {
+		t.Error("negative values are not smaller than positive", neg, pos)
+	}
+
+	neg, _ = IntToBytes(int64(-9223372036854775808))
+	pos, _ = IntToBytes(int64(9223372036854775807))
+	if bytes.Compare(neg, pos) >= 0 {
+		t.Error("negative values are not smaller than positive", neg, pos)
+	}
+
 	if _, err := IntToBytes(time.Now()); err == nil {
 		t.Error(err)
 		return
@@ -73,6 +86,18 @@ func TestFloatConversion(t *testing.T) {
 	if _, err := FloatToBytes(float64(-487.934712)); err != nil {
 		t.Error(err)
 		return
+	}
+
+	neg, _ := FloatToBytes(-1361.314)
+	pos, _ := FloatToBytes(12216.1842)
+	if bytes.Compare(neg, pos) >= 0 {
+		t.Error("negative values are not smaller than positive", neg, pos)
+	}
+
+	neg, _ = FloatToBytes(float64(-922337203.6854775808))
+	pos, _ = FloatToBytes(float64(922337.2036854775807))
+	if bytes.Compare(neg, pos) >= 0 {
+		t.Error("negative values are not smaller than positive", neg, pos)
 	}
 
 	if _, err := FloatToBytes(time.Now()); err == nil {

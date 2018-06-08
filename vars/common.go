@@ -2,6 +2,7 @@ package vars
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -30,4 +31,17 @@ func buildID(id string) []byte {
 // BuildID returns ID as base 64 representation into a string
 func BuildID(id string) string {
 	return base64.RawURLEncoding.EncodeToString(buildID(id))
+}
+
+// ParseIDsBytesToIDsAsStrings takes a list of IDs as bytes and build a
+// list of strings.
+func ParseIDsBytesToIDsAsStrings(idsAsBytes []byte) (ids []string, err error) {
+	err = json.Unmarshal(idsAsBytes, &ids)
+	return
+}
+
+// FormatIDsStringsToIDsAsBytes takes a slice IDs as strings to build
+// a slice of bytes
+func FormatIDsStringsToIDsAsBytes(idsAsStrings []string) (ids []byte, err error) {
+	return json.Marshal(idsAsStrings)
 }

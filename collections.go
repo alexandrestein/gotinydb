@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
 	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
+	"github.com/google/btree"
 )
 
 type (
@@ -137,15 +137,10 @@ func (c *Collection) SetIndex(i *Index) error {
 		return err
 	}
 
-	i.getIDFunc = func(indexedValue []byte) (ids []string, err error) {
+	i.getIDFunc = func(indexedValue []byte) (ids *IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(i.Name))
-			tmpIDs, parseIDsErr := i.parseIDs(bucket.Get(indexedValue))
-			if parseIDsErr != nil {
-				return parseIDsErr
-			}
-
-			ids = tmpIDs
+			ids = NewIDs(bucket.Get(indexedValue))
 			return nil
 		}); err != nil {
 			return nil, err
@@ -153,21 +148,18 @@ func (c *Collection) SetIndex(i *Index) error {
 		return ids, nil
 	}
 
-	i.getIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs []string, err error) {
+	i.getIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs []*IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(i.Name))
 			// Initiate the cursor (iterator)
 			iter := bucket.Cursor()
 			// Go to the requested position
 			firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
-			firstIDsValue, parseIDsErr := i.parseIDs(firstIDsAsByte)
-			if parseIDsErr != nil {
-				return parseIDsErr
-			}
+			firstIDsValue := NewIDs(firstIDsAsByte)
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
-				allIDs = append(allIDs, firstIDsValue...)
+				allIDs = append(allIDs, firstIDsValue)
 			}
 
 			var nextFunc func() (key []byte, value []byte)
@@ -187,12 +179,8 @@ func (c *Collection) SetIndex(i *Index) error {
 				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 					break
 				}
-				ids, parseIDsErr := i.parseIDs(idsAsByte)
-				if parseIDsErr != nil {
-					log.Println(parseIDsErr)
-					continue
-				}
-				allIDs = append(allIDs, ids...)
+				ids := NewIDs(idsAsByte)
+				allIDs = append(allIDs, ids)
 			}
 			return nil
 		}); err != nil {
@@ -206,14 +194,14 @@ func (c *Collection) SetIndex(i *Index) error {
 			bucket := tx.Bucket([]byte(i.Name))
 
 			idsAsBytes := bucket.Get(indexedValue)
-			ids, parseIDsErr := i.parseIDs(idsAsBytes)
+			ids, parseIDsErr := vars.ParseIDsBytesToIDsAsStrings(idsAsBytes)
 			if parseIDsErr != nil && len(idsAsBytes) != 0 {
 				return parseIDsErr
 			}
 
 			ids = append(ids, id)
 			var formatErr error
-			idsAsBytes, formatErr = i.formatIDs(ids)
+			idsAsBytes, formatErr = vars.FormatIDsStringsToIDsAsBytes(ids)
 			if formatErr != nil {
 				return formatErr
 			}
@@ -229,7 +217,7 @@ func (c *Collection) SetIndex(i *Index) error {
 			// Get the saved IDs of the given field value
 			idsAsBytes := bucket.Get(indexedValue)
 			// Convert the slice of byte to slice of strings
-			ids, parseIDsErr := i.parseIDs(idsAsBytes)
+			ids, parseIDsErr := vars.ParseIDsBytesToIDsAsStrings(idsAsBytes)
 			if parseIDsErr != nil {
 				return parseIDsErr
 			}
@@ -250,7 +238,7 @@ func (c *Collection) SetIndex(i *Index) error {
 
 			// Format and save the new list of IDs for the given indexed value
 			var formatErr error
-			idsAsBytes, formatErr = i.formatIDs(ids)
+			idsAsBytes, formatErr = vars.FormatIDsStringsToIDsAsBytes(ids)
 			if formatErr != nil {
 				return formatErr
 			}
@@ -263,7 +251,7 @@ func (c *Collection) SetIndex(i *Index) error {
 }
 
 // Query run the given query to all the collection indexes
-func (c *Collection) Query(q *Query) (ids []string) {
+func (c *Collection) Query(q *Query) (ids []string, _ error) {
 	if q == nil {
 		return
 	}
@@ -271,10 +259,10 @@ func (c *Collection) Query(q *Query) (ids []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	getIDsChan := make(chan []string, 16)
-	getIDs := []string{}
-	cleanIDsChan := make(chan []string, 16)
-	cleanIDs := []string{}
+	tree := btree.New(10)
+
+	finishedChan := make(chan bool, 16)
+	nbToDo := 0
 
 	// If no index stop the query
 	if len(c.Indexes) <= 0 {
@@ -282,76 +270,26 @@ func (c *Collection) Query(q *Query) (ids []string) {
 	}
 
 	for _, index := range c.Indexes {
-		go index.RunQuery(ctx, q.getActions, getIDsChan)
-		go index.RunQuery(ctx, q.cleanActions, cleanIDsChan)
+		for _, action := range q.getActions {
+			go index.Query(ctx, action, tree, finishedChan)
+			nbToDo++
+		}
 	}
-
-	getDone, cleanDone := false, false
 
 	for {
 		select {
-		case retIDs, ok := <-getIDsChan:
-			if ok {
-				getIDs = append(getIDs, retIDs...)
-			} else {
-				getDone = true
-			}
-
-			if getDone && cleanDone {
-				goto afterFilters
-			}
-		case retIDs, ok := <-cleanIDsChan:
-			if ok {
-				cleanIDs = append(cleanIDs, retIDs...)
-			} else {
-				cleanDone = true
-			}
-
-			if getDone && cleanDone {
-				goto afterFilters
+		case <-finishedChan:
+			nbToDo--
+			if nbToDo <= 0 {
+				goto GetDone
 			}
 		case <-ctx.Done():
-			return
+			return nil, fmt.Errorf("context timeout")
 		}
+
 	}
 
-afterFilters:
-	ids = getIDs
+GetDone:
 
-	// Clean the retreived IDs of the clean selection
-	for j := len(ids) - 1; j >= 0; j-- {
-		for _, cleanID := range cleanIDs {
-			if len(ids) <= j {
-				continue
-			}
-			if ids[j] == cleanID {
-				ids = append(ids[:j], ids[j+1:]...)
-				continue
-			}
-		}
-		if q.distinct {
-			keys := make(map[string]bool)
-			list := []string{}
-			if _, value := keys[ids[j]]; !value {
-				keys[ids[j]] = true
-				list = append(list, ids[j])
-			}
-			ids = list
-		}
-	}
-
-	// Do the limit
-	if len(ids) > q.limit {
-		ids = ids[:q.limit]
-	}
-
-	// // Reverts the result if wanted
-	// if q.InvertedOrder {
-	// 	for i := len(ids)/2 - 1; i >= 0; i-- {
-	// 		opp := len(ids) - 1 - i
-	// 		ids[i], ids[opp] = ids[opp], ids[i]
-	// 	}
-	// }
-
-	return ids
+	return
 }
