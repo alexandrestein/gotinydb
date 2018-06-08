@@ -18,8 +18,8 @@ type (
 	Query struct {
 		getActions, cleanActions []*Action
 
-		orderBy []string
-		// Increasing bool
+		orderBy       []string
+		revertedOrder bool
 
 		limit int
 
@@ -38,7 +38,8 @@ type (
 
 	// IDs is a type to manage IDs during query to be compatible with the tree query
 	IDs struct {
-		bytes []byte
+		indexedValue []byte
+		idsAsByte    []byte
 	}
 
 	queryResponse struct {
@@ -105,7 +106,7 @@ func (q *Query) Clean(a *Action) *Query {
 // NewIDs build a new Ids pointer from a slice of bytes
 func NewIDs(idsAsBytes []byte) *IDs {
 	ids := new(IDs)
-	ids.bytes = idsAsBytes
+	ids.indexedValue = idsAsBytes
 
 	return ids
 }
@@ -118,7 +119,7 @@ func (i *IDs) Less(compareToItem btree.Item) bool {
 		return false
 	}
 
-	n := bytes.Compare(i.bytes, compareTo.bytes)
+	n := bytes.Compare(i.indexedValue, compareTo.indexedValue)
 	if n < 0 {
 		return true
 	}
@@ -147,34 +148,3 @@ func iterator(maxResponse int) (func(next btree.Item) (over bool), *queryRespons
 		return true
 	}, ret
 }
-
-// func ascendIterator(max *IDs) (func(next btree.Item) (over bool), *queryResponse) {
-// 	ret := new(queryResponse)
-// 	ret.IDs = make([]*IDs, 0)
-// 	return func(next btree.Item) bool {
-// 		nextAsIDs, ok := next.(*IDs)
-// 		if !ok {
-// 			return false
-// 		}
-// 		if !max.Less(next) {
-// 			ret.IDs = append(ret.IDs, nextAsIDs)
-// 			return true
-// 		}
-// 		return false
-// 	}, ret
-// }
-// func descendIterator(min *IDs) (func(next btree.Item) (over bool), *queryResponse) {
-// 	ret := new(queryResponse)
-// 	ret.IDs = make([]*IDs, 0)
-// 	return func(next btree.Item) bool {
-// 		nextAsIDs, ok := next.(*IDs)
-// 		if !ok {
-// 			return false
-// 		}
-// 		if !min.Less(next) {
-// 			return false
-// 		}
-// 		ret.IDs = append(ret.IDs, nextAsIDs)
-// 		return true
-// 	}, ret
-// }

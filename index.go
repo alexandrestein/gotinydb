@@ -1,8 +1,12 @@
 package gotinydb
 
 import (
+	"context"
+	"log"
+
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/fatih/structs"
+	"github.com/google/btree"
 )
 
 type (
@@ -12,8 +16,8 @@ type (
 		Selector []string
 		Type     vars.IndexType
 
-		getIDFunc  func(indexedValue []byte) ([]string, error)
-		getIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) ([]string, error)
+		getIDFunc  func(indexedValue []byte) (*IDs, error)
+		getIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) ([]*IDs, error)
 		addIDFunc  func(indexedValue []byte, id string) error
 		rmIDFunc   func(indexedValue []byte, id string) error
 	}
@@ -55,6 +59,54 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 		return nil, false
 	}
 	return contentToIndex, true
+}
+
+// Query do the given actions and ad it to the tree
+func (i *Index) Query(ctx context.Context, action *Action, responseTree *btree.BTree, finishedChan chan bool) {
+	// Make sure to reply as over
+	defer func() {
+		finishedChan <- true
+	}()
+
+	var ids []*IDs
+
+	// If equal just this leave will be send
+	if action.GetType() == Equal {
+		tmpIDs, getErr := i.getIDFunc(action.ValueToCompareAsBytes())
+		if getErr != nil {
+			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
+			return
+		}
+
+		ids = append(ids, tmpIDs)
+		goto addToTree
+	}
+
+	if action.GetType() == Greater {
+		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
+		if getIdsErr != nil {
+			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
+			return
+		}
+		ids = tmpIDs
+		goto addToTree
+	} else if action.GetType() == Less {
+		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
+		if getIdsErr != nil {
+			log.Printf("Index.runQuery Less: %s\n", getIdsErr.Error())
+			return
+		}
+		ids = tmpIDs
+		goto addToTree
+	}
+
+addToTree:
+
+	for _, idsObj := range ids {
+		responseTree.ReplaceOrInsert(idsObj)
+	}
+
+	return
 }
 
 // // RunQuery runs the given query on the given index

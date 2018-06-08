@@ -68,7 +68,11 @@ func TestStringIndex(t *testing.T) {
 		getAction := NewAction(Equal).CompareTo(list[randInt]).SetSelector([]string{"Login"})
 		queryObj := NewQuery().SetLimit(1).Get(getAction)
 
-		ids := c.Query(queryObj)
+		ids, err := c.Query(queryObj)
+		if err != nil {
+			t.Error(err)
+			return
+		}
 		if len(ids) != 1 {
 			t.Errorf("response retured other there one ID: %v", ids)
 			return
@@ -81,7 +85,11 @@ func TestStringIndex(t *testing.T) {
 		getAction := NewAction(Greater).CompareTo(list[randInt]).SetSelector([]string{"Login"})
 		queryObj := NewQuery().SetLimit(10).Get(getAction)
 
-		ids := c.Query(queryObj)
+		ids, err := c.Query(queryObj)
+		if err != nil {
+			t.Error(err)
+			return
+		}
 		for _, id := range ids {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)
@@ -101,7 +109,11 @@ func TestStringIndex(t *testing.T) {
 		getAction := NewAction(Less).CompareTo(list[randInt]).SetSelector([]string{"Login"})
 		queryObj := NewQuery().SetLimit(10).Get(getAction)
 
-		ids := c.Query(queryObj)
+		ids, err := c.Query(queryObj)
+		if err != nil {
+			t.Error(err)
+			return
+		}
 		for _, id := range ids {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)

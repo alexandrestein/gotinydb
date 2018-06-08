@@ -2,14 +2,16 @@ package gotinydb
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
+	"github.com/google/btree"
 )
 
 type (
@@ -135,15 +137,10 @@ func (c *Collection) SetIndex(i *Index) error {
 		return err
 	}
 
-	i.getIDFunc = func(indexedValue []byte) (ids []string, err error) {
+	i.getIDFunc = func(indexedValue []byte) (ids *IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(i.Name))
-			tmpIDs, parseIDsErr := i.parseIDs(bucket.Get(indexedValue))
-			if parseIDsErr != nil {
-				return parseIDsErr
-			}
-
-			ids = tmpIDs
+			ids = NewIDs(bucket.Get(indexedValue))
 			return nil
 		}); err != nil {
 			return nil, err
@@ -151,21 +148,18 @@ func (c *Collection) SetIndex(i *Index) error {
 		return ids, nil
 	}
 
-	i.getIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs []string, err error) {
+	i.getIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs []*IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(i.Name))
 			// Initiate the cursor (iterator)
 			iter := bucket.Cursor()
 			// Go to the requested position
 			firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
-			firstIDsValue, parseIDsErr := i.parseIDs(firstIDsAsByte)
-			if parseIDsErr != nil {
-				return parseIDsErr
-			}
+			firstIDsValue := NewIDs(firstIDsAsByte)
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
-				allIDs = append(allIDs, firstIDsValue...)
+				allIDs = append(allIDs, firstIDsValue)
 			}
 
 			var nextFunc func() (key []byte, value []byte)
@@ -185,12 +179,8 @@ func (c *Collection) SetIndex(i *Index) error {
 				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 					break
 				}
-				ids, parseIDsErr := i.parseIDs(idsAsByte)
-				if parseIDsErr != nil {
-					log.Println(parseIDsErr)
-					continue
-				}
-				allIDs = append(allIDs, ids...)
+				ids := NewIDs(idsAsByte)
+				allIDs = append(allIDs, ids)
 			}
 			return nil
 		}); err != nil {
@@ -204,14 +194,14 @@ func (c *Collection) SetIndex(i *Index) error {
 			bucket := tx.Bucket([]byte(i.Name))
 
 			idsAsBytes := bucket.Get(indexedValue)
-			ids, parseIDsErr := i.parseIDs(idsAsBytes)
+			ids, parseIDsErr := vars.ParseIDsBytesToIDsAsStrings(idsAsBytes)
 			if parseIDsErr != nil && len(idsAsBytes) != 0 {
 				return parseIDsErr
 			}
 
 			ids = append(ids, id)
 			var formatErr error
-			idsAsBytes, formatErr = i.formatIDs(ids)
+			idsAsBytes, formatErr = vars.FormatIDsStringsToIDsAsBytes(ids)
 			if formatErr != nil {
 				return formatErr
 			}
@@ -227,7 +217,7 @@ func (c *Collection) SetIndex(i *Index) error {
 			// Get the saved IDs of the given field value
 			idsAsBytes := bucket.Get(indexedValue)
 			// Convert the slice of byte to slice of strings
-			ids, parseIDsErr := i.parseIDs(idsAsBytes)
+			ids, parseIDsErr := vars.ParseIDsBytesToIDsAsStrings(idsAsBytes)
 			if parseIDsErr != nil {
 				return parseIDsErr
 			}
@@ -248,7 +238,7 @@ func (c *Collection) SetIndex(i *Index) error {
 
 			// Format and save the new list of IDs for the given indexed value
 			var formatErr error
-			idsAsBytes, formatErr = i.formatIDs(ids)
+			idsAsBytes, formatErr = vars.FormatIDsStringsToIDsAsBytes(ids)
 			if formatErr != nil {
 				return formatErr
 			}
@@ -261,15 +251,40 @@ func (c *Collection) SetIndex(i *Index) error {
 }
 
 // Query run the given query to all the collection indexes
-func (c *Collection) Query(q *Query) (ids []string) {
+func (c *Collection) Query(q *Query) (ids []string, _ error) {
 	if q == nil {
 		return
 	}
 
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	// defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
 
-	// tree := btree.New(10)
+	tree := btree.New(10)
+
+	finishedChan := make(chan bool, 16)
+	nbToDo := 0
+
+	for _, index := range c.Indexes {
+		for _, action := range q.getActions {
+			go index.Query(ctx, action, tree, finishedChan)
+			nbToDo++
+		}
+	}
+
+	for {
+		select {
+		case <-finishedChan:
+			nbToDo--
+			if nbToDo <= 0 {
+				goto GetDone
+			}
+		case <-ctx.Done():
+			return nil, fmt.Errorf("context timeout")
+		}
+
+	}
+
+GetDone:
 
 	return
 }
