@@ -1,5 +1,11 @@
 package gotinydb
 
+import (
+	"fmt"
+
+	"github.com/google/btree"
+)
+
 // Thoses constants defines the different types of action to perform at query
 const (
 	Equal   ActionType = "eq"
@@ -28,6 +34,15 @@ type (
 		equal          bool
 
 		limit int
+	}
+
+	// IDs is a type to manage IDs during query to be compatible with the tree query
+	IDs struct {
+		bytes []byte
+	}
+
+	queryResponse struct {
+		IDs []*IDs
 	}
 
 	// ActionType defines the type of action to perform.
@@ -86,3 +101,82 @@ func (q *Query) Clean(a *Action) *Query {
 	q.cleanActions = append(q.cleanActions, a)
 	return q
 }
+
+// NewIDs build a new Ids pointer from a slice of bytes
+func NewIDs(idsAsBytes []byte) *IDs {
+	ids := new(IDs)
+	ids.bytes = idsAsBytes
+
+	return ids
+}
+
+// Less must provide a strict weak ordering.
+// If !a.Less(b) && !b.Less(a), we treat this to mean a == b
+func (i *IDs) Less(compareToItem btree.Item) bool {
+	compareTo, ok := compareToItem.(*IDs)
+	if !ok {
+		return false
+	}
+
+	n := vars.CompareBytes(i.bytes, compareTo.bytes)
+	if n < 0 {
+		return true
+	}
+	return false
+}
+
+func (i *IDs) treeItem() btree.Item {
+	return btree.Item(i)
+}
+
+func iterator(maxResponse int) (func(next btree.Item) (over bool), *queryResponse) {
+	ret := new(queryResponse)
+	ret.IDs = make([]*IDs, 0)
+
+	return func(next btree.Item) bool {
+		if len(ret.IDs) >= maxResponse {
+			fmt.Println("false 1")
+			return false
+		}
+
+		nextAsIDs, ok := next.(*IDs)
+		if !ok {
+			fmt.Println("false 2")
+			return false
+		}
+
+		ret.IDs = append(ret.IDs, nextAsIDs)
+		return true
+	}, ret
+}
+
+// func ascendIterator(max *IDs) (func(next btree.Item) (over bool), *queryResponse) {
+// 	ret := new(queryResponse)
+// 	ret.IDs = make([]*IDs, 0)
+// 	return func(next btree.Item) bool {
+// 		nextAsIDs, ok := next.(*IDs)
+// 		if !ok {
+// 			return false
+// 		}
+// 		if !max.Less(next) {
+// 			ret.IDs = append(ret.IDs, nextAsIDs)
+// 			return true
+// 		}
+// 		return false
+// 	}, ret
+// }
+// func descendIterator(min *IDs) (func(next btree.Item) (over bool), *queryResponse) {
+// 	ret := new(queryResponse)
+// 	ret.IDs = make([]*IDs, 0)
+// 	return func(next btree.Item) bool {
+// 		nextAsIDs, ok := next.(*IDs)
+// 		if !ok {
+// 			return false
+// 		}
+// 		if !min.Less(next) {
+// 			return false
+// 		}
+// 		ret.IDs = append(ret.IDs, nextAsIDs)
+// 		return true
+// 	}, ret
+// }

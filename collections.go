@@ -2,12 +2,10 @@ package gotinydb
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -268,85 +266,10 @@ func (c *Collection) Query(q *Query) (ids []string) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	// defer cancel()
 
-	getIDsChan := make(chan []string, 16)
-	getIDs := []string{}
-	cleanIDsChan := make(chan []string, 16)
-	cleanIDs := []string{}
+	// tree := btree.New(10)
 
-	for _, index := range c.Indexes {
-		go index.RunQuery(ctx, q.getActions, getIDsChan)
-		go index.RunQuery(ctx, q.cleanActions, cleanIDsChan)
-	}
-
-	getDone, cleanDone := false, false
-
-	for {
-		select {
-		case retIDs, ok := <-getIDsChan:
-			if ok {
-				getIDs = append(getIDs, retIDs...)
-			} else {
-				getDone = true
-			}
-
-			if getDone && cleanDone {
-				goto afterFilters
-			}
-		case retIDs, ok := <-cleanIDsChan:
-			if ok {
-				cleanIDs = append(cleanIDs, retIDs...)
-			} else {
-				cleanDone = true
-			}
-
-			if getDone && cleanDone {
-				goto afterFilters
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-
-afterFilters:
-	ids = getIDs
-
-	// Clean the retreived IDs of the clean selection
-	for j := len(ids) - 1; j >= 0; j-- {
-		for _, cleanID := range cleanIDs {
-			if len(ids) <= j {
-				continue
-			}
-			if ids[j] == cleanID {
-				ids = append(ids[:j], ids[j+1:]...)
-				continue
-			}
-		}
-		if q.distinct {
-			keys := make(map[string]bool)
-			list := []string{}
-			if _, value := keys[ids[j]]; !value {
-				keys[ids[j]] = true
-				list = append(list, ids[j])
-			}
-			ids = list
-		}
-	}
-
-	// Do the limit
-	if len(ids) > q.limit {
-		ids = ids[:q.limit]
-	}
-
-	// // Reverts the result if wanted
-	// if q.InvertedOrder {
-	// 	for i := len(ids)/2 - 1; i >= 0; i-- {
-	// 		opp := len(ids) - 1 - i
-	// 		ids[i], ids[opp] = ids[opp], ids[i]
-	// 	}
-	// }
-
-	return ids
+	return
 }

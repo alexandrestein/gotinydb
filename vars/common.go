@@ -31,3 +31,40 @@ func buildID(id string) []byte {
 func BuildID(id string) string {
 	return base64.RawURLEncoding.EncodeToString(buildID(id))
 }
+
+// // CompareBytes is semilar to bytes.Compare but count differently.
+// // It loop every element of the slice until one is bigger than the other.
+// // If sliceA smaller it returns -1, if sliceA is bigger it returns 1.
+// // And zero if equal
+// func CompareBytes(sliceA, sliceB []byte) int {
+// 	var maxLen int
+// 	if len(sliceA) > len(sliceB) {
+// 		maxLen = len(sliceA)
+// 	} else {
+// 		maxLen = len(sliceB)
+// 	}
+// 	for i := maxLen - 1; i >= 0; i-- {
+// 		a := sliceA[i]
+// 		b := sliceB[i]
+
+// 		fmt.Println("a b", a, b)
+// 		if a > b {
+// 			return 1
+// 		} else if a < b {
+// 			return -1
+// 		} else if a == b {
+// 			continue
+// 		}
+// 	}
+// 	// for j, a := range sliceA {
+// 	// 	b := sliceB[j]
+// 	// 	if a > b {
+// 	// 		return 1
+// 	// 	} else if a < b {
+// 	// 		return -1
+// 	// 	} else if a == b {
+// 	// 		continue
+// 	// 	}
+// 	// }
+// 	return 0
+// }

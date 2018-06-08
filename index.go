@@ -1,9 +1,6 @@
 package gotinydb
 
 import (
-	"context"
-	"log"
-
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/fatih/structs"
 )
@@ -60,78 +57,78 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 	return contentToIndex, true
 }
 
-// RunQuery runs the given query on the given index
-func (i *Index) RunQuery(ctx context.Context, actions []*Action, retChan chan []string) {
-	responseChan := make(chan []string, 16)
-	defer close(retChan)
-	defer close(responseChan)
+// // RunQuery runs the given query on the given index
+// func (i *Index) RunQuery(ctx context.Context, actions []*Action, retChan chan []string) {
+// 	responseChan := make(chan []string, 16)
+// 	defer close(retChan)
+// 	defer close(responseChan)
 
-	if len(actions) == 0 {
-		return
-	}
+// 	if len(actions) == 0 {
+// 		return
+// 	}
 
-	nbToWait := 0
-	for _, action := range actions {
-		if !i.doesApply(action) {
-			continue
-		}
+// 	nbToWait := 0
+// 	for _, action := range actions {
+// 		if !i.doesApply(action) {
+// 			continue
+// 		}
 
-		go getIDs(ctx, i, action, responseChan)
-		nbToWait++
-	}
+// 		go getIDs(ctx, i, action, responseChan)
+// 		nbToWait++
+// 	}
 
-	ret := []string{}
+// 	ret := []string{}
 
-	for {
-		select {
-		case ids := <-responseChan:
-			ret = append(ret, ids...)
-			retChan <- ret
-		case <-ctx.Done():
-			return
-		}
-		nbToWait--
-		if nbToWait <= 0 {
-			return
-		}
-	}
-}
+// 	for {
+// 		select {
+// 		case ids := <-responseChan:
+// 			ret = append(ret, ids...)
+// 			retChan <- ret
+// 		case <-ctx.Done():
+// 			return
+// 		}
+// 		nbToWait--
+// 		if nbToWait <= 0 {
+// 			return
+// 		}
+// 	}
+// }
 
-func getIDs(ctx context.Context, i *Index, action *Action, responseChan chan []string) {
-	ids := i.runQuery(action)
-	responseChan <- ids
-}
+// func getIDs(ctx context.Context, i *Index, action *Action, responseChan chan []string) {
+// 	ids := i.runQuery(action)
+// 	responseChan <- ids
+// }
 
-func (i *Index) runQuery(action *Action) (ids []string) {
-	// If equal just this leave will be send
-	if action.GetType() == Equal {
-		tmpIDs, getErr := i.getIDFunc(action.ValueToCompareAsBytes())
-		if getErr != nil {
-			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
-			log.Println(string(action.ValueToCompareAsBytes()))
-			return []string{}
-		}
-		return tmpIDs
-	}
+// func (i *Index) runQuery(action *Action) (ids []string) {
+// 	// If equal just this leave will be send
+// 	if action.GetType() == Equal {
+// 		tmpIDs, getErr := i.getIDFunc(action.ValueToCompareAsBytes())
+// 		if getErr != nil {
+// 			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
+// 			log.Println(string(action.ValueToCompareAsBytes()))
+// 			return []string{}
+// 		}
+// 		return tmpIDs
+// 	}
 
-	if action.GetType() == Greater {
-		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
-		if getIdsErr != nil {
-			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
-			return tmpIDs
-		}
-		ids = tmpIDs
-	} else if action.GetType() == Less {
-		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
-		if getIdsErr != nil {
-			log.Printf("Index.runQuery Less: %s\n", getIdsErr.Error())
-			return tmpIDs
-		}
-		ids = tmpIDs
-	}
+// 	if action.GetType() == Greater {
+// 		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
+// 		if getIdsErr != nil {
+// 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
+// 			return tmpIDs
+// 		}
+// 		ids = tmpIDs
+// 	} else if action.GetType() == Less {
+// 		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
+// 		if getIdsErr != nil {
+// 			log.Printf("Index.runQuery Less: %s\n", getIdsErr.Error())
+// 			return tmpIDs
+// 		}
+// 		ids = tmpIDs
+// 	}
 
-	return
-}
+// 	return
+// }
 
 // doesApply check the action selector to define if yes or not the index
 // needs to be called

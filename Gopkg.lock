@@ -46,9 +46,21 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/google/btree"
+  packages = ["."]
+  revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
+
+[[projects]]
+  branch = "master"
   name = "github.com/minio/highwayhash"
   packages = ["."]
   revision = "85fc8a2dacad36a6beb2865793cd81363a496696"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/petar/GoLLRB"
+  packages = ["llrb"]
+  revision = "53be0d36a84c2a886ca057d34b6aa4468df9ccb4"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -78,6 +90,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7acb6a4bcccb3a7d8ed1030b858fc601ba56dca2a8a8be54c3734d4ba695e240"
+  inputs-digest = "9efec60bbc3cc008e56e8e9ad1fd3f70aa4871638de46576b3554ed52f210150"
   solver-name = "gps-cdcl"
   solver-version = 1

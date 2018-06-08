@@ -22,16 +22,9 @@ func StringToBytes(input interface{}) ([]byte, error) {
 func IntToBytes(input interface{}) ([]byte, error) {
 	typedValue := uint64(0)
 	switch input.(type) {
-	case int:
-		typedValue = uint64(input.(int))
-	case int8:
-		typedValue = uint64(input.(int8))
-	case int16:
-		typedValue = uint64(input.(int16))
-	case int32:
-		typedValue = uint64(input.(int32))
-	case int64:
-		typedValue = uint64(input.(int64))
+	case int, int8, int16, int32, int64:
+		typedValue = convIntToAbsolutUint(input)
+
 	case uint:
 		typedValue = uint64(input.(uint))
 	case uint8:
@@ -47,8 +40,34 @@ func IntToBytes(input interface{}) ([]byte, error) {
 	}
 
 	bs := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bs, typedValue)
+	binary.BigEndian.PutUint64(bs, typedValue)
 	return bs, nil
+}
+
+func convIntToAbsolutUint(input interface{}) uint64 {
+	typedValue := int64(0)
+	ret := uint64(0)
+
+	switch input.(type) {
+	case int:
+		typedValue = int64(input.(int))
+	case int8:
+		typedValue = int64(input.(int8))
+	case int16:
+		typedValue = int64(input.(int16))
+	case int32:
+		typedValue = int64(input.(int32))
+	case int64:
+		typedValue = int64(input.(int64))
+	}
+
+	if typedValue < 0 {
+		ret = uint64(-typedValue)
+	} else {
+		ret = uint64(typedValue) + ^uint64(0)/2
+	}
+
+	return ret
 }
 
 // FloatToBytes converter from a float32 or float64 to bytes slice.
@@ -66,11 +85,9 @@ func FloatToBytes(input interface{}) ([]byte, error) {
 		return nil, ErrWrongType
 	}
 
-	uint64Val, _ := bigFloat.Uint64()
+	uint64Val, _ := bigFloat.Int64()
 
-	bs := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bs, uint64Val)
-	return bs, nil
+	return IntToBytes(uint64Val)
 }
 
 // TimeToBytes converter from a time struct to bytes slice.

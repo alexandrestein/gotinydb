@@ -3,7 +3,6 @@ package gotinydb
 import (
 	cryptoRand "crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"os"
 	"testing"
@@ -83,16 +82,16 @@ func TestStringIndex(t *testing.T) {
 		queryObj := NewQuery().SetLimit(10).Get(getAction)
 
 		ids := c.Query(queryObj)
-		for j, id := range ids {
+		for _, id := range ids {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)
 			if getErr != nil {
 				t.Error(getErr.Error())
 				return
 			}
-			if testing.Verbose() {
-				fmt.Printf("user %d: %v\n", j, user)
-			}
+			// if testing.Verbose() {
+			// 	fmt.Printf("user %d: %v\n", j, user)
+			// }
 		}
 	}
 
@@ -103,16 +102,16 @@ func TestStringIndex(t *testing.T) {
 		queryObj := NewQuery().SetLimit(10).Get(getAction)
 
 		ids := c.Query(queryObj)
-		for j, id := range ids {
+		for _, id := range ids {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)
 			if getErr != nil {
 				t.Error(getErr.Error())
 				return
 			}
-			if testing.Verbose() {
-				fmt.Printf("user %d: %v\n", j, user)
-			}
+			// if testing.Verbose() {
+			// 	fmt.Printf("user %d: %v\n", j, user)
+			// }
 		}
 	}
 }
