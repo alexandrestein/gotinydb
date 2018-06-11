@@ -271,7 +271,7 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 
 	tree := btree.New(10)
 
-	finishedChan := make(chan bool, 16)
+	finishedChan := make(chan []*ID, 16)
 	defer close(finishedChan)
 	nbToDo := 0
 
@@ -282,14 +282,17 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 
 	for _, index := range c.Indexes {
 		for _, action := range q.getActions {
-			go index.Query(ctx, true, action, tree, finishedChan)
+			go index.Query(ctx, action, finishedChan)
 			nbToDo++
 		}
 	}
 
 	for {
 		select {
-		case <-finishedChan:
+		case tmpIDs := <-finishedChan:
+			for _, id := range tmpIDs {
+				tree.ReplaceOrInsert(id)
+			}
 			nbToDo--
 			if nbToDo <= 0 {
 				goto getDone
@@ -308,14 +311,17 @@ getDone:
 	nbToDo = 0
 	for _, index := range c.Indexes {
 		for _, action := range q.cleanActions {
-			go index.Query(ctx, false, action, tree, finishedChan)
+			go index.Query(ctx, action, finishedChan)
 			nbToDo++
 		}
 	}
 
 	for {
 		select {
-		case <-finishedChan:
+		case tmpIDs := <-finishedChan:
+			for _, id := range tmpIDs {
+				tree.Delete(id)
+			}
 			nbToDo--
 			if nbToDo <= 0 {
 				goto cleanDone

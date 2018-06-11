@@ -6,7 +6,6 @@ import (
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/fatih/structs"
-	"github.com/google/btree"
 )
 
 type (
@@ -62,10 +61,13 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 }
 
 // Query do the given actions and ad it to the tree
-func (i *Index) Query(ctx context.Context, get bool, action *Action, responseTree *btree.BTree, finishedChan chan bool) {
+func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan []*ID) {
+	done := false
 	// Make sure to reply as over
 	defer func() {
-		finishedChan <- true
+		if !done {
+			finishedChan <- nil
+		}
 	}()
 
 	var ids []*ID
@@ -101,13 +103,9 @@ func (i *Index) Query(ctx context.Context, get bool, action *Action, responseTre
 	}
 
 addToTree:
-	for _, idsObj := range ids {
-		if get {
-			responseTree.ReplaceOrInsert(idsObj)
-		} else {
-			responseTree.Delete(idsObj)
-		}
-	}
+
+	finishedChan <- ids
+	done = true
 
 	return
 }

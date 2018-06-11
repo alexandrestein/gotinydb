@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/alexandrestein/gotinydb/vars"
@@ -142,9 +143,10 @@ func TestStringIndexGreater(t *testing.T) {
 				t.Error(getErr.Error())
 				return
 			}
-			// if testing.Verbose() {
-			// 	fmt.Printf("user %d: %v\n", j, user)
-			// }
+			if strings.ToLower(list[randInt]) > strings.ToLower(user.Login) {
+				t.Errorf("returned value %q is smaller than comparator %q", user.Login, list[randInt])
+				return
+			}
 		}
 	}
 
@@ -166,9 +168,10 @@ func TestStringIndexGreater(t *testing.T) {
 				t.Error(getErr.Error())
 				return
 			}
-			// if testing.Verbose() {
-			// 	fmt.Printf("user %d: %v\n", j, user)
-			// }
+			if strings.ToLower(list[randInt]) < strings.ToLower(user.Login) {
+				t.Errorf("returned value %q is greater than comparator %q", user.Login, list[randInt])
+				return
+			}
 		}
 	}
 }
