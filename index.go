@@ -2,6 +2,7 @@ package gotinydb
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 
 	"github.com/alexandrestein/gotinydb/vars"
@@ -15,10 +16,21 @@ type (
 		Selector []string
 		Type     vars.IndexType
 
-		getIDsFunc      func(indexedValue []byte) ([]*ID, error)
-		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) ([]*ID, error)
-		addIDFunc       func(indexedValue []byte, id string) error
-		rmIDFunc        func(indexedValue []byte, id string) error
+		getIDsFunc      func(indexedValue []byte) (*IDs, error)
+		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) (*IDs, error)
+		setIDFunc       func(indexedValue []byte, id string) error
+	}
+
+	Refs struct {
+		ObjectID     string
+		ObjectHashID string
+
+		Refs []*Ref
+	}
+
+	Ref struct {
+		IndexName    string
+		IndexedValue []byte
 	}
 )
 
@@ -61,7 +73,7 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 }
 
 // Query do the given actions and ad it to the tree
-func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan []*ID) {
+func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *IDs) {
 	done := false
 	// Make sure to reply as over
 	defer func() {
@@ -70,7 +82,7 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan []*
 		}
 	}()
 
-	var ids []*ID
+	var ids *IDs
 
 	// If equal just this leave will be send
 	if action.GetType() == Equal {
@@ -80,7 +92,7 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan []*
 			return
 		}
 
-		ids = append(ids, tmpIDs...)
+		ids.AddIDs(tmpIDs)
 		goto addToTree
 	}
 
@@ -110,79 +122,6 @@ addToTree:
 	return
 }
 
-// // RunQuery runs the given query on the given index
-// func (i *Index) RunQuery(ctx context.Context, actions []*Action, retChan chan []string) {
-// 	responseChan := make(chan []string, 16)
-// 	defer close(retChan)
-// 	defer close(responseChan)
-
-// 	if len(actions) == 0 {
-// 		return
-// 	}
-
-// 	nbToWait := 0
-// 	for _, action := range actions {
-// 		if !i.doesApply(action) {
-// 			continue
-// 		}
-
-// 		go getIDs(ctx, i, action, responseChan)
-// 		nbToWait++
-// 	}
-
-// 	ret := []string{}
-
-// 	for {
-// 		select {
-// 		case ids := <-responseChan:
-// 			ret = append(ret, ids...)
-// 			retChan <- ret
-// 		case <-ctx.Done():
-// 			return
-// 		}
-// 		nbToWait--
-// 		if nbToWait <= 0 {
-// 			return
-// 		}
-// 	}
-// }
-
-// func getIDs(ctx context.Context, i *Index, action *Action, responseChan chan []string) {
-// 	ids := i.runQuery(action)
-// 	responseChan <- ids
-// }
-
-// func (i *Index) runQuery(action *Action) (ids []string) {
-// 	// If equal just this leave will be send
-// 	if action.GetType() == Equal {
-// 		tmpIDs, getErr := i.getIDFunc(action.ValueToCompareAsBytes())
-// 		if getErr != nil {
-// 			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
-// 			log.Println(string(action.ValueToCompareAsBytes()))
-// 			return []string{}
-// 		}
-// 		return tmpIDs
-// 	}
-
-// 	if action.GetType() == Greater {
-// 		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
-// 		if getIdsErr != nil {
-// 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
-// 			return tmpIDs
-// 		}
-// 		ids = tmpIDs
-// 	} else if action.GetType() == Less {
-// 		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
-// 		if getIdsErr != nil {
-// 			log.Printf("Index.runQuery Less: %s\n", getIdsErr.Error())
-// 			return tmpIDs
-// 		}
-// 		ids = tmpIDs
-// 	}
-
-// 	return
-// }
-
 // doesApply check the action selector to define if yes or not the index
 // needs to be called
 func (i *Index) doesApply(action *Action) bool {
@@ -192,4 +131,50 @@ func (i *Index) doesApply(action *Action) bool {
 		}
 	}
 	return true
+}
+
+func NewRefs() *Refs {
+	refs := new(Refs)
+	refs.Refs = []*Ref{}
+	return refs
+}
+
+func NewRefsFromDB(input []byte) *Refs {
+	refs := new(Refs)
+	json.Unmarshal(input, refs)
+	return refs
+}
+
+func (r *Refs) IDasBytes() []byte {
+	return []byte(r.ObjectHashID)
+}
+
+func (r *Refs) SetIndexedValue(indexName string, indexedVal []byte) {
+	for _, ref := range r.Refs {
+		if ref.IndexName == indexName {
+			ref.IndexedValue = indexedVal
+			return
+		}
+	}
+
+	ref := new(Ref)
+	ref.IndexName = indexName
+	ref.IndexedValue = indexedVal
+	r.Refs = append(r.Refs, ref)
+}
+
+func (r *Refs) DelIndexedValue(indexName string) {
+	for i, ref := range r.Refs {
+		if ref.IndexName == indexName {
+			copy(r.Refs[i:], r.Refs[i+1:])
+			r.Refs[len(r.Refs)-1] = nil
+			r.Refs = r.Refs[:len(r.Refs)-1]
+			return
+		}
+	}
+}
+
+func (r *Refs) AsBytes() []byte {
+	ret, _ := json.Marshal(r)
+	return ret
 }

@@ -57,7 +57,7 @@ func (c *Collection) putIntoIndexes(id string, content interface{}) error {
 	indexErrors := map[string]error{}
 	for _, index := range c.Indexes {
 		if val, apply := index.Apply(content); apply {
-			putInIndexErr := index.addIDFunc(val, id)
+			putInIndexErr := index.setIDFunc(val, id)
 			if putInIndexErr != nil {
 				return putInIndexErr
 			}

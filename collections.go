@@ -119,16 +119,29 @@ func (c *Collection) Delete(id string) error {
 		return vars.ErrEmptyID
 	}
 
-	return c.Store.Update(func(txn *badger.Txn) error {
+	if rmStoreErr := c.Store.Update(func(txn *badger.Txn) error {
 		return txn.Delete(c.buildStoreID(id))
-	})
+	}); rmStoreErr != nil {
+		return rmStoreErr
+	}
+
+	return c.deleteIndexes(id)
+
+	// for _, index := range c.Indexes {
+	// 	err := index.rmIDFunc(id)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	return nil
 }
 
 // SetIndex enable the collection to index field or sub field
 func (c *Collection) SetIndex(i *Index) error {
 	c.Indexes = append(c.Indexes, i)
 	if err := c.DB.Update(func(tx *bolt.Tx) error {
-		_, createErr := tx.CreateBucket([]byte(i.Name))
+		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
 		if createErr != nil {
 			return createErr
 		}
@@ -137,9 +150,9 @@ func (c *Collection) SetIndex(i *Index) error {
 		return err
 	}
 
-	i.getIDsFunc = func(indexedValue []byte) (ids []*ID, err error) {
+	i.getIDsFunc = func(indexedValue []byte) (ids *IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte(i.Name))
+			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			ids, err = NewIDs(bucket.Get(indexedValue))
 			return err
 		}); err != nil {
@@ -148,9 +161,9 @@ func (c *Collection) SetIndex(i *Index) error {
 		return ids, nil
 	}
 
-	i.getRangeIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs []*ID, err error) {
+	i.getRangeIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs *IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte(i.Name))
+			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			// Initiate the cursor (iterator)
 			iter := bucket.Cursor()
 			// Go to the requested position
@@ -162,7 +175,7 @@ func (c *Collection) SetIndex(i *Index) error {
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
-				allIDs = append(allIDs, firstIDsValue...)
+				allIDs.AddIDs(firstIDsValue)
 			}
 
 			var nextFunc func() (key []byte, value []byte)
@@ -173,8 +186,8 @@ func (c *Collection) SetIndex(i *Index) error {
 			}
 
 			for {
-				if len(allIDs) >= nb {
-					allIDs = allIDs[:nb]
+				if len(allIDs.Slice) >= nb {
+					allIDs.Slice = allIDs.Slice[:nb]
 					return nil
 				}
 
@@ -186,7 +199,7 @@ func (c *Collection) SetIndex(i *Index) error {
 				if unmarshalIDsErr != nil {
 					return unmarshalIDsErr
 				}
-				allIDs = append(allIDs, ids...)
+				allIDs.AddIDs(ids)
 			}
 			return nil
 		}); err != nil {
@@ -195,11 +208,12 @@ func (c *Collection) SetIndex(i *Index) error {
 		return allIDs, nil
 	}
 
-	i.addIDFunc = func(indexedValue []byte, id string) error {
+	i.setIDFunc = func(indexedValue []byte, id string) error {
 		return c.DB.Update(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte(i.Name))
+			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
+			refsBucket := tx.Bucket([]byte("refs"))
 
-			idsAsBytes := bucket.Get(indexedValue)
+			idsAsBytes := indexBucket.Get(indexedValue)
 			ids, parseIDsErr := vars.ParseIDsBytesToIDsAsStrings(idsAsBytes)
 			if parseIDsErr != nil && len(idsAsBytes) != 0 {
 				return parseIDsErr
@@ -212,44 +226,23 @@ func (c *Collection) SetIndex(i *Index) error {
 				return formatErr
 			}
 
-			return bucket.Put(indexedValue, idsAsBytes)
-		})
-	}
-
-	i.rmIDFunc = func(indexedValue []byte, idToRemove string) error {
-		return c.DB.Update(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte(i.Name))
-
-			// Get the saved IDs of the given field value
-			idsAsBytes := bucket.Get(indexedValue)
-			// Convert the slice of byte to slice of strings
-			ids, parseIDsErr := vars.ParseIDsBytesToIDsAsStrings(idsAsBytes)
-			if parseIDsErr != nil {
-				return parseIDsErr
+			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
+				return err
 			}
 
-			// Save the slot where the ID is found
-			slotsToClean := []int{}
-			for j, id := range ids {
-				if id == idToRemove {
-					slotsToClean = append(slotsToClean, j)
+			refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
+			refs := NewRefs()
+			if refsAsBytes == nil && len(refsAsBytes) > 0 {
+				if err := json.Unmarshal(refsAsBytes, refs); err != nil {
+					return err
 				}
 			}
 
-			// Remove the pointed values from the above loop
-			for j := len(slotsToClean) - 1; j > 0; j-- {
-				n := slotsToClean[j]
-				ids = append(ids[:n], ids[n+1:]...)
-			}
+			refs.ObjectID = id
+			refs.ObjectHashID = vars.BuildID(id)
+			refs.SetIndexedValue(i.Name, indexedValue)
 
-			// Format and save the new list of IDs for the given indexed value
-			var formatErr error
-			idsAsBytes, formatErr = vars.FormatIDsStringsToIDsAsBytes(ids)
-			if formatErr != nil {
-				return formatErr
-			}
-
-			return bucket.Put(indexedValue, idsAsBytes)
+			return refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
 		})
 	}
 
@@ -271,7 +264,7 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 
 	tree := btree.New(10)
 
-	finishedChan := make(chan []*ID, 16)
+	finishedChan := make(chan *IDs, 16)
 	defer close(finishedChan)
 	nbToDo := 0
 
@@ -290,8 +283,10 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 	for {
 		select {
 		case tmpIDs := <-finishedChan:
-			for _, id := range tmpIDs {
-				tree.ReplaceOrInsert(id)
+			if tmpIDs != nil {
+				for _, id := range tmpIDs.Slice {
+					tree.ReplaceOrInsert(id)
+				}
 			}
 			nbToDo--
 			if nbToDo <= 0 {
@@ -319,7 +314,7 @@ getDone:
 	for {
 		select {
 		case tmpIDs := <-finishedChan:
-			for _, id := range tmpIDs {
+			for _, id := range tmpIDs.Slice {
 				tree.Delete(id)
 			}
 			nbToDo--
@@ -341,4 +336,28 @@ cleanDone:
 	}
 
 	return
+}
+
+func (c *Collection) deleteIndexes(id string) error {
+	return c.DB.Update(func(tx *bolt.Tx) error {
+		refsBucket := tx.Bucket([]byte("refs"))
+
+		refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
+		refs := NewRefsFromDB(refsAsBytes)
+		if refs == nil {
+			return fmt.Errorf("references mal formed: %s", string(refsAsBytes))
+		}
+
+		for _, ref := range refs.Refs {
+			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
+			ids, err := NewIDs(indexBucket.Get(ref.IndexedValue))
+			if err != nil {
+				return err
+			}
+
+			ids.RmID(id)
+		}
+
+		return nil
+	})
 }

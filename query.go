@@ -103,10 +103,11 @@ func (q *Query) Clean(a *Action) *Query {
 }
 
 // NewIDs build a new Ids pointer from a slice of bytes
-func NewIDs(idsAsBytes []byte) ([]*ID, error) {
-	ids := []*ID{}
+func NewIDs(idsAsBytes []byte) (*IDs, error) {
+	// func NewIDs(idsAsBytes []byte) ([]*ID, error) {
+	ids := new(IDs)
 
-	err := json.Unmarshal(idsAsBytes, &ids)
+	err := json.Unmarshal(idsAsBytes, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -188,3 +189,22 @@ func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
 // 		return true
 // 	}
 // }
+
+func (i *IDs) SetID(idToSet string) {
+	id := ID(idToSet)
+	i.Slice = append(i.Slice, &id)
+}
+
+func (i *IDs) RmID(idToRm string) {
+	for j, id := range i.Slice {
+		if id.String() == idToRm {
+			copy(i.Slice[j:], i.Slice[j+1:])
+			i.Slice[len(i.Slice)-1] = nil // or the zero value of T
+			i.Slice = i.Slice[:len(i.Slice)-1]
+		}
+	}
+}
+
+func (i *IDs) AddIDs(idsToAdd *IDs) {
+	i.Slice = append(i.Slice, idsToAdd.Slice...)
+}
