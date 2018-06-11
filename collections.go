@@ -137,29 +137,32 @@ func (c *Collection) SetIndex(i *Index) error {
 		return err
 	}
 
-	i.getIDFunc = func(indexedValue []byte) (ids *IDs, err error) {
+	i.getIDsFunc = func(indexedValue []byte) (ids []*ID, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(i.Name))
-			ids = NewIDs(bucket.Get(indexedValue))
-			return nil
+			ids, err = NewIDs(bucket.Get(indexedValue))
+			return err
 		}); err != nil {
 			return nil, err
 		}
 		return ids, nil
 	}
 
-	i.getIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs []*IDs, err error) {
+	i.getRangeIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs []*ID, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(i.Name))
 			// Initiate the cursor (iterator)
 			iter := bucket.Cursor()
 			// Go to the requested position
 			firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
-			firstIDsValue := NewIDs(firstIDsAsByte)
+			firstIDsValue, unmarshalIDsErr := NewIDs(firstIDsAsByte)
+			if unmarshalIDsErr != nil {
+				return unmarshalIDsErr
+			}
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
-				allIDs = append(allIDs, firstIDsValue)
+				allIDs = append(allIDs, firstIDsValue...)
 			}
 
 			var nextFunc func() (key []byte, value []byte)
@@ -179,8 +182,11 @@ func (c *Collection) SetIndex(i *Index) error {
 				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 					break
 				}
-				ids := NewIDs(idsAsByte)
-				allIDs = append(allIDs, ids)
+				ids, unmarshalIDsErr := NewIDs(idsAsByte)
+				if unmarshalIDsErr != nil {
+					return unmarshalIDsErr
+				}
+				allIDs = append(allIDs, ids...)
 			}
 			return nil
 		}); err != nil {
@@ -256,12 +262,17 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 		return
 	}
 
+	if len(q.getActions) <= 0 {
+		return nil, fmt.Errorf("query has not get action")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	tree := btree.New(10)
 
 	finishedChan := make(chan bool, 16)
+	defer close(finishedChan)
 	nbToDo := 0
 
 	// If no index stop the query
@@ -290,12 +301,14 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 	}
 
 getDone:
-	ctx2, cancel2 := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel2()
+	if len(q.cleanActions) <= 0 {
+		goto cleanDone
+	}
 
+	nbToDo = 0
 	for _, index := range c.Indexes {
 		for _, action := range q.cleanActions {
-			go index.Query(ctx2, false, action, tree, finishedChan)
+			go index.Query(ctx, false, action, tree, finishedChan)
 			nbToDo++
 		}
 	}
@@ -307,17 +320,19 @@ getDone:
 			if nbToDo <= 0 {
 				goto cleanDone
 			}
-		case <-ctx2.Done():
+		case <-ctx.Done():
 			return nil, fmt.Errorf("clean context timeout")
 		}
-
 	}
 
 cleanDone:
 
 	fn, ret := iterator(q.limit)
 	tree.Ascend(fn)
-	fmt.Println("ids", ret)
+
+	for _, id := range ret.Slice {
+		ids = append(ids, id.String())
+	}
 
 	return
 }

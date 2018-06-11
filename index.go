@@ -16,10 +16,10 @@ type (
 		Selector []string
 		Type     vars.IndexType
 
-		getIDFunc  func(indexedValue []byte) (*IDs, error)
-		getIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) ([]*IDs, error)
-		addIDFunc  func(indexedValue []byte, id string) error
-		rmIDFunc   func(indexedValue []byte, id string) error
+		getIDsFunc      func(indexedValue []byte) ([]*ID, error)
+		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) ([]*ID, error)
+		addIDFunc       func(indexedValue []byte, id string) error
+		rmIDFunc        func(indexedValue []byte, id string) error
 	}
 )
 
@@ -68,22 +68,22 @@ func (i *Index) Query(ctx context.Context, get bool, action *Action, responseTre
 		finishedChan <- true
 	}()
 
-	var ids []*IDs
+	var ids []*ID
 
 	// If equal just this leave will be send
 	if action.GetType() == Equal {
-		tmpIDs, getErr := i.getIDFunc(action.ValueToCompareAsBytes())
+		tmpIDs, getErr := i.getIDsFunc(action.ValueToCompareAsBytes())
 		if getErr != nil {
 			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
 			return
 		}
 
-		ids = append(ids, tmpIDs)
+		ids = append(ids, tmpIDs...)
 		goto addToTree
 	}
 
 	if action.GetType() == Greater {
-		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
+		tmpIDs, getIdsErr := i.getRangeIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
 			return
@@ -91,7 +91,7 @@ func (i *Index) Query(ctx context.Context, get bool, action *Action, responseTre
 		ids = tmpIDs
 		goto addToTree
 	} else if action.GetType() == Less {
-		tmpIDs, getIdsErr := i.getIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
+		tmpIDs, getIdsErr := i.getRangeIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Less: %s\n", getIdsErr.Error())
 			return

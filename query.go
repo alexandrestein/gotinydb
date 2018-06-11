@@ -1,7 +1,7 @@
 package gotinydb
 
 import (
-	"bytes"
+	"encoding/json"
 
 	"github.com/google/btree"
 )
@@ -36,14 +36,13 @@ type (
 		limit int
 	}
 
-	// IDs is a type to manage IDs during query to be compatible with the tree query
-	IDs struct {
-		indexedValue []byte
-		idsAsByte    []byte
-	}
+	// ID is a type to order IDs during query to be compatible with the tree query
+	ID string
 
-	queryResponse struct {
-		IDs []*IDs
+	// IDs defines a list of ID. The struct is needed to build a pointer to be
+	// passed to deferent functions
+	IDs struct {
+		Slice []*ID
 	}
 
 	// ActionType defines the type of action to perform.
@@ -104,47 +103,88 @@ func (q *Query) Clean(a *Action) *Query {
 }
 
 // NewIDs build a new Ids pointer from a slice of bytes
-func NewIDs(idsAsBytes []byte) *IDs {
-	ids := new(IDs)
-	ids.indexedValue = idsAsBytes
+func NewIDs(idsAsBytes []byte) ([]*ID, error) {
+	ids := []*ID{}
 
-	return ids
+	err := json.Unmarshal(idsAsBytes, &ids)
+	if err != nil {
+		return nil, err
+	}
+
+	return ids, nil
 }
 
 // Less must provide a strict weak ordering.
 // If !a.Less(b) && !b.Less(a), we treat this to mean a == b
-func (i *IDs) Less(compareToItem btree.Item) bool {
-	compareTo, ok := compareToItem.(*IDs)
+func (i *ID) Less(compareToItem btree.Item) bool {
+	compareTo, ok := compareToItem.(*ID)
 	if !ok {
 		return false
 	}
 
-	n := bytes.Compare(i.indexedValue, compareTo.indexedValue)
-	if n < 0 {
-		return true
-	}
-	return false
+	return (*i < *compareTo)
 }
 
-func (i *IDs) treeItem() btree.Item {
+func (i *ID) treeItem() btree.Item {
 	return btree.Item(i)
 }
 
-func iterator(maxResponse int) (func(next btree.Item) (over bool), *queryResponse) {
-	ret := new(queryResponse)
-	ret.IDs = make([]*IDs, 0)
+func (i *ID) String() string {
+	return string(*i)
+}
+
+func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
+	ret := new(IDs)
 
 	return func(next btree.Item) bool {
-		if len(ret.IDs) >= maxResponse {
+		if len(ret.Slice) >= maxResponse {
 			return false
 		}
 
-		nextAsIDs, ok := next.(*IDs)
+		nextAsID, ok := next.(*ID)
 		if !ok {
 			return false
 		}
 
-		ret.IDs = append(ret.IDs, nextAsIDs)
+		ret.Slice = append(ret.Slice, nextAsID)
 		return true
 	}, ret
 }
+
+// func iteratorIntoStringSlice(targetSlice []string, maxResponse int) func(next btree.Item) (over bool) {
+// 	return func(next btree.Item) bool {
+// 		if len(targetSlice) >= maxResponse {
+// 			return false
+// 		}
+
+// 		nextAsID, ok := next.(*ID)
+// 		if !ok {
+// 			return false
+// 		}
+
+// 		targetSlice = append(targetSlice, nextAsID.String())
+
+// 		return true
+// 	}
+// }
+
+// func cleanIterator(tree *btree.BTree) func(next btree.Item) (over bool) {
+// 	return func(next btree.Item) bool {
+// 		if len(ret.IDs) >= maxResponse {
+// 			return false
+// 		}
+
+// 		nextAsIDs, ok := next.(*IDs)
+// 		if !ok {
+// 			return false
+// 		}
+
+// 		idsAsString := nextAsIDs.getIDsAsStrings()
+// 		if idsAsString == nil {
+// 			return false
+// 		}
+
+// 		ret.IDs = append(ret.IDs, nextAsIDs)
+// 		return true
+// 	}
+// }
