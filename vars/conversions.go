@@ -3,6 +3,7 @@ package vars
 import (
 	"encoding/binary"
 	"math/big"
+	"strings"
 	"time"
 )
 
@@ -14,7 +15,9 @@ func StringToBytes(input interface{}) ([]byte, error) {
 		return nil, ErrWrongType
 	}
 
-	return []byte(typedInput), nil
+	lowerCaseString := strings.ToLower(typedInput)
+
+	return []byte(lowerCaseString), nil
 }
 
 // IntToBytes converter from a int or uint of any size (int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64)

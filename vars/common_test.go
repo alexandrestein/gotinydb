@@ -1,6 +1,7 @@
 package vars
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -34,6 +35,39 @@ func TestTypeName(t *testing.T) {
 
 	if IndexType(-1).TypeName() != "" {
 		t.Error("returned name is not correct")
+		return
+	}
+}
+
+func TestIDsParser(t *testing.T) {
+	idsAsByte := `["id0","id1"]`
+	ids, err := ParseIDsBytesToIDsAsStrings([]byte(idsAsByte))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if len(ids) != 2 {
+		t.Errorf("returned ids are not equal to 2: %v", ids)
+		return
+	}
+
+	for i, id := range ids {
+		if fmt.Sprintf("id%d", i) != id {
+			t.Errorf("parse not correct. Expected %s but had %s", fmt.Sprintf("id%d", i), id)
+		}
+	}
+}
+
+func TestIDsFormat(t *testing.T) {
+	ids, err := FormatIDsStringsToIDsAsBytes([]string{"id0", "id1"})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if string(ids) != `["id0","id1"]` {
+		t.Errorf("fomated ids is %s but expected %s", string(ids), `["id0", "id1"]`)
 		return
 	}
 }
