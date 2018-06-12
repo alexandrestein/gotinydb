@@ -19,12 +19,10 @@ type (
 	Query struct {
 		getActions, cleanActions []*Action
 
-		orderBy       []string
-		revertedOrder bool
+		// orderBy       []string
+		// revertedOrder bool
 
 		limit int
-
-		distinct bool
 	}
 
 	// Action defines the way the query will be performed
@@ -75,15 +73,9 @@ func (q *Query) SetLimit(l int) *Query {
 	return q
 }
 
-// // InvertOrder lets the caller invert the slice if wanted.
-// func (q *Query) InvertOrder() *Query {
-// 	q.InvertedOrder = true
-// 	return q
-// }
-
 // DistinctWanted clean the duplicated IDs
 func (q *Query) DistinctWanted() *Query {
-	q.distinct = true
+	// q.distinct = true
 	return q
 }
 
@@ -150,44 +142,6 @@ func (i *ID) String() string {
 	}
 	return string(*i)
 }
-
-// func iteratorIntoStringSlice(targetSlice []string, maxResponse int) func(next btree.Item) (over bool) {
-// 	return func(next btree.Item) bool {
-// 		if len(targetSlice) >= maxResponse {
-// 			return false
-// 		}
-
-// 		nextAsID, ok := next.(*ID)
-// 		if !ok {
-// 			return false
-// 		}
-
-// 		targetSlice = append(targetSlice, nextAsID.String())
-
-// 		return true
-// 	}
-// }
-
-// func cleanIterator(tree *btree.BTree) func(next btree.Item) (over bool) {
-// 	return func(next btree.Item) bool {
-// 		if len(ret.IDs) >= maxResponse {
-// 			return false
-// 		}
-
-// 		nextAsIDs, ok := next.(*IDs)
-// 		if !ok {
-// 			return false
-// 		}
-
-// 		idsAsString := nextAsIDs.getIDsAsStrings()
-// 		if idsAsString == nil {
-// 			return false
-// 		}
-
-// 		ret.IDs = append(ret.IDs, nextAsIDs)
-// 		return true
-// 	}
-// }
 
 // NewIDs build a new Ids pointer from a slice of bytes
 func NewIDs(idsAsBytes []byte) (*IDs, error) {

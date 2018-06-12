@@ -153,19 +153,6 @@ func TestStringIndexRange(t *testing.T) {
 			}
 			return nil
 		})
-
-		// for _, id := range ids. {
-		// 	user := struct{ Login, Pass string }{}
-		// 	getErr := c.Get(id, &user)
-		// 	if getErr != nil {
-		// 		t.Error(getErr.Error())
-		// 		return
-		// 	}
-		// 	if strings.ToLower(list[randInt]) > strings.ToLower(user.Login) {
-		// 		t.Errorf("returned value %q is smaller than comparator %q", user.Login, list[randInt])
-		// 		return
-		// 	}
-		// }
 	}
 
 	// Query Login less
@@ -363,14 +350,6 @@ func TestStringIndexMultipleRange(t *testing.T) {
 		t.Error(err.Error())
 		return err
 	})
-
-	// for _, id := range ids {
-
-	// 	// if strings.ToLower(list[randInt]) > strings.ToLower(user.Login) {
-	// 	// 	t.Errorf("returned value %q is smaller than comparator %q", user.Login, list[randInt])
-	// 	// 	return
-	// 	// }
-	// }
 }
 
 func buildRandLogins(n int) (ret []string) {

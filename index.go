@@ -122,17 +122,6 @@ addToTree:
 	return
 }
 
-// doesApply check the action selector to define if yes or not the index
-// needs to be called
-func (i *Index) doesApply(action *Action) bool {
-	for j, fieldName := range i.Selector {
-		if action.selector[j] != fieldName {
-			return false
-		}
-	}
-	return true
-}
-
 func NewRefs() *Refs {
 	refs := new(Refs)
 	refs.Refs = []*Ref{}
@@ -161,17 +150,6 @@ func (r *Refs) SetIndexedValue(indexName string, indexedVal []byte) {
 	ref.IndexName = indexName
 	ref.IndexedValue = indexedVal
 	r.Refs = append(r.Refs, ref)
-}
-
-func (r *Refs) DelIndexedValue(indexName string) {
-	for i, ref := range r.Refs {
-		if ref.IndexName == indexName {
-			copy(r.Refs[i:], r.Refs[i+1:])
-			r.Refs[len(r.Refs)-1] = nil
-			r.Refs = r.Refs[:len(r.Refs)-1]
-			return
-		}
-	}
 }
 
 func (r *Refs) AsBytes() []byte {

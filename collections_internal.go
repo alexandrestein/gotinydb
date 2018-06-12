@@ -61,21 +61,6 @@ func (c *Collection) putIntoIndexes(id string, content interface{}) error {
 			if putInIndexErr != nil {
 				return putInIndexErr
 			}
-
-			// // Insert the value into the index
-			// if err := c.DB.Update(func(tx *bolt.Tx) error {
-			// 	indexBucket := tx.Bucket([]byte(index.Name))
-			// 	if indexBucket == nil {
-			// 		return vars.ErrNotFound
-			// 	}
-
-			// 	return indexBucket.Put(val, []byte(id))
-			// }); err != nil {
-			// 	return err
-			// }
-			// if updateErr := c.updateIndex(id, index, val); updateErr != nil {
-			// 	indexErrors[indexName] = updateErr
-			// }
 			return nil
 		}
 	}
@@ -88,4 +73,11 @@ func (c *Collection) putIntoIndexes(id string, content interface{}) error {
 		return fmt.Errorf(errorString)
 	}
 	return nil
+}
+
+func (c *Collection) cleanRefs(idAsString string) error {
+	return c.DB.Update(func(tx *bolt.Tx) error {
+		refsBucket := tx.Bucket([]byte("refs"))
+		return refsBucket.Delete(vars.BuildBytesID(idAsString))
+	})
 }

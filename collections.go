@@ -27,6 +27,9 @@ type (
 
 // Put add the given content to database with the given ID
 func (c *Collection) Put(id string, content interface{}) error {
+	if err := c.cleanRefs(id); err != nil {
+		return err
+	}
 	isBin := false
 	contentAsBytes := []byte{}
 	if bytes, ok := content.([]byte); ok {
@@ -126,15 +129,6 @@ func (c *Collection) Delete(id string) error {
 	}
 
 	return c.deleteIndexes(id)
-
-	// for _, index := range c.Indexes {
-	// 	err := index.rmIDFunc(id)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	// return nil
 }
 
 // SetIndex enable the collection to index field or sub field
