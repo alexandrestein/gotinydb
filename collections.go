@@ -256,7 +256,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		return nil, fmt.Errorf("query has not get action")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*500000000)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
 	tree := btree.New(10)
