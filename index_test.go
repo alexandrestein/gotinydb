@@ -81,7 +81,7 @@ func TestStringIndex(t *testing.T) {
 	}
 }
 
-func TestStringIndexGreater(t *testing.T) {
+func TestStringIndexRange(t *testing.T) {
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBerr := Open(testPath)

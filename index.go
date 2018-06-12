@@ -19,6 +19,7 @@ type (
 		getIDsFunc      func(indexedValue []byte) (*IDs, error)
 		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) (*IDs, error)
 		setIDFunc       func(indexedValue []byte, id string) error
+		rmIDFunc        func(indexedValue []byte, id string) error
 	}
 
 	Refs struct {

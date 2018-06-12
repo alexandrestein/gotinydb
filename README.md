@@ -125,7 +125,7 @@ For futur the versions, see the [tags on this repository](https://github.com/ale
 
 ## License
 
-This project is licensed under the 3-Clause BSD License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the 3-Clause BSD License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 

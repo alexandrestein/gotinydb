@@ -220,10 +220,6 @@ func (c *Collection) SetIndex(i *Index) error {
 			if parseIDsErr != nil && len(idsAsBytes) != 0 {
 				return parseIDsErr
 			}
-			if ids == nil {
-				fmt.Println("AILLLLE")
-				return nil
-			}
 
 			id := ID(idAsString)
 			ids.AddID(&id)
