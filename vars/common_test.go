@@ -5,7 +5,7 @@ import (
 )
 
 func TestBuildID(t *testing.T) {
-	if id := BuildID("testString"); id != "VwrWkLzMGcso0q8enMrDWQ" {
+	if id := BuildBytesID("testString"); string(id) != "VwrWkLzMGcso0q8enMrDWQ" {
 		t.Error("returned ID, is not correct", id)
 	}
 }
