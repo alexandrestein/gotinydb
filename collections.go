@@ -262,7 +262,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		return nil, fmt.Errorf("query has not get action")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*500000000)
 	defer cancel()
 
 	tree := btree.New(10)
@@ -340,6 +340,9 @@ cleanDone:
 		for i, id := range ret.IDs {
 			objectsAsBadgeItem, getErr := txn.Get(c.buildStoreID(id.String()))
 			if getErr != nil {
+				if getErr == badger.ErrKeyNotFound {
+					return vars.ErrNotFound
+				}
 				return getErr
 			}
 			objectsAsBytes, valErr := objectsAsBadgeItem.Value()
@@ -376,6 +379,8 @@ func (c *Collection) deleteIndexes(id string) error {
 			}
 
 			ids.RmID(id)
+
+			indexBucket.Put(ref.IndexedValue, ids.MustMarshal())
 		}
 
 		return nil

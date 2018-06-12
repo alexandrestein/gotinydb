@@ -4,6 +4,7 @@ import (
 	cryptoRand "crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"os"
 	"strings"
@@ -138,17 +139,19 @@ func TestStringIndexRange(t *testing.T) {
 			return
 		}
 
-		ids.Range(func(id string, _ []byte) {
+		ids.Range(func(id string, _ []byte) error {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)
 			if getErr != nil {
 				t.Error(getErr.Error())
-				return
+				return getErr
 			}
 			if strings.ToLower(list[randInt]) > strings.ToLower(user.Login) {
-				t.Errorf("returned value %q is smaller than comparator %q", user.Login, list[randInt])
-				return
+				err := fmt.Errorf("returned value %q is smaller than comparator %q", user.Login, list[randInt])
+				t.Error(err.Error())
+				return err
 			}
+			return nil
 		})
 
 		// for _, id := range ids. {
@@ -177,17 +180,19 @@ func TestStringIndexRange(t *testing.T) {
 			return
 		}
 
-		ids.Range(func(id string, _ []byte) {
+		ids.Range(func(id string, _ []byte) error {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)
 			if getErr != nil {
 				t.Error(getErr.Error())
-				return
+				return getErr
 			}
 			if strings.ToLower(list[randInt]) < strings.ToLower(user.Login) {
-				t.Errorf("returned value %q is greater than comparator %q", user.Login, list[randInt])
-				return
+				err := fmt.Errorf("returned value %q is greater than comparator %q", user.Login, list[randInt])
+				t.Error(err)
+				return err
 			}
+			return nil
 		})
 	}
 }
@@ -249,17 +254,19 @@ func TestStringIndexRangeClean(t *testing.T) {
 			return
 		}
 
-		ids.Range(func(id string, _ []byte) {
+		ids.Range(func(id string, _ []byte) error {
 			user := struct{ Login, Pass string }{}
 			getErr := c.Get(id, &user)
 			if getErr != nil {
 				t.Error(getErr.Error())
-				return
+				return getErr
 			}
 			if strings.ToLower(list[randInt]) > strings.ToLower(user.Login) {
-				t.Errorf("returned value %q is smaller than comparator %q", user.Login, list[randInt])
-				return
+				err := fmt.Errorf("returned value %q is smaller than comparator %q", user.Login, list[randInt])
+				t.Error(err.Error())
+				return err
 			}
+			return nil
 		})
 	}
 }
@@ -333,27 +340,28 @@ func TestStringIndexMultipleRange(t *testing.T) {
 		{"Dominguez", "ggAHrv_BNodNvrUMBuKvSw"},
 	}
 
-	ids.Range(func(id string, objectsAsBytes []byte) {
+	ids.Range(func(id string, objectsAsBytes []byte) error {
 		user := struct{ Login, Pass string }{}
 		getErr := c.Get(id, &user)
 		if getErr != nil {
 			t.Error(getErr.Error())
-			return
+			return getErr
 		}
 
 		if parseErr := json.Unmarshal(objectsAsBytes, &user); parseErr != nil {
 			t.Error(parseErr)
-			return
+			return parseErr
 		}
 
 		for _, expectedValue := range expectedValues {
 			if expectedValue[0] == user.Login && expectedValue[1] == user.Pass {
-				return
+				return nil
 			}
 		}
 
-		t.Errorf("Expected value not found but had %v", user)
-		return
+		err := fmt.Errorf("Expected value not found but had %v", user)
+		t.Error(err.Error())
+		return err
 	})
 
 	// for _, id := range ids {
@@ -428,20 +436,38 @@ func TestStringIndexDelete(t *testing.T) {
 			return
 		}
 
-		ids.Range(func(id string, _ []byte) {
-			user := struct{ Login, Pass string }{}
-			getErr := c.Get(id, &user)
-			if getErr != nil {
-				t.Error(getErr.Error())
-				return
+		removedID := ""
+		ids.Range(func(id string, _ []byte) error {
+			delErr := c.Delete(id)
+			if delErr != nil {
+				t.Error(delErr)
+				return delErr
 			}
-			if strings.ToLower(list[randInt]) < strings.ToLower(user.Login) {
-				t.Errorf("returned value %q is greater than comparator %q", user.Login, list[randInt])
-				return
-			}
+			removedID = id
+			return nil
 		})
 
-		// for _, id := range ids {
-		// }
+		ids, err = c.Query(queryObj)
+		if err != nil {
+			if err != vars.ErrNotFound {
+				t.Error(err.Error())
+				return
+			}
+		}
+
+		tmpUser := struct{ Login, Pass string }{}
+		ids.Range(func(id string, retAsByte []byte) error {
+			if jsonErr := json.Unmarshal(retAsByte, &tmpUser); jsonErr != nil {
+				t.Error(jsonErr.Error())
+				return jsonErr
+			}
+
+			if id == removedID {
+				err := fmt.Errorf("this value should not be displayed")
+				t.Error(err)
+				return err
+			}
+			return nil
+		})
 	}
 }

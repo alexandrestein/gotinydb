@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"encoding/json"
 
+	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/google/btree"
 )
 
@@ -144,6 +145,9 @@ func (i *ID) treeItem() btree.Item {
 }
 
 func (i *ID) String() string {
+	if i == nil {
+		return ""
+	}
 	return string(*i)
 }
 
@@ -232,6 +236,11 @@ func (i *IDs) Marshal() ([]byte, error) {
 	return json.Marshal(i)
 }
 
+func (i *IDs) MustMarshal() []byte {
+	ret, _ := json.Marshal(i)
+	return ret
+}
+
 func NewResponseQuery(limit int) *ResponseQuery {
 	r := new(ResponseQuery)
 	r.IDs = make([]*ID, limit)
@@ -243,14 +252,20 @@ func (r *ResponseQuery) Len() int {
 	return len(r.IDs)
 }
 
-func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte)) (n int) {
+func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte) error) (n int, err error) {
 	n = 0
+	if r == nil {
+		return 0, vars.ErrEmptyID
+	}
 	for i, id := range r.IDs {
 		objAsBytes := r.ObjectsAsBytes[i]
 		if objAsBytes == nil {
 			break
 		}
-		fn(id.String(), objAsBytes)
+		err = fn(id.String(), objAsBytes)
+		if err != nil {
+			return
+		}
 		n++
 	}
 	return
