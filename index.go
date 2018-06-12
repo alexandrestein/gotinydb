@@ -22,6 +22,8 @@ type (
 		rmIDFunc        func(indexedValue []byte, id string) error
 	}
 
+	// Refs defines an struct to manage the references of a given object
+	// in all the indexe it belongs to
 	Refs struct {
 		ObjectID     string
 		ObjectHashID string
@@ -29,6 +31,7 @@ type (
 		Refs []*Ref
 	}
 
+	// Ref defines the relations between a object with some index with indexed value
 	Ref struct {
 		IndexName    string
 		IndexedValue []byte
@@ -122,22 +125,28 @@ addToTree:
 	return
 }
 
+// NewRefs builds a new empty Refs pointer
 func NewRefs() *Refs {
 	refs := new(Refs)
 	refs.Refs = []*Ref{}
 	return refs
 }
 
+// NewRefsFromDB builds a Refs pointer based on the saved value in database
 func NewRefsFromDB(input []byte) *Refs {
 	refs := new(Refs)
 	json.Unmarshal(input, refs)
 	return refs
 }
 
+// IDasBytes returns the ID of the coresponding object as a slice of bytes
 func (r *Refs) IDasBytes() []byte {
 	return []byte(r.ObjectHashID)
 }
 
+// SetIndexedValue add to the list of references this one.
+// The indexName define the index it belongs to and indexedVal defines what value
+// is indexed.
 func (r *Refs) SetIndexedValue(indexName string, indexedVal []byte) {
 	for _, ref := range r.Refs {
 		if ref.IndexName == indexName {
@@ -152,6 +161,7 @@ func (r *Refs) SetIndexedValue(indexName string, indexedVal []byte) {
 	r.Refs = append(r.Refs, ref)
 }
 
+// AsBytes marshals the given Refs pointer into a slice of bytes fo saving
 func (r *Refs) AsBytes() []byte {
 	ret, _ := json.Marshal(r)
 	return ret

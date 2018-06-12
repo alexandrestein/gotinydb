@@ -34,9 +34,10 @@ type (
 		IDs []*ID
 	}
 
-	// ActionType defines the type of action to perform.
+	// ActionType defines the type of action to perform
 	ActionType string
 
+	// ResponseQuery holds the results of a query
 	ResponseQuery struct {
 		IDs            []*ID
 		ObjectsAsBytes [][]byte
@@ -150,11 +151,7 @@ func NewIDs(idsAsBytes []byte) (*IDs, error) {
 	return ids, nil
 }
 
-func (i *IDs) SetID(idToSet string) {
-	id := ID(idToSet)
-	i.IDs = append(i.IDs, &id)
-}
-
+// RmID removes the given ID from the list
 func (i *IDs) RmID(idToRm string) {
 	for j, id := range i.IDs {
 		if id.String() == idToRm {
@@ -165,10 +162,12 @@ func (i *IDs) RmID(idToRm string) {
 	}
 }
 
+// AddIDs insert mulitple ids as IDs pointer into the list
 func (i *IDs) AddIDs(idsToAdd *IDs) {
 	i.IDs = append(i.IDs, idsToAdd.IDs...)
 }
 
+// AddID insert the given ID pointer into the list
 func (i *IDs) AddID(idToAdd *ID) {
 	if i.IDs == nil {
 		i.IDs = []*ID{}
@@ -176,15 +175,18 @@ func (i *IDs) AddID(idToAdd *ID) {
 	i.IDs = append(i.IDs, idToAdd)
 }
 
+// Marshal convert the given IDs pointer as a slice of bytes or returns an error if any
 func (i *IDs) Marshal() ([]byte, error) {
 	return json.Marshal(i)
 }
 
+// MustMarshal convert the given IDs pointer as a slice of bytes or nil if any error
 func (i *IDs) MustMarshal() []byte {
 	ret, _ := json.Marshal(i)
 	return ret
 }
 
+// NewResponseQuery build a new ResponseQuery pointer with the given limit
 func NewResponseQuery(limit int) *ResponseQuery {
 	r := new(ResponseQuery)
 	r.IDs = make([]*ID, limit)
@@ -192,10 +194,12 @@ func NewResponseQuery(limit int) *ResponseQuery {
 	return r
 }
 
+// Len returns the length of the given response
 func (r *ResponseQuery) Len() int {
 	return len(r.IDs)
 }
 
+// Range is a fonction to make easy to do some actions to the set of result
 func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte) error) (n int, err error) {
 	n = 0
 	if r == nil {
