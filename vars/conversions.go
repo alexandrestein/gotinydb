@@ -64,11 +64,7 @@ func convIntToAbsolutUint(input interface{}) uint64 {
 		typedValue = int64(input.(int64))
 	}
 
-	if typedValue < 0 {
-		ret = uint64(-typedValue)
-	} else {
-		ret = uint64(typedValue) + ^uint64(0)/2
-	}
+	ret = uint64(typedValue) + (^uint64(0) / 2) + 1
 
 	return ret
 }

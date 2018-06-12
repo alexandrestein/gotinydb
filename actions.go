@@ -6,6 +6,18 @@ import (
 	"github.com/alexandrestein/gotinydb/vars"
 )
 
+type (
+	// Action defines the way the query will be performed
+	Action struct {
+		selector       []string
+		operation      ActionType
+		compareToValue interface{}
+		equal          bool
+
+		limit int
+	}
+)
+
 // NewAction returns a new Action pointer with the given ActionType
 func NewAction(t ActionType) *Action {
 	return &Action{
@@ -57,7 +69,7 @@ func (a *Action) SetSelector(s []string) *Action {
 	return a
 }
 
-func (a *Action) SetLimit(limit int) *Action  {
+func (a *Action) SetLimit(limit int) *Action {
 	a.limit = limit
 	return a
 }

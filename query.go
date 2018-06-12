@@ -25,16 +25,6 @@ type (
 		limit int
 	}
 
-	// Action defines the way the query will be performed
-	Action struct {
-		selector       []string
-		operation      ActionType
-		compareToValue interface{}
-		equal          bool
-
-		limit int
-	}
-
 	// ID is a type to order IDs during query to be compatible with the tree query
 	ID string
 
