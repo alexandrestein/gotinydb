@@ -56,3 +56,8 @@ func (a *Action) SetSelector(s []string) *Action {
 	a.selector = s
 	return a
 }
+
+func (a *Action) SetLimit(limit int) *Action  {
+	a.limit = limit
+	return a
+}

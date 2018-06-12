@@ -47,6 +47,11 @@ type (
 
 	// ActionType defines the type of action to perform.
 	ActionType string
+
+	ResponseQuery struct {
+		IDs            []*ID
+		ObjectsAsBytes [][]byte
+	}
 )
 
 // NewQuery build a new query object.
@@ -83,23 +88,26 @@ func (q *Query) DistinctWanted() *Query {
 
 // Get defines the action to perform to get IDs
 func (q *Query) Get(a *Action) *Query {
-	if q.getActions == nil {
-		q.getActions = []*Action{}
-	}
-	a.limit = q.limit
-	q.getActions = append(q.getActions, a)
+	q.getActions = q.addAction(a, q.getActions)
 	return q
 }
 
 // Clean defines the actions to perform to clean IDs which have already retrieved
 // by the Get actions.
 func (q *Query) Clean(a *Action) *Query {
-	if q.cleanActions == nil {
-		q.getActions = []*Action{a}
-	}
-	a.limit = q.limit
-	q.cleanActions = append(q.cleanActions, a)
+	q.cleanActions = q.addAction(a, q.cleanActions)
 	return q
+}
+func (q *Query) addAction(a *Action, list []*Action) []*Action {
+	if list == nil {
+		list = []*Action{}
+	}
+	if a.limit <= 0 {
+		a.limit = q.limit
+	}
+
+	list = append(list, a)
+	return list
 }
 
 func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
@@ -222,4 +230,28 @@ func (i *IDs) AddID(idToAdd *ID) {
 
 func (i *IDs) Marshal() ([]byte, error) {
 	return json.Marshal(i)
+}
+
+func NewResponseQuery(limit int) *ResponseQuery {
+	r := new(ResponseQuery)
+	r.IDs = make([]*ID, limit)
+	r.ObjectsAsBytes = make([][]byte, limit)
+	return r
+}
+
+func (r *ResponseQuery) Len() int {
+	return len(r.IDs)
+}
+
+func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte)) (n int) {
+	n = 0
+	for i, id := range r.IDs {
+		objAsBytes := r.ObjectsAsBytes[i]
+		if objAsBytes == nil {
+			break
+		}
+		fn(id.String(), objAsBytes)
+		n++
+	}
+	return
 }

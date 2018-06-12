@@ -253,7 +253,7 @@ func (c *Collection) SetIndex(i *Index) error {
 }
 
 // Query run the given query to all the collection indexes
-func (c *Collection) Query(q *Query) (ids []string, _ error) {
+func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	if q == nil {
 		return
 	}
@@ -334,8 +334,25 @@ cleanDone:
 	fn, ret := iterator(q.limit)
 	tree.Ascend(fn)
 
-	for _, id := range ret.IDs {
-		ids = append(ids, id.String())
+	response = NewResponseQuery(q.limit)
+
+	if getValeErr := c.Store.View(func(txn *badger.Txn) error {
+		for i, id := range ret.IDs {
+			objectsAsBadgeItem, getErr := txn.Get(c.buildStoreID(id.String()))
+			if getErr != nil {
+				return getErr
+			}
+			objectsAsBytes, valErr := objectsAsBadgeItem.Value()
+			if valErr != nil {
+				return valErr
+			}
+
+			response.IDs[i] = id
+			response.ObjectsAsBytes[i] = objectsAsBytes
+		}
+		return nil
+	}); getValeErr != nil {
+		return nil, getValeErr
 	}
 
 	return

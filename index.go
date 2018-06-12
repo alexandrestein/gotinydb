@@ -116,7 +116,6 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 	}
 
 addToTree:
-
 	finishedChan <- ids
 	done = true
 
