@@ -330,7 +330,7 @@ cleanDone:
 
 	response = NewResponseQuery(q.limit)
 
-	if getValeErr := c.Store.View(func(txn *badger.Txn) error {
+	getObjectsFromStoreFunc := func(txn *badger.Txn) error {
 		for i, id := range ret.IDs {
 			objectsAsBadgeItem, getErr := txn.Get(c.buildStoreID(id.String()))
 			if getErr != nil {
@@ -348,7 +348,9 @@ cleanDone:
 			response.ObjectsAsBytes[i] = objectsAsBytes
 		}
 		return nil
-	}); getValeErr != nil {
+	}
+
+	if getValeErr := c.Store.View(getObjectsFromStoreFunc); getValeErr != nil {
 		return nil, getValeErr
 	}
 
