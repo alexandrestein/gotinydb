@@ -173,6 +173,8 @@ func (c *Collection) SetIndex(i *Index) error {
 				return unmarshalIDsErr
 			}
 
+			allIDs, _ = NewIDs(nil)
+
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
 				allIDs.AddIDs(firstIDsValue)
@@ -208,20 +210,25 @@ func (c *Collection) SetIndex(i *Index) error {
 		return allIDs, nil
 	}
 
-	i.setIDFunc = func(indexedValue []byte, id string) error {
+	i.setIDFunc = func(indexedValue []byte, idAsString string) error {
 		return c.DB.Update(func(tx *bolt.Tx) error {
 			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			refsBucket := tx.Bucket([]byte("refs"))
 
 			idsAsBytes := indexBucket.Get(indexedValue)
-			ids, parseIDsErr := vars.ParseIDsBytesToIDsAsStrings(idsAsBytes)
+			ids, parseIDsErr := NewIDs(idsAsBytes)
 			if parseIDsErr != nil && len(idsAsBytes) != 0 {
 				return parseIDsErr
 			}
+			if ids == nil {
+				fmt.Println("AILLLLE")
+				return nil
+			}
 
-			ids = append(ids, id)
+			id := ID(idAsString)
+			ids.AddID(&id)
 			var formatErr error
-			idsAsBytes, formatErr = vars.FormatIDsStringsToIDsAsBytes(ids)
+			idsAsBytes, formatErr = ids.Marshal()
 			if formatErr != nil {
 				return formatErr
 			}
@@ -230,7 +237,7 @@ func (c *Collection) SetIndex(i *Index) error {
 				return err
 			}
 
-			refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
+			refsAsBytes := refsBucket.Get(vars.BuildBytesID(id.String()))
 			refs := NewRefs()
 			if refsAsBytes == nil && len(refsAsBytes) > 0 {
 				if err := json.Unmarshal(refsAsBytes, refs); err != nil {
@@ -238,8 +245,8 @@ func (c *Collection) SetIndex(i *Index) error {
 				}
 			}
 
-			refs.ObjectID = id
-			refs.ObjectHashID = vars.BuildID(id)
+			refs.ObjectID = id.String()
+			refs.ObjectHashID = vars.BuildID(id.String())
 			refs.SetIndexedValue(i.Name, indexedValue)
 
 			return refsBucket.Put(refs.IDasBytes(), refs.AsBytes())

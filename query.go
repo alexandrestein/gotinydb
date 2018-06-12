@@ -102,17 +102,22 @@ func (q *Query) Clean(a *Action) *Query {
 	return q
 }
 
-// NewIDs build a new Ids pointer from a slice of bytes
-func NewIDs(idsAsBytes []byte) (*IDs, error) {
-	// func NewIDs(idsAsBytes []byte) ([]*ID, error) {
-	ids := new(IDs)
+func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
+	ret := new(IDs)
 
-	err := json.Unmarshal(idsAsBytes, ids)
-	if err != nil {
-		return nil, err
-	}
+	return func(next btree.Item) bool {
+		if len(ret.Slice) >= maxResponse {
+			return false
+		}
 
-	return ids, nil
+		nextAsID, ok := next.(*ID)
+		if !ok {
+			return false
+		}
+
+		ret.Slice = append(ret.Slice, nextAsID)
+		return true
+	}, ret
 }
 
 // Less must provide a strict weak ordering.
@@ -132,24 +137,6 @@ func (i *ID) treeItem() btree.Item {
 
 func (i *ID) String() string {
 	return string(*i)
-}
-
-func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
-	ret := new(IDs)
-
-	return func(next btree.Item) bool {
-		if len(ret.Slice) >= maxResponse {
-			return false
-		}
-
-		nextAsID, ok := next.(*ID)
-		if !ok {
-			return false
-		}
-
-		ret.Slice = append(ret.Slice, nextAsID)
-		return true
-	}, ret
 }
 
 // func iteratorIntoStringSlice(targetSlice []string, maxResponse int) func(next btree.Item) (over bool) {
@@ -190,6 +177,23 @@ func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
 // 	}
 // }
 
+// NewIDs build a new Ids pointer from a slice of bytes
+func NewIDs(idsAsBytes []byte) (*IDs, error) {
+	ids := new(IDs)
+
+	if idsAsBytes == nil || len(idsAsBytes) == 0 {
+		ids.Slice = []*ID{}
+		return ids, nil
+	}
+
+	err := json.Unmarshal(idsAsBytes, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	return ids, nil
+}
+
 func (i *IDs) SetID(idToSet string) {
 	id := ID(idToSet)
 	i.Slice = append(i.Slice, &id)
@@ -207,4 +211,15 @@ func (i *IDs) RmID(idToRm string) {
 
 func (i *IDs) AddIDs(idsToAdd *IDs) {
 	i.Slice = append(i.Slice, idsToAdd.Slice...)
+}
+
+func (i *IDs) AddID(idToAdd *ID) {
+	if i.Slice == nil {
+		i.Slice = []*ID{}
+	}
+	i.Slice = append(i.Slice, idToAdd)
+}
+
+func (i *IDs) Marshal() ([]byte, error) {
+	return json.Marshal(i)
 }

@@ -82,7 +82,7 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 		}
 	}()
 
-	var ids *IDs
+	ids, _ := NewIDs(nil)
 
 	// If equal just this leave will be send
 	if action.GetType() == Equal {

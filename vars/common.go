@@ -2,7 +2,6 @@ package vars
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -38,15 +37,15 @@ func BuildBytesID(id string) []byte {
 	return []byte(BuildID(id))
 }
 
-// ParseIDsBytesToIDsAsStrings takes a list of IDs as bytes and build a
-// list of strings.
-func ParseIDsBytesToIDsAsStrings(idsAsBytes []byte) (ids []string, err error) {
-	err = json.Unmarshal(idsAsBytes, &ids)
-	return
-}
+// // ParseIDsBytesToIDsAsStrings takes a list of IDs as bytes and build a
+// // list of strings.
+// func ParseIDsBytesToIDsAsStrings(idsAsBytes []byte) (ids []string, err error) {
+// 	err = json.Unmarshal(idsAsBytes, &ids)
+// 	return
+// }
 
-// FormatIDsStringsToIDsAsBytes takes a slice IDs as strings to build
-// a slice of bytes
-func FormatIDsStringsToIDsAsBytes(idsAsStrings []string) (ids []byte, err error) {
-	return json.Marshal(idsAsStrings)
-}
+// // FormatIDsStringsToIDsAsBytes takes a slice IDs as strings to build
+// // a slice of bytes
+// func FormatIDsStringsToIDsAsBytes(idsAsStrings []string) (ids []byte, err error) {
+// 	return json.Marshal(idsAsStrings)
+// }
