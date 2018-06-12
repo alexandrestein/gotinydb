@@ -134,7 +134,7 @@ func (c *Collection) Delete(id string) error {
 	// 	}
 	// }
 
-	return nil
+	// return nil
 }
 
 // SetIndex enable the collection to index field or sub field
@@ -188,8 +188,8 @@ func (c *Collection) SetIndex(i *Index) error {
 			}
 
 			for {
-				if len(allIDs.Slice) >= nb {
-					allIDs.Slice = allIDs.Slice[:nb]
+				if len(allIDs.IDs) >= nb {
+					allIDs.IDs = allIDs.IDs[:nb]
 					return nil
 				}
 
@@ -291,7 +291,7 @@ func (c *Collection) Query(q *Query) (ids []string, _ error) {
 		select {
 		case tmpIDs := <-finishedChan:
 			if tmpIDs != nil {
-				for _, id := range tmpIDs.Slice {
+				for _, id := range tmpIDs.IDs {
 					tree.ReplaceOrInsert(id)
 				}
 			}
@@ -321,7 +321,7 @@ getDone:
 	for {
 		select {
 		case tmpIDs := <-finishedChan:
-			for _, id := range tmpIDs.Slice {
+			for _, id := range tmpIDs.IDs {
 				tree.Delete(id)
 			}
 			nbToDo--
@@ -338,7 +338,7 @@ cleanDone:
 	fn, ret := iterator(q.limit)
 	tree.Ascend(fn)
 
-	for _, id := range ret.Slice {
+	for _, id := range ret.IDs {
 		ids = append(ids, id.String())
 	}
 

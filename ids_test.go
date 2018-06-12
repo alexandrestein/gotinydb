@@ -33,14 +33,14 @@ func TestIDsIterators(t *testing.T) {
 
 	iter, ret := iterator(20)
 	tree.Ascend(iter)
-	if len(ret.Slice) != 20 {
+	if len(ret.IDs) != 20 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
 	iter, ret = iterator(10)
 	tree.Descend(iter)
-	if len(ret.Slice) != 10 {
+	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
@@ -49,22 +49,22 @@ func TestIDsIterators(t *testing.T) {
 
 	iter, ret = iterator(10)
 	tree.AscendGreaterOrEqual(small, iter)
-	if len(ret.Slice) != 10 {
-		fmt.Println(ret.Slice)
+	if len(ret.IDs) != 10 {
+		fmt.Println(ret.IDs)
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
 	iter, ret = iterator(10)
 	tree.AscendLessThan(small, iter)
-	if len(ret.Slice) != 10 {
+	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
 	iter, ret = iterator(10)
 	tree.DescendRange(big, small, iter)
-	if len(ret.Slice) != 10 {
+	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}

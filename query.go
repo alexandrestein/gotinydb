@@ -42,7 +42,7 @@ type (
 	// IDs defines a list of ID. The struct is needed to build a pointer to be
 	// passed to deferent functions
 	IDs struct {
-		Slice []*ID
+		IDs []*ID
 	}
 
 	// ActionType defines the type of action to perform.
@@ -106,7 +106,7 @@ func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
 	ret := new(IDs)
 
 	return func(next btree.Item) bool {
-		if len(ret.Slice) >= maxResponse {
+		if len(ret.IDs) >= maxResponse {
 			return false
 		}
 
@@ -115,7 +115,7 @@ func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
 			return false
 		}
 
-		ret.Slice = append(ret.Slice, nextAsID)
+		ret.IDs = append(ret.IDs, nextAsID)
 		return true
 	}, ret
 }
@@ -182,7 +182,7 @@ func NewIDs(idsAsBytes []byte) (*IDs, error) {
 	ids := new(IDs)
 
 	if idsAsBytes == nil || len(idsAsBytes) == 0 {
-		ids.Slice = []*ID{}
+		ids.IDs = []*ID{}
 		return ids, nil
 	}
 
@@ -196,28 +196,28 @@ func NewIDs(idsAsBytes []byte) (*IDs, error) {
 
 func (i *IDs) SetID(idToSet string) {
 	id := ID(idToSet)
-	i.Slice = append(i.Slice, &id)
+	i.IDs = append(i.IDs, &id)
 }
 
 func (i *IDs) RmID(idToRm string) {
-	for j, id := range i.Slice {
+	for j, id := range i.IDs {
 		if id.String() == idToRm {
-			copy(i.Slice[j:], i.Slice[j+1:])
-			i.Slice[len(i.Slice)-1] = nil // or the zero value of T
-			i.Slice = i.Slice[:len(i.Slice)-1]
+			copy(i.IDs[j:], i.IDs[j+1:])
+			i.IDs[len(i.IDs)-1] = nil // or the zero value of T
+			i.IDs = i.IDs[:len(i.IDs)-1]
 		}
 	}
 }
 
 func (i *IDs) AddIDs(idsToAdd *IDs) {
-	i.Slice = append(i.Slice, idsToAdd.Slice...)
+	i.IDs = append(i.IDs, idsToAdd.IDs...)
 }
 
 func (i *IDs) AddID(idToAdd *ID) {
-	if i.Slice == nil {
-		i.Slice = []*ID{}
+	if i.IDs == nil {
+		i.IDs = []*ID{}
 	}
-	i.Slice = append(i.Slice, idToAdd)
+	i.IDs = append(i.IDs, idToAdd)
 }
 
 func (i *IDs) Marshal() ([]byte, error) {
