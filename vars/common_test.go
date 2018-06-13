@@ -19,10 +19,6 @@ func TestTypeName(t *testing.T) {
 		t.Error("returned name is not correct")
 		return
 	}
-	if FloatIndex.TypeName() != "FloatIndex" {
-		t.Error("returned name is not correct")
-		return
-	}
 	if TimeIndex.TypeName() != "TimeIndex" {
 		t.Error("returned name is not correct")
 		return

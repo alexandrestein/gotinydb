@@ -85,9 +85,9 @@ func TestStringIndex(t *testing.T) {
 func TestStringIndexRange(t *testing.T) {
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBerr := Open(testPath)
-	if openDBerr != nil {
-		t.Error(openDBerr)
+	db, openDBErr := Open(testPath)
+	if openDBErr != nil {
+		t.Error(openDBErr)
 		return
 	}
 	defer db.Close()
@@ -186,9 +186,9 @@ func TestStringIndexRange(t *testing.T) {
 func TestStringIndexRangeClean(t *testing.T) {
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBerr := Open(testPath)
-	if openDBerr != nil {
-		t.Error(openDBerr)
+	db, openDBErr := Open(testPath)
+	if openDBErr != nil {
+		t.Error(openDBErr)
 		return
 	}
 	defer db.Close()
@@ -260,9 +260,9 @@ func TestStringIndexRangeClean(t *testing.T) {
 func TestStringIndexMultipleRange(t *testing.T) {
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBerr := Open(testPath)
-	if openDBerr != nil {
-		t.Error(openDBerr)
+	db, openDBErr := Open(testPath)
+	if openDBErr != nil {
+		t.Error(openDBErr)
 		return
 	}
 	defer db.Close()
@@ -362,9 +362,9 @@ func buildRandLogins(n int) (ret []string) {
 func TestStringIndexDelete(t *testing.T) {
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBerr := Open(testPath)
-	if openDBerr != nil {
-		t.Error(openDBerr)
+	db, openDBErr := Open(testPath)
+	if openDBErr != nil {
+		t.Error(openDBErr)
 		return
 	}
 	defer db.Close()
