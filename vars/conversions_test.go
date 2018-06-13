@@ -2,6 +2,8 @@ package vars
 
 import (
 	"bytes"
+	"math"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -61,46 +63,46 @@ func TestIntConversion(t *testing.T) {
 	}
 
 	neg, _ := IntToBytes(-1)
+	null, _ := IntToBytes(0)
 	pos, _ := IntToBytes(1)
-	if bytes.Compare(neg, pos) >= 0 {
+
+	if !reflect.DeepEqual(neg, []byte{127, 255, 255, 255, 255, 255, 255, 255}) {
+		t.Errorf("negative values is not what is expected: \n%v\n%v", neg, []byte{127, 255, 255, 255, 255, 255, 255, 255})
+	} else if !reflect.DeepEqual(null, []byte{128, 0, 0, 0, 0, 0, 0, 0}) {
+		t.Errorf("null values is not what is expected: \n%v\n%v", null, []byte{128, 0, 0, 0, 0, 0, 0, 0})
+	} else if !reflect.DeepEqual(pos, []byte{128, 0, 0, 0, 0, 0, 0, 1}) {
+		t.Errorf("positive values is not what is expected: \n%v\n%v", pos, []byte{128, 0, 0, 0, 0, 0, 0, 1})
+	}
+
+	if bytes.Compare(neg, null) >= 0 {
+		t.Error("negative values are not smaller than null", neg, null)
+	} else if bytes.Compare(null, pos) >= 0 {
+		t.Error("null values are not smaller than positive", null, pos)
+	} else if bytes.Compare(neg, pos) >= 0 {
 		t.Error("negative values are not smaller than positive", neg, pos)
 	}
 
-	neg, _ = IntToBytes(int64(-9223372036854775808))
-	pos, _ = IntToBytes(int64(9223372036854775807))
-	if bytes.Compare(neg, pos) >= 0 {
+	neg, _ = IntToBytes(int64(math.MinInt64))
+	null, _ = IntToBytes(int64(0))
+	pos, _ = IntToBytes(int64(math.MaxInt64))
+
+	if !reflect.DeepEqual(neg, []byte{0, 0, 0, 0, 0, 0, 0, 0}) {
+		t.Errorf("negative values is not what is expected: \n%v\n%v", neg, []byte{0, 0, 0, 0, 0, 0, 0, 0})
+	} else if !reflect.DeepEqual(null, []byte{128, 0, 0, 0, 0, 0, 0, 0}) {
+		t.Errorf("null values is not what is expected: \n%v\n%v", null, []byte{128, 0, 0, 0, 0, 0, 0, 0})
+	} else if !reflect.DeepEqual(pos, []byte{255, 255, 255, 255, 255, 255, 255, 255}) {
+		t.Errorf("positive values is not what is expected: \n%v\n%v", pos, []byte{255, 255, 255, 255, 255, 255, 255, 255})
+	}
+
+	if bytes.Compare(neg, null) >= 0 {
+		t.Error("negative values are not smaller than null", neg, null)
+	} else if bytes.Compare(null, pos) >= 0 {
+		t.Error("null values are not smaller than positive", null, pos)
+	} else if bytes.Compare(neg, pos) >= 0 {
 		t.Error("negative values are not smaller than positive", neg, pos)
 	}
 
 	if _, err := IntToBytes(time.Now()); err == nil {
-		t.Error(err)
-		return
-	}
-}
-
-func TestFloatConversion(t *testing.T) {
-	if _, err := FloatToBytes(float32(349.154)); err != nil {
-		t.Error(err)
-		return
-	}
-	if _, err := FloatToBytes(float64(-487.934712)); err != nil {
-		t.Error(err)
-		return
-	}
-
-	neg, _ := FloatToBytes(-1361.314)
-	pos, _ := FloatToBytes(12216.1842)
-	if bytes.Compare(neg, pos) >= 0 {
-		t.Error("negative values are not smaller than positive", neg, pos)
-	}
-
-	neg, _ = FloatToBytes(float64(-922337203.6854775808))
-	pos, _ = FloatToBytes(float64(922337.2036854775807))
-	if bytes.Compare(neg, pos) >= 0 {
-		t.Error("negative values are not smaller than positive", neg, pos)
-	}
-
-	if _, err := FloatToBytes(time.Now()); err == nil {
 		t.Error(err)
 		return
 	}

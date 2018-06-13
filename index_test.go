@@ -16,7 +16,6 @@ import (
 func init() {
 	buf := make([]byte, 8)
 	cryptoRand.Read(buf)
-	// buff := bytes.NewBuffer(buf)
 	intVal := binary.LittleEndian.Uint64(buf)
 	rand.Seed(int64(intVal))
 }
@@ -24,9 +23,9 @@ func init() {
 func TestStringIndex(t *testing.T) {
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBerr := Open(testPath)
-	if openDBerr != nil {
-		t.Error(openDBerr)
+	db, openDBErr := Open(testPath)
+	if openDBErr != nil {
+		t.Error(openDBErr)
 		return
 	}
 	defer db.Close()

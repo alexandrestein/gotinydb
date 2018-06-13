@@ -30,6 +30,7 @@ func (c *Collection) Put(id string, content interface{}) error {
 	if err := c.cleanRefs(id); err != nil {
 		return err
 	}
+	
 	isBin := false
 	contentAsBytes := []byte{}
 	if bytes, ok := content.([]byte); ok {

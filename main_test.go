@@ -109,7 +109,7 @@ func TestPutGetAndDeleteObjectCollection(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(testUser, retrieveTestUser) {
-		t.Error("given object and retreive on are not equal")
+		t.Error("given object and retrieve on are not equal")
 		return
 	}
 
@@ -160,7 +160,7 @@ func TestPutGetAndDeleteBinCollection(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(retrieveContent.Bytes(), content) {
-		t.Error("given object and retreive on are not equal")
+		t.Error("given object and retrieve on are not equal")
 		return
 	}
 
@@ -235,7 +235,54 @@ func TestLoadCollection(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(testUser, retrieveTestUser) {
-		t.Error("given object and retreive on are not equal")
+		t.Error("given object and retrieve on are not equal")
 		return
 	}
 }
+
+// TestConcurrentCollection concurrent
+// func TestConcurrentCollection(t *testing.T) {
+// 	testPath := <-getTestPathChan
+// 	defer os.RemoveAll(testPath)
+// 	db, openDBerr := Open(testPath)
+// 	if openDBerr != nil {
+// 		t.Error(openDBerr)
+// 		return
+// 	}
+// 	defer db.Close()
+
+// 	c1, userDBErr1 := db.Use("testCol1")
+// 	if userDBErr1 != nil {
+// 		t.Error(userDBErr1)
+// 		return
+// 	}
+// 	c2, userDBErr2 := db.Use("testCol2")
+// 	if userDBErr2 != nil {
+// 		t.Error(userDBErr2)
+// 		return
+// 	}
+// 	c3, userDBErr3 := db.Use("testCol3")
+// 	if userDBErr3 != nil {
+// 		t.Error(userDBErr3)
+// 		return
+// 	}
+
+// }
+
+// func insertObjects(nb int) [] {
+
+// }
+
+// type  (
+// 	TestUser struct {
+// 		ID string `json:"-"`
+// 		Email string
+// 		Balance int
+// 		Address *TestAddress
+// 	}
+// 	TestAddress struct {
+// 		ID string `json:"-"`
+// 		City string
+// 		ZipCode uint
+// 	}
+// )

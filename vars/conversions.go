@@ -2,7 +2,7 @@ package vars
 
 import (
 	"encoding/binary"
-	"math/big"
+	"math"
 	"strings"
 	"time"
 )
@@ -26,7 +26,7 @@ func IntToBytes(input interface{}) ([]byte, error) {
 	typedValue := uint64(0)
 	switch input.(type) {
 	case int, int8, int16, int32, int64:
-		typedValue = convIntToAbsolutUint(input)
+		typedValue = convertIntToAbsoluteUint(input)
 
 	case uint:
 		typedValue = uint64(input.(uint))
@@ -47,7 +47,7 @@ func IntToBytes(input interface{}) ([]byte, error) {
 	return bs, nil
 }
 
-func convIntToAbsolutUint(input interface{}) uint64 {
+func convertIntToAbsoluteUint(input interface{}) uint64 {
 	typedValue := int64(0)
 	ret := uint64(0)
 
@@ -64,29 +64,9 @@ func convIntToAbsolutUint(input interface{}) uint64 {
 		typedValue = int64(input.(int64))
 	}
 
-	ret = uint64(typedValue) + (^uint64(0) / 2) + 1
+	ret = uint64(typedValue) + (math.MaxUint64 / 2) + 1
 
 	return ret
-}
-
-// FloatToBytes converter from a float32 or float64 to bytes slice.
-// If an error is returned it's has the form of ErrWrongType
-func FloatToBytes(input interface{}) ([]byte, error) {
-	var bigFloat *big.Float
-	switch input.(type) {
-	case float32:
-		typedValue := float64(input.(float32))
-		bigFloat = big.NewFloat(typedValue)
-	case float64:
-		typedValue := input.(float64)
-		bigFloat = big.NewFloat(typedValue)
-	default:
-		return nil, ErrWrongType
-	}
-
-	uint64Val, _ := bigFloat.Int64()
-
-	return IntToBytes(uint64Val)
 }
 
 // TimeToBytes converter from a time struct to bytes slice.

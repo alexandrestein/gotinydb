@@ -44,18 +44,6 @@ func TestAction_ValueToCompareAsBytes(t *testing.T) {
 			fields{uint(1)},
 			[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		}, {
-			"float -1.5",
-			fields{-1.5},
-			[]byte{127, 255, 255, 255, 255, 255, 255, 255},
-		}, {
-			"float 0",
-			fields{0.0},
-			[]byte{128, 0, 0, 0, 0, 0, 0, 0},
-		}, {
-			"float 1.5",
-			fields{1.5},
-			[]byte{128, 0, 0, 0, 0, 0, 0, 1},
-		}, {
 			"time",
 			fields{time.Time{}},
 			[]byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255},

@@ -40,9 +40,6 @@ func (a *Action) ValueToCompareAsBytes() []byte {
 	case int, int8, int32, int64, uint, uint8, uint32, uint64:
 		bytes, _ := vars.IntToBytes(a.compareToValue)
 		return bytes
-	case float32, float64:
-		bytes, _ := vars.FloatToBytes(a.compareToValue)
-		return bytes
 	case time.Time:
 		bytes, _ := vars.TimeToBytes(a.compareToValue)
 		return bytes

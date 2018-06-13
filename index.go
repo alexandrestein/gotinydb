@@ -59,8 +59,6 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 		convFunc = vars.StringToBytes
 	case vars.IntIndex:
 		convFunc = vars.IntToBytes
-	case vars.FloatIndex:
-		convFunc = vars.FloatToBytes
 	case vars.TimeIndex:
 		convFunc = vars.TimeToBytes
 	case vars.BytesIndex:
