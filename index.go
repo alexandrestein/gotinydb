@@ -3,7 +3,6 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -24,7 +23,7 @@ type (
 	}
 
 	// Refs defines an struct to manage the references of a given object
-	// in all the indexe it belongs to
+	// in all the indexes it belongs to
 	Refs struct {
 		ObjectID     string
 		ObjectHashID string
@@ -42,15 +41,19 @@ type (
 // Apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
 func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
-	objectAsMap := structs.Map(object)
-	for _, fieldName := range i.Selector {
-		fmt.Println("obj", objectAsMap, object)
-		object = objectAsMap[fieldName]
-		if object == nil {
+	structObj := structs.New(object)
+	var field *structs.Field
+	for i, fieldName := range i.Selector {
+		if i == 0 {
+			field, ok = structObj.FieldOk(fieldName)
+		} else {
+			field, ok = field.FieldOk(fieldName)
+		}
+		if !ok {
 			return nil, false
 		}
 	}
-	return i.testType(object)
+	return i.testType(field.Value())
 }
 
 // QueryApplyToIndex only check if the action belongs to the index
@@ -85,14 +88,14 @@ func (i *Index) QueryApplyToIndex(action *Action) (ok bool) {
 }
 
 func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
-	var convFunc func(interface{}) ([]byte, error)
+	var conversionFunc func(interface{}) ([]byte, error)
 	switch i.Type {
 	case vars.StringIndex:
-		convFunc = vars.StringToBytes
+		conversionFunc = vars.StringToBytes
 	case vars.IntIndex:
-		convFunc = vars.IntToBytes
+		conversionFunc = vars.IntToBytes
 	case vars.TimeIndex:
-		convFunc = vars.TimeToBytes
+		conversionFunc = vars.TimeToBytes
 	case vars.BytesIndex:
 		contentToIndex, ok = value.([]byte)
 		return
@@ -100,7 +103,7 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 		return nil, false
 	}
 	var err error
-	if contentToIndex, err = convFunc(value); err != nil {
+	if contentToIndex, err = conversionFunc(value); err != nil {
 		return nil, false
 	}
 	return contentToIndex, true
@@ -127,7 +130,6 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			return
 		}
 
-		fmt.Printf("tmpIDs Equal %v %v\n", action.compareToValue, tmpIDs)
 		ids.AddIDs(tmpIDs)
 		goto addToTree
 	}
@@ -139,7 +141,6 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			return
 		}
 
-		fmt.Printf("tmpIDs Greater %v %v\n", action.compareToValue, tmpIDs)
 		ids.AddIDs(tmpIDs)
 		goto addToTree
 	} else if action.GetType() == Less {
@@ -149,12 +150,14 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			return
 		}
 
-		fmt.Printf("tmpIDs Less %v %v\n", action.compareToValue, tmpIDs)
 		ids.AddIDs(tmpIDs)
 		goto addToTree
 	}
 
 addToTree:
+	if len(ids.IDs) > action.limit {
+		ids.IDs = ids.IDs[:action.limit]
+	}
 	finishedChan <- ids
 	done = true
 

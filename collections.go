@@ -237,9 +237,6 @@ func (c *Collection) SetIndex(i *Index) error {
 			ids.AddID(&id)
 			idsAsBytes = ids.MustMarshal()
 
-			fmt.Println("must marshal", string(idsAsBytes))
-			fmt.Println(i.Name)
-
 			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
 				return err
 			}

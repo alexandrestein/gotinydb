@@ -42,8 +42,15 @@ func TestStringIndex(t *testing.T) {
 	index.Type = vars.StringIndex
 	c.SetIndex(index)
 
+	var nbTests int
+	if testing.Short() {
+		nbTests = 10
+	} else {
+		nbTests = 2000
+	}
+
 	// Build a list of "user"
-	list := buildRandLogins(2000)
+	list := buildRandLogins(nbTests)
 	// Loop on users to insert it into the database
 	for i, name := range list {
 		id := vars.BuildID(name)
@@ -65,8 +72,8 @@ func TestStringIndex(t *testing.T) {
 	}
 
 	// Query Login equal
-	for i := 2000; i > 0; i-- {
-		randInt := rand.Intn(2000)
+	for i := nbTests; i > 0; i-- {
+		randInt := rand.Intn(nbTests)
 		getAction := NewAction(Equal).CompareTo(list[randInt]).SetSelector([]string{"Login"})
 		queryObj := NewQuery().SetLimit(1).Get(getAction)
 
@@ -104,8 +111,15 @@ func TestStringIndexRange(t *testing.T) {
 	index.Type = vars.StringIndex
 	c.SetIndex(index)
 
+	var nbTests int
+	if testing.Short() {
+		nbTests = 10
+	} else {
+		nbTests = 2000
+	}
+
 	// Build a list of "user"
-	list := buildRandLogins(2000)
+	list := buildRandLogins(nbTests)
 	// Loop on users to insert it into the database
 	for i, name := range list {
 		id := vars.BuildID(name)
@@ -128,7 +142,7 @@ func TestStringIndexRange(t *testing.T) {
 
 	// Query Login greater
 	for i := 20; i > 0; i-- {
-		randInt := rand.Intn(2000)
+		randInt := rand.Intn(nbTests)
 		getAction := NewAction(Greater).CompareTo(list[randInt]).SetSelector([]string{"Login"}).EqualWanted()
 		queryObj := NewQuery().SetLimit(10).Get(getAction)
 
@@ -156,7 +170,7 @@ func TestStringIndexRange(t *testing.T) {
 
 	// Query Login less
 	for i := 20; i > 0; i-- {
-		randInt := rand.Intn(2000)
+		randInt := rand.Intn(nbTests)
 		getAction := NewAction(Less).CompareTo(list[randInt]).SetSelector([]string{"Login"})
 		queryObj := NewQuery().SetLimit(10).Get(getAction)
 
@@ -205,8 +219,15 @@ func TestStringIndexRangeClean(t *testing.T) {
 	index.Type = vars.StringIndex
 	c.SetIndex(index)
 
+	var nbTests int
+	if testing.Short() {
+		nbTests = 10
+	} else {
+		nbTests = 2000
+	}
+
 	// Build a list of "user"
-	list := buildRandLogins(2000)
+	list := buildRandLogins(nbTests)
 	// Loop on users to insert it into the database
 	for i, name := range list {
 		id := vars.BuildID(name)
@@ -229,7 +250,7 @@ func TestStringIndexRangeClean(t *testing.T) {
 
 	// Query Login greater
 	for i := 20; i > 0; i-- {
-		randInt := rand.Intn(2000)
+		randInt := rand.Intn(nbTests)
 		getAction := NewAction(Greater).CompareTo(list[randInt]).SetSelector([]string{"Login"}).EqualWanted()
 		cleanAction := NewAction(Equal).CompareTo(list[randInt]).SetSelector([]string{"Login"}).EqualWanted()
 		queryObj := NewQuery().SetLimit(10).Get(getAction).Clean(cleanAction)
@@ -381,8 +402,15 @@ func TestStringIndexDelete(t *testing.T) {
 	index.Type = vars.StringIndex
 	c.SetIndex(index)
 
+	var nbTests int
+	if testing.Short() {
+		nbTests = 10
+	} else {
+		nbTests = 2000
+	}
+
 	// Build a list of "user"
-	list := buildRandLogins(2000)
+	list := buildRandLogins(nbTests)
 	// Loop on users to insert it into the database
 	for i, name := range list {
 		id := vars.BuildID(name)
@@ -404,7 +432,7 @@ func TestStringIndexDelete(t *testing.T) {
 	}
 
 	for i := 20; i > 0; i-- {
-		randInt := rand.Intn(2000)
+		randInt := rand.Intn(nbTests)
 		getAction := NewAction(Equal).CompareTo(list[randInt]).SetSelector([]string{"Login"})
 		queryObj := NewQuery().SetLimit(1).Get(getAction)
 
@@ -451,6 +479,10 @@ func TestStringIndexDelete(t *testing.T) {
 }
 
 func TestMultipleIndexes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBErr := Open(testPath)
@@ -479,30 +511,89 @@ func TestMultipleIndexes(t *testing.T) {
 		}
 	}
 
-	for _, user := range users {
-		response, queryErr := c.Query(NewQuery().SetLimit(10).Get(
-			// 	NewAction(Equal).CompareTo(user.Age).SetSelector([]string{"Age"}).EqualWanted().SetLimit(10),
-			// ).Get(
-			// 	NewAction(Greater).CompareTo(user.Balance).SetSelector([]string{"Balance"}).EqualWanted().SetLimit(10),
-			// ).Get(
-			NewAction(Equal).CompareTo(user.Address.ZipCode).SetSelector([]string{"Address", "ZipCode"}).EqualWanted().SetLimit(10),
-		))
+	// tests := []*testListOfQueries{
+	// 	{
+	// 		gets: []*testActions{
+	// 			{Equal, v1.Email, []string{"Email"}, 1},
+	// 			{Greater, v1.Balance, []string{"Balance"}, 5},
+	// 			{Equal, v1.Address, []string{"Address", "City"}, 1},
+	// 		},
+	// 		cleans:      nil,
+	// 		limit:       10,
+	// 		wantedValue: nil,
+	// 	}, {
+	// 		gets: []*testActions{
+	// 			{Equal, v2.Email, []string{"Email"}, 1},
+	// 			{Greater, v2.Balance, []string{"Balance"}, 5},
+	// 			{Equal, v2.Address, []string{"Address", "City"}, 1},
+	// 		},
+	// 		cleans:      nil,
+	// 		limit:       10,
+	// 		wantedValue: nil,
+	// 	}, {
+	// 		gets: []*testActions{
+	// 			{Equal, v3.Email, []string{"Email"}, 1},
+	// 			{Greater, v3.Balance, []string{"Balance"}, 5},
+	// 			{Equal, v3.Address, []string{"Address", "City"}, 1},
+	// 		},
+	// 		cleans:      nil,
+	// 		limit:       10,
+	// 		wantedValue: v3,
+	// 	},
+	// }
 
+	unmarshalUser := func(id string, bytes []byte)*User{
+		retUser := new(User)
+		json.Unmarshal(bytes, retUser)
+		retUser.ID = id
+		return retUser
+	}
+
+	for _, user := range users {
+		action1 := NewAction(Equal).CompareTo(user.Age).SetSelector([]string{"Age"}).EqualWanted().SetLimit(3)
+		// action2 := NewAction(Greater).CompareTo(user.Balance).SetSelector([]string{"Balance"}).EqualWanted().SetLimit(5)
+		// action3 := NewAction(Less).CompareTo(user.Address.ZipCode).SetSelector([]string{"Address", "ZipCode"}).EqualWanted().SetLimit(2)
+
+		response, queryErr := c.Query(NewQuery().SetLimit(10).Get(action1))
 		if queryErr != nil {
 			t.Error(queryErr)
-			return
+			return 
 		}
-
-		fmt.Println("len", response.Len(), response.IDs, response.ObjectsAsBytes)
-		if response.Len() == 0 {
-			t.Errorf("the response is empty for %v with query %v", user, response.query)
-			return
-		}
-
 		response.Range(func(id string, objAsBytes []byte) error {
-			fmt.Println("response ", id, string(objAsBytes))
+			getUser := unmarshalUser(id, objAsBytes)
+			fmt.Println(getUser)
+			if getUser.Age != user.Age {
+				t.Errorf("Age is not equal between %v and %v", user, getUser)
+				return nil
+			}
 			return nil
 		})
+		return
+
+
+		// response, queryErr = c.Query(NewQuery().SetLimit(10).Get(action1)
+		// 	.Get(action2action1)
+		// 	.Get(action3action1)
+		// )
+
+		// if queryErr != nil {
+		// 	t.Error(queryErr)
+		// 	return
+		// }
+
+		// if response.Len() == 0 {
+		// 	t.Errorf("the response is empty for %v with query %v", user, response.query)
+		// 	return
+		// }
+
+		// response.Range(func(id string, objAsBytes []byte) error {
+		// 	fmt.Println("response ", id, string(objAsBytes))
+		// 	return nil
+		// })
+
+		// fmt.Println("")
+		// fmt.Println("")
+		// fmt.Println("")
 	}
 
 }

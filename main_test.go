@@ -33,6 +33,10 @@ func init() {
 }
 
 func TestOpenAndClose(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBerr := Open(testPath)
@@ -48,6 +52,10 @@ func TestOpenAndClose(t *testing.T) {
 }
 
 func TestCreateCollection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBerr := Open(testPath)
@@ -78,6 +86,9 @@ func TestCreateCollection(t *testing.T) {
 }
 
 func TestPutGetAndDeleteObjectCollection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBerr := Open(testPath)
@@ -128,6 +139,9 @@ func TestPutGetAndDeleteObjectCollection(t *testing.T) {
 }
 
 func TestPutGetAndDeleteBinCollection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBerr := Open(testPath)
@@ -177,6 +191,10 @@ func TestPutGetAndDeleteBinCollection(t *testing.T) {
 }
 
 func TestLoadCollection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBerr := Open(testPath)

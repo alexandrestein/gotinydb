@@ -41,6 +41,10 @@ type (
 )
 
 func TestConcurrentCollections(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBErr := Open(testPath)
@@ -171,7 +175,10 @@ func unmarshalDataSet(dataSet []byte) []*User {
 }
 
 func TestConcurrentOnOneCollection(t *testing.T) {
-	return
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 	db, openDBErr := Open(testPath)
@@ -243,28 +250,28 @@ func updateUser(c *Collection, v1, v2, v3 *User, done chan error) {
 func checkIndexes(c *Collection, v1, v2, v3 *User, done chan error) {
 	listOfQueries := []testListOfQueries{
 		{
-			// 	gets: []*testActions{
-			// 		{Equal, v1.Email, []string{"Email"}, 1},
-			// 		// {Greater, v1.Balance, []string{"Balance"}, 5},
-			// 		// {Equal, v1.Address, []string{"Address", "City"}, 1},
-			// 	},
-			// 	cleans:      nil,
-			// 	limit:       10,
-			// 	wantedValue: nil,
-			// }, {
-			// 	gets: []*testActions{
-			// 		{Equal, v2.Email, []string{"Email"}, 1},
-			// 		// {Greater, v2.Balance, []string{"Balance"}, 5},
-			// 		// {Equal, v2.Address, []string{"Address", "City"}, 1},
-			// 	},
-			// 	cleans:      nil,
-			// 	limit:       10,
-			// 	wantedValue: nil,
-			// }, {
+			gets: []*testActions{
+				{Equal, v1.Email, []string{"Email"}, 1},
+				{Greater, v1.Balance, []string{"Balance"}, 5},
+				{Equal, v1.Address, []string{"Address", "City"}, 1},
+			},
+			cleans:      nil,
+			limit:       10,
+			wantedValue: nil,
+		}, {
+			gets: []*testActions{
+				{Equal, v2.Email, []string{"Email"}, 1},
+				{Greater, v2.Balance, []string{"Balance"}, 5},
+				{Equal, v2.Address, []string{"Address", "City"}, 1},
+			},
+			cleans:      nil,
+			limit:       10,
+			wantedValue: nil,
+		}, {
 			gets: []*testActions{
 				{Equal, v3.Email, []string{"Email"}, 1},
-				// {Greater, v3.Balance, []string{"Balance"}, 5},
-				// {Equal, v3.Address, []string{"Address", "City"}, 1},
+				{Greater, v3.Balance, []string{"Balance"}, 5},
+				{Equal, v3.Address, []string{"Address", "City"}, 1},
 			},
 			cleans:      nil,
 			limit:       10,
