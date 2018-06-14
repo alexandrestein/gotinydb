@@ -203,7 +203,7 @@ func (r *ResponseQuery) Len() int {
 func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte) error) (n int, err error) {
 	n = 0
 	if r == nil {
-		return 0, vars.ErrEmptyID
+		return 0, vars.ErrNotFound
 	}
 	for i, id := range r.IDs {
 		objAsBytes := r.ObjectsAsBytes[i]

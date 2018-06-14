@@ -22,15 +22,23 @@ type (
 
 		DB    *bolt.DB
 		Store *badger.DB
+
+		nbTransaction          int
+		nbTransactionLimit     int
+		startTransactionTicket chan bool
+		endTransactionTicket   chan bool
 	}
 )
 
 // Put add the given content to database with the given ID
 func (c *Collection) Put(id string, content interface{}) error {
+	c.startTransaction()
+	defer c.endTransaction()
+
 	if err := c.cleanRefs(id); err != nil {
 		return err
 	}
-	
+
 	isBin := false
 	contentAsBytes := []byte{}
 	if bytes, ok := content.([]byte); ok {
@@ -71,6 +79,9 @@ func (c *Collection) put(id string, content []byte) error {
 
 // Get retreives the content of the given ID
 func (c *Collection) Get(id string, pointer interface{}) error {
+	c.startTransaction()
+	defer c.endTransaction()
+
 	if id == "" {
 		return vars.ErrEmptyID
 	}
@@ -119,6 +130,9 @@ func (c *Collection) Get(id string, pointer interface{}) error {
 
 // Delete removes the corresponding object if the given ID
 func (c *Collection) Delete(id string) error {
+	c.startTransaction()
+	defer c.endTransaction()
+
 	if id == "" {
 		return vars.ErrEmptyID
 	}
@@ -134,6 +148,9 @@ func (c *Collection) Delete(id string) error {
 
 // SetIndex enable the collection to index field or sub field
 func (c *Collection) SetIndex(i *Index) error {
+	c.startTransaction()
+	defer c.endTransaction()
+
 	c.Indexes = append(c.Indexes, i)
 	if err := c.DB.Update(func(tx *bolt.Tx) error {
 		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
@@ -257,7 +274,10 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		return nil, fmt.Errorf("query has not get action")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	c.startTransaction()
+	defer c.endTransaction()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20000000)
 	defer cancel()
 
 	tree := btree.New(10)
@@ -273,8 +293,10 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 
 	for _, index := range c.Indexes {
 		for _, action := range q.getActions {
-			go index.Query(ctx, action, finishedChan)
-			nbToDo++
+			if index.QueryApplyToIndex(action) {
+				go index.Query(ctx, action, finishedChan)
+				nbToDo++
+			}
 		}
 	}
 

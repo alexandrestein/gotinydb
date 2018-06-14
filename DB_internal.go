@@ -49,6 +49,9 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c.Store = d.ValueStore
 	c.ID = colID
 	c.Name = colName
+	c.nbTransactionLimit = 64
+
+	c.initTransactionTickets()
 
 	if colID == "" && colName == "" {
 		return nil, fmt.Errorf("name and ID can't be empty")

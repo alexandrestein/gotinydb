@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/fatih/structs"
@@ -52,6 +53,37 @@ func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
 	return i.testType(object)
 }
 
+// QueryApplyToIndex only check if the action belongs to the index
+func (i *Index) QueryApplyToIndex(action *Action) (ok bool) {
+	for j := range i.Selector {
+		if action.selector[j] != i.Selector[j] {
+			return false
+		}
+	}
+
+	switch action.compareToValue.(type) {
+	case string:
+		if i.Type == vars.StringIndex {
+			return true
+		}
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		if i.Type == vars.IntIndex {
+			return true
+		}
+	case time.Time:
+		if i.Type == vars.TimeIndex {
+			return true
+		}
+	case []byte:
+		if i.Type == vars.BytesIndex {
+			return true
+		}
+	default:
+		return false
+	}
+	return false
+}
+
 func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 	var convFunc func(interface{}) ([]byte, error)
 	switch i.Type {
@@ -81,6 +113,7 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 	defer func() {
 		if !done {
 			finishedChan <- nil
+			return
 		}
 	}()
 

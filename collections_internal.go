@@ -47,6 +47,34 @@ func (c *Collection) init(name string) error {
 	})
 }
 
+func (c *Collection) initTransactionTickets() {
+	c.startTransactionTicket = make(chan bool, 0)
+	c.endTransactionTicket = make(chan bool, c.nbTransactionLimit)
+
+	go func() {
+		for {
+			if c.nbTransaction < c.nbTransactionLimit {
+				select {
+				case c.startTransactionTicket <- true:
+					c.nbTransaction++
+				case <-c.endTransactionTicket:
+					c.nbTransaction--
+				}
+			} else {
+				<-c.endTransactionTicket
+				c.nbTransaction--
+			}
+		}
+	}()
+}
+
+func (c *Collection) startTransaction() {
+	<-c.startTransactionTicket
+}
+func (c *Collection) endTransaction() {
+	c.endTransactionTicket <- true
+}
+
 func (c *Collection) buildStoreID(id string) []byte {
 	compositeID := fmt.Sprintf("%s_%s", c.Name, id)
 	objectID := vars.BuildID(compositeID)
