@@ -89,7 +89,6 @@ func (c *Collection) putIntoIndexes(id string, content interface{}) error {
 			if putInIndexErr != nil {
 				return putInIndexErr
 			}
-			return nil
 		}
 	}
 

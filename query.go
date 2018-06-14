@@ -41,6 +41,8 @@ type (
 	ResponseQuery struct {
 		IDs            []*ID
 		ObjectsAsBytes [][]byte
+
+		actualPosition int
 	}
 )
 
@@ -199,7 +201,26 @@ func (r *ResponseQuery) Len() int {
 	return len(r.IDs)
 }
 
-// Range is a fonction to make easy to do some actions to the set of result
+// First is part of the mechanism to run the response in a range statement
+func (r *ResponseQuery) First() (i int, id string, objAsByte []byte) {
+	if 0 >= len(r.IDs) || 0 >= len(r.ObjectsAsBytes) {
+		return 0, "", nil
+	}
+	r.actualPosition = 0
+	return 0, r.IDs[0].String(), r.ObjectsAsBytes[0]
+}
+
+// Next can be used in a range loop statement like `for i, id, objAsByte := c.First(); k != nil; k, v = c.Next() {`
+func (r *ResponseQuery) Next() (i int, id string, objAsByte []byte) {
+	i = r.actualPosition
+	r.actualPosition++
+	if i >= len(r.IDs) || i >= len(r.ObjectsAsBytes) {
+		return 0, "", nil
+	}
+	return i, r.IDs[i].String(), r.ObjectsAsBytes[i]
+}
+
+// Range is a function to make easy to do some actions to the set of result
 func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte) error) (n int, err error) {
 	n = 0
 	if r == nil {

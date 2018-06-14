@@ -449,3 +449,54 @@ func TestStringIndexDelete(t *testing.T) {
 		})
 	}
 }
+
+func TestMultipleIndexes(t *testing.T) {
+	testPath := <-getTestPathChan
+	defer os.RemoveAll(testPath)
+	db, openDBErr := Open(testPath)
+	if openDBErr != nil {
+		t.Error(openDBErr)
+		return
+	}
+	defer db.Close()
+
+	c, userDBErr := db.Use("testCol")
+	if userDBErr != nil {
+		t.Error(userDBErr)
+		return
+	}
+
+	if err := setIndexes(c); err != nil {
+		t.Error(err)
+		return
+	}
+
+	users := unmarshalDataSet(dataSet1)
+	for _, user := range users {
+		if err := c.Put(user.ID, user); err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	for _, user := range users {
+		response, queryErr := c.Query(NewQuery().SetLimit(10).Get(
+			// 	NewAction(Equal).CompareTo(user.Age).SetSelector([]string{"Age"}).EqualWanted().SetLimit(10),
+			// ).Get(
+			// 	NewAction(Greater).CompareTo(user.Balance).SetSelector([]string{"Balance"}).EqualWanted().SetLimit(10),
+			// ).Get(
+			NewAction(Equal).CompareTo(user.Address.ZipCode).SetSelector([]string{"Address", "ZipCode"}).EqualWanted().SetLimit(10),
+		))
+
+		if queryErr != nil {
+			t.Error(queryErr)
+			return
+		}
+
+		response.Range(func(id string, objAsBytes []byte) error {
+			// fmt.Println("response ", id, string(objAsBytes))
+			return nil
+		})
+	}
+
+}

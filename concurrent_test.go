@@ -66,9 +66,18 @@ func TestConcurrentCollections(t *testing.T) {
 		return
 	}
 
-	setIndexes(c1)
-	setIndexes(c2)
-	setIndexes(c3)
+	if err := setIndexes(c1); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := setIndexes(c2); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := setIndexes(c3); err != nil {
+		t.Error(err)
+		return
+	}
 
 	doneChan := make(chan error, 3)
 	go insertObjectsForConcurrent(c1, dataSet1, doneChan)
@@ -96,7 +105,7 @@ func TestConcurrentCollections(t *testing.T) {
 	}
 }
 
-func setIndexes(c *Collection) {
+func setIndexes(c *Collection) error {
 	indexes := []struct {
 		name     string
 		selector []string
@@ -115,8 +124,11 @@ func setIndexes(c *Collection) {
 		index.Name = indexParams.name
 		index.Selector = indexParams.selector
 		index.Type = indexParams.t
-		c.SetIndex(index)
+		if err := c.SetIndex(index); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func insertObjectsForConcurrent(c *Collection, dataSet []byte, done chan error) {
@@ -175,7 +187,10 @@ func TestConcurrentOnOneCollection(t *testing.T) {
 		return
 	}
 
-	setIndexes(c)
+	if err := setIndexes(c); err != nil {
+		t.Error(err)
+		return
+	}
 
 	doneChan := make(chan error, 0)
 

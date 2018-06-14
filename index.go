@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -20,7 +21,6 @@ type (
 		getIDsFunc      func(indexedValue []byte) (*IDs, error)
 		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) (*IDs, error)
 		setIDFunc       func(indexedValue []byte, id string) error
-		rmIDFunc        func(indexedValue []byte, id string) error
 	}
 
 	// Refs defines an struct to manage the references of a given object
@@ -127,6 +127,7 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			return
 		}
 
+		fmt.Println("tmpIDs Equal", tmpIDs)
 		ids.AddIDs(tmpIDs)
 		goto addToTree
 	}
@@ -137,7 +138,9 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
 			return
 		}
-		ids = tmpIDs
+
+		fmt.Println("tmpIDs Greater", tmpIDs)
+		ids.AddIDs(tmpIDs)
 		goto addToTree
 	} else if action.GetType() == Less {
 		tmpIDs, getIdsErr := i.getRangeIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
@@ -145,7 +148,9 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			log.Printf("Index.runQuery Less: %s\n", getIdsErr.Error())
 			return
 		}
-		ids = tmpIDs
+
+		fmt.Println("tmpIDs Less", tmpIDs)
+		ids.AddIDs(tmpIDs)
 		goto addToTree
 	}
 
