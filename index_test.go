@@ -493,8 +493,14 @@ func TestMultipleIndexes(t *testing.T) {
 			return
 		}
 
+		fmt.Println("len", response.Len(), response.IDs, response.ObjectsAsBytes)
+		if response.Len() == 0 {
+			t.Errorf("the response is empty for %v with query %v", user, response.query)
+			return
+		}
+
 		response.Range(func(id string, objAsBytes []byte) error {
-			// fmt.Println("response ", id, string(objAsBytes))
+			fmt.Println("response ", id, string(objAsBytes))
 			return nil
 		})
 	}

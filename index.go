@@ -43,8 +43,8 @@ type (
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
 func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
 	objectAsMap := structs.Map(object)
-	// var intermediatObject interface{}
 	for _, fieldName := range i.Selector {
+		fmt.Println("obj", objectAsMap, object)
 		object = objectAsMap[fieldName]
 		if object == nil {
 			return nil, false
@@ -127,7 +127,7 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			return
 		}
 
-		fmt.Println("tmpIDs Equal", tmpIDs)
+		fmt.Printf("tmpIDs Equal %v %v\n", action.compareToValue, tmpIDs)
 		ids.AddIDs(tmpIDs)
 		goto addToTree
 	}
@@ -139,7 +139,7 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			return
 		}
 
-		fmt.Println("tmpIDs Greater", tmpIDs)
+		fmt.Printf("tmpIDs Greater %v %v\n", action.compareToValue, tmpIDs)
 		ids.AddIDs(tmpIDs)
 		goto addToTree
 	} else if action.GetType() == Less {
@@ -149,7 +149,7 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 			return
 		}
 
-		fmt.Println("tmpIDs Less", tmpIDs)
+		fmt.Printf("tmpIDs Less %v %v\n", action.compareToValue, tmpIDs)
 		ids.AddIDs(tmpIDs)
 		goto addToTree
 	}

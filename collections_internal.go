@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/alexandrestein/gotinydb/vars"
@@ -104,7 +105,35 @@ func (c *Collection) putIntoIndexes(id string, content interface{}) error {
 
 func (c *Collection) cleanRefs(idAsString string) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
+		indexBucket := tx.Bucket([]byte("indexes"))
 		refsBucket := tx.Bucket([]byte("refs"))
-		return refsBucket.Delete(vars.BuildBytesID(idAsString))
+
+		// Get the references of the given ID
+		refsAsBytes := refsBucket.Get(vars.BuildBytesID(idAsString))
+		refs := NewRefs()
+		if refsAsBytes == nil && len(refsAsBytes) > 0 {
+			if err := json.Unmarshal(refsAsBytes, refs); err != nil {
+				return err
+			}
+		}
+
+		// Clean every reference of the object In all indexes if present
+		for _, ref := range refs.Refs {
+			for _, index := range c.Indexes {
+				if index.Name == ref.IndexName {
+					// If reference present in this index the reference is cleaned
+					ids, newIDErr := NewIDs(indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
+					if newIDErr != nil {
+						return newIDErr
+					}
+					ids.RmID(idAsString)
+					// And saved again after the clean
+					if err := indexBucket.Bucket([]byte(index.Name)).Put(ref.IndexedValue, ids.MustMarshal()); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
 	})
 }

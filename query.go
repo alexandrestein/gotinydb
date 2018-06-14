@@ -7,7 +7,7 @@ import (
 	"github.com/google/btree"
 )
 
-// Thoses constants defines the different types of action to perform at query
+// Those constants defines the different types of action to perform at query
 const (
 	Equal   ActionType = "eq"
 	Greater ActionType = "gr"
@@ -18,9 +18,6 @@ type (
 	// Query defines the object to request index query.
 	Query struct {
 		getActions, cleanActions []*Action
-
-		// orderBy       []string
-		// revertedOrder bool
 
 		limit int
 	}
@@ -43,6 +40,7 @@ type (
 		ObjectsAsBytes [][]byte
 
 		actualPosition int
+		query          *Query
 	}
 )
 
@@ -63,12 +61,6 @@ func (q *Query) SetLimit(l int) *Query {
 	for _, action := range q.cleanActions {
 		action.limit = l
 	}
-	return q
-}
-
-// DistinctWanted clean the duplicated IDs
-func (q *Query) DistinctWanted() *Query {
-	// q.distinct = true
 	return q
 }
 
@@ -164,8 +156,11 @@ func (i *IDs) RmID(idToRm string) {
 	}
 }
 
-// AddIDs insert mulitple ids as IDs pointer into the list
+// AddIDs insert multiple ids as IDs pointer into the list
 func (i *IDs) AddIDs(idsToAdd *IDs) {
+	if len(idsToAdd.IDs) == 0 {
+		return
+	}
 	i.IDs = append(i.IDs, idsToAdd.IDs...)
 }
 

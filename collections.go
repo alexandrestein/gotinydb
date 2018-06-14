@@ -77,7 +77,7 @@ func (c *Collection) put(id string, content []byte) error {
 	return nil
 }
 
-// Get retreives the content of the given ID
+// Get retrieves the content of the given ID
 func (c *Collection) Get(id string, pointer interface{}) error {
 	c.startTransaction()
 	defer c.endTransaction()
@@ -229,17 +229,16 @@ func (c *Collection) SetIndex(i *Index) error {
 
 			idsAsBytes := indexBucket.Get(indexedValue)
 			ids, parseIDsErr := NewIDs(idsAsBytes)
-			if parseIDsErr != nil && len(idsAsBytes) != 0 {
+			if parseIDsErr != nil {
 				return parseIDsErr
 			}
 
 			id := ID(idAsString)
 			ids.AddID(&id)
-			var formatErr error
-			idsAsBytes, formatErr = ids.Marshal()
-			if formatErr != nil {
-				return formatErr
-			}
+			idsAsBytes = ids.MustMarshal()
+
+			fmt.Println("must marshal", string(idsAsBytes))
+			fmt.Println(i.Name)
 
 			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
 				return err
@@ -352,6 +351,7 @@ cleanDone:
 	tree.Ascend(fn)
 
 	response = NewResponseQuery(q.limit)
+	response.query = q
 
 	getObjectsFromStoreFunc := func(txn *badger.Txn) error {
 		for i, id := range ret.IDs {
