@@ -1,7 +1,6 @@
 package gotinydb
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -78,54 +77,67 @@ func (c *Collection) put(id string, content []byte) error {
 }
 
 // Get retrieves the content of the given ID
-func (c *Collection) Get(id string, pointer interface{}) error {
+func (c *Collection) Get(id string, pointer interface{}) ([]byte, error) {
 	c.startTransaction()
 	defer c.endTransaction()
 
 	if id == "" {
-		return vars.ErrEmptyID
+		return nil, vars.ErrEmptyID
 	}
-	idAsBytes := c.buildStoreID(id)
 
 	contentAsBytes := []byte{}
 
-	if err := c.Store.View(func(txn *badger.Txn) error {
-		item, getError := txn.Get(idAsBytes)
-		if getError != nil {
-			if getError == badger.ErrKeyNotFound {
-				return vars.ErrNotFound
-			}
-			return getError
-		}
+	response, getErr := c.get(id)
+	if getErr != nil {
+		return nil, getErr
+	}
+	contentAsBytes = response[0]
 
-		if item.IsDeletedOrExpired() {
-			return vars.ErrNotFound
-		}
-
-		var getValErr error
-		contentAsBytes, getValErr = item.Value()
-		if getValErr != nil {
-			return getValErr
-		}
-		return nil
-	}); err != nil {
-		return err
+	if len(contentAsBytes) == 0 {
+		return nil, fmt.Errorf("content of %q is empty or not present", id)
 	}
 
-	if givenBuffer, ok := pointer.(*bytes.Buffer); ok {
-		if len(contentAsBytes) != 0 {
-			givenBuffer.Write(contentAsBytes)
-			return nil
-		}
-		return fmt.Errorf("content of %q is empty or not present", id)
+	if pointer == nil {
+		return contentAsBytes, nil
 	}
 
 	uMarshalErr := json.Unmarshal(contentAsBytes, pointer)
 	if uMarshalErr != nil {
-		return uMarshalErr
+		return nil, uMarshalErr
 	}
 
-	return nil
+	return contentAsBytes, nil
+}
+
+func (c *Collection) get(ids ...string) ([][]byte, error) {
+	ret := make([][]byte, len(ids))
+	if err := c.Store.View(func(txn *badger.Txn) error {
+		for i, id := range ids {
+			idAsBytes := c.buildStoreID(id)
+			item, getError := txn.Get(idAsBytes)
+			if getError != nil {
+				if getError == badger.ErrKeyNotFound {
+					return vars.ErrNotFound
+				}
+				return getError
+			}
+
+			if item.IsDeletedOrExpired() {
+				return vars.ErrNotFound
+			}
+
+			contentAsBytes, getValErr := item.Value()
+			if getValErr != nil {
+				return getValErr
+			}
+			ret[i] = contentAsBytes
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }
 
 // Delete removes the corresponding object if the given ID
