@@ -73,7 +73,7 @@ func (q *Query) Get(f *Filter) *Query {
 	return q
 }
 
-func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
+func iterator(nbFilters, maxResponse int) (func(next btree.Item) (over bool), *IDs) {
 	ret := new(IDs)
 
 	return func(next btree.Item) bool {
@@ -86,7 +86,9 @@ func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
 			return false
 		}
 
-		ret.IDs = append(ret.IDs, nextAsID)
+		if nextAsID.occurrences == nbFilters {
+			ret.IDs = append(ret.IDs, nextAsID)
+		}
 		return true
 	}, ret
 }
@@ -190,6 +192,15 @@ func (i *IDs) Marshal() ([]byte, error) {
 // MustMarshal convert the given IDs pointer as a slice of bytes or nil if any error
 func (i *IDs) MustMarshal() []byte {
 	ret, _ := json.Marshal(i)
+	return ret
+}
+
+// Strings returns all ID as a slice of string
+func (i *IDs) Strings() []string {
+	ret := make([]string, len(i.IDs))
+	for j, id := range i.IDs {
+		ret[j] = id.content
+	}
 	return ret
 }
 

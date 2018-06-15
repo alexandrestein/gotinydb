@@ -320,12 +320,16 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		case tmpIDs := <-finishedChan:
 			if tmpIDs != nil {
 				for _, id := range tmpIDs.IDs {
-					tree.ReplaceOrInsert(id)
+					fromTree := tree.Get(id)
+					if fromTree == nil {
+						tree.ReplaceOrInsert(id)
+					}
+					fromTree.(*ID).Increment()
 				}
 			}
 			nbToDo--
 			if nbToDo <= 0 {
-				goto getDone
+				goto queriesDone
 			}
 		case <-ctx.Done():
 			return nil, fmt.Errorf("get context timeout")
@@ -333,38 +337,26 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 
 	}
 
-getDone:
+queriesDone:
 
-	fn, ret := iterator(q.limit)
+	fn, ret := iterator(len(q.filters), q.limit)
 	tree.Ascend(fn)
 
 	response = NewResponseQuery(q.limit)
 	response.query = q
 
-	getObjectsFromStoreFunc := func(txn *badger.Txn) error {
-		for i, id := range ret.IDs {
-			objectsAsBadgeItem, getErr := txn.Get(c.buildStoreID(id.String()))
-			if getErr != nil {
-				if getErr == badger.ErrKeyNotFound {
-					return vars.ErrNotFound
-				}
-				return getErr
-			}
-			objectsAsBytes, valErr := objectsAsBadgeItem.Value()
-			if valErr != nil {
-				return valErr
-			}
-
-			response.IDs[i] = id
-			response.ObjectsAsBytes[i] = objectsAsBytes
-		}
-		return nil
+	responsesAsBytes, err := c.get(ret.Strings()...)
+	if err != nil {
+		return nil, err
 	}
 
-	if getValeErr := c.Store.View(getObjectsFromStoreFunc); getValeErr != nil {
-		return nil, getValeErr
+	for i, responseAsBytes := range responsesAsBytes {
+		response.IDs[i] = ret.IDs[i]
+		response.ObjectsAsBytes[i] = responseAsBytes
 	}
-
+	response.IDs = response.IDs[:len(response.IDs)-1]
+	response.ObjectsAsBytes = response.ObjectsAsBytes[:len(response.ObjectsAsBytes)-1]
+	
 	return
 }
 
