@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/fatih/structs"
@@ -18,7 +17,7 @@ type (
 		Type     vars.IndexType
 
 		getIDsFunc      func(indexedValue []byte) (*IDs, error)
-		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool, nb int) (*IDs, error)
+		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
 		setIDFunc       func(indexedValue []byte, id string) error
 	}
 
@@ -56,34 +55,22 @@ func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
 	return i.testType(field.Value())
 }
 
-// QueryApplyToIndex only check if the action belongs to the index
-func (i *Index) QueryApplyToIndex(action *Action) (ok bool) {
+// DoesFilterApplyToIndex only check if the filter belongs to the index
+func (i *Index) DoesFilterApplyToIndex(filter *Filter) (ok bool) {
+	// Check the selector
 	for j := range i.Selector {
-		if action.selector[j] != i.Selector[j] {
+		if filter.selector[j] != i.Selector[j] {
 			return false
 		}
 	}
 
-	switch action.compareToValue.(type) {
-	case string:
-		if i.Type == vars.StringIndex {
+	// If at least one of the value has the right type the index need to be queried
+	for _, value := range filter.values {
+		if value.Type == i.Type {
 			return true
 		}
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		if i.Type == vars.IntIndex {
-			return true
-		}
-	case time.Time:
-		if i.Type == vars.TimeIndex {
-			return true
-		}
-	case []byte:
-		if i.Type == vars.BytesIndex {
-			return true
-		}
-	default:
-		return false
 	}
+
 	return false
 }
 
@@ -109,8 +96,8 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 	return contentToIndex, true
 }
 
-// Query do the given actions and ad it to the tree
-func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *IDs) {
+// Query do the given filter and ad it to the tree
+func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *IDs) {
 	done := false
 	// Make sure to reply as over
 	defer func() {
@@ -122,42 +109,34 @@ func (i *Index) Query(ctx context.Context, action *Action, finishedChan chan *ID
 
 	ids, _ := NewIDs(nil)
 
+	switch filter.GetType() {
 	// If equal just this leave will be send
-	if action.GetType() == Equal {
-		tmpIDs, getErr := i.getIDsFunc(action.ValueToCompareAsBytes())
-		if getErr != nil {
-			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
-			return
+	case Equal:
+		for _, value := range filter.values {
+			tmpIDs, getErr := i.getIDsFunc(value.Bytes())
+			if getErr != nil {
+				log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
+				return
+			}
+
+			ids.AddIDs(tmpIDs)
 		}
 
-		ids.AddIDs(tmpIDs)
-		goto addToTree
-	}
+	case Greater, Less:
+		greater := true
+		if filter.GetType() == Less {
+			greater = false
+		}
 
-	if action.GetType() == Greater {
-		tmpIDs, getIdsErr := i.getRangeIDsFunc(action.ValueToCompareAsBytes(), action.equal, true, action.limit)
+		tmpIDs, getIdsErr := i.getRangeIDsFunc(filter.ValueToCompareAsBytes(0), filter.equal, greater)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
 			return
 		}
 
 		ids.AddIDs(tmpIDs)
-		goto addToTree
-	} else if action.GetType() == Less {
-		tmpIDs, getIdsErr := i.getRangeIDsFunc(action.ValueToCompareAsBytes(), action.equal, false, action.limit)
-		if getIdsErr != nil {
-			log.Printf("Index.runQuery Less: %s\n", getIdsErr.Error())
-			return
-		}
-
-		ids.AddIDs(tmpIDs)
-		goto addToTree
 	}
 
-addToTree:
-	if len(ids.IDs) > action.limit {
-		ids.IDs = ids.IDs[:action.limit]
-	}
 	finishedChan <- ids
 	done = true
 

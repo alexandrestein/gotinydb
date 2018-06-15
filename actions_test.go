@@ -7,62 +7,58 @@ import (
 )
 
 func TestAction_ValueToCompareAsBytes(t *testing.T) {
-	type fields struct {
-		compareToValue interface{}
-	}
 	tests := []struct {
-		name   string
-		fields fields
-		want   []byte
+		name        string
+		filterValue interface{}
+		want        []byte
 	}{
 		{
 			"String lower",
-			fields{"string"},
+			"string",
 			[]byte("string"),
 		}, {
 			"String upper",
-			fields{"String"},
+			"String",
 			[]byte("string"),
 		}, {
 			"int -1",
-			fields{-1},
+			-1,
 			[]byte{127, 255, 255, 255, 255, 255, 255, 255},
 		}, {
 			"int 0",
-			fields{0},
+			0,
 			[]byte{128, 0, 0, 0, 0, 0, 0, 0},
 		}, {
 			"int 1",
-			fields{1},
+			1,
 			[]byte{128, 0, 0, 0, 0, 0, 0, 1},
 		}, {
 			"uint 0",
-			fields{uint(0)},
+			uint(0),
 			[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		}, {
 			"uint 1",
-			fields{uint(1)},
+			uint(1),
 			[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		}, {
 			"time",
-			fields{time.Time{}},
+			time.Time{},
 			[]byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255},
 		}, {
 			"bytes",
-			fields{[]byte("OK")},
+			[]byte("OK"),
 			[]byte{79, 75},
 		}, {
 			"nil",
-			fields{nil},
+			nil,
 			[]byte{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &Action{
-				compareToValue: tt.fields.compareToValue,
-			}
-			if got := a.ValueToCompareAsBytes(); !reflect.DeepEqual(got, tt.want) {
+			f := new(Filter)
+			f.CompareTo(tt.filterValue)
+			if got := f.ValueToCompareAsBytes(0); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Action.ValueToCompareAsBytes() = %v, want %v", got, tt.want)
 			}
 		})

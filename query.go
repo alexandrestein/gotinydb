@@ -7,17 +7,18 @@ import (
 	"github.com/google/btree"
 )
 
-// Those constants defines the different types of action to perform at query
+// Those constants defines the different types of filter to perform at query
 const (
-	Equal   ActionType = "eq"
-	Greater ActionType = "gr"
-	Less    ActionType = "le"
+	Equal    FilterOperator = "eq"
+	NotEqual FilterOperator = "ne"
+	Greater  FilterOperator = "gr"
+	Less     FilterOperator = "le"
 )
 
 type (
 	// Query defines the object to request index query.
 	Query struct {
-		getActions, cleanActions []*Action
+		filters []*Filter
 
 		limit int
 	}
@@ -31,8 +32,8 @@ type (
 		IDs []*ID
 	}
 
-	// ActionType defines the type of action to perform
-	ActionType string
+	// FilterOperator defines the type of filter to perform
+	FilterOperator string
 
 	// ResponseQuery holds the results of a query
 	ResponseQuery struct {
@@ -55,37 +56,17 @@ func NewQuery() *Query {
 // SetLimit defines the configurable limit of IDs.
 func (q *Query) SetLimit(l int) *Query {
 	q.limit = l
-	for _, action := range q.getActions {
-		action.limit = l
-	}
-	for _, action := range q.cleanActions {
-		action.limit = l
-	}
 	return q
 }
 
 // Get defines the action to perform to get IDs
-func (q *Query) Get(a *Action) *Query {
-	q.getActions = q.addAction(a, q.getActions)
-	return q
-}
+func (q *Query) Get(f *Filter) *Query {
+	if q.filters == nil {
+		q.filters = []*Filter{}
 
-// Clean defines the actions to perform to clean IDs which have already retrieved
-// by the Get actions.
-func (q *Query) Clean(a *Action) *Query {
-	q.cleanActions = q.addAction(a, q.cleanActions)
+	}
+	q.filters = append(q.filters, f)
 	return q
-}
-func (q *Query) addAction(a *Action, list []*Action) []*Action {
-	if list == nil {
-		list = []*Action{}
-	}
-	if a.limit <= 0 {
-		a.limit = q.limit
-	}
-
-	list = append(list, a)
-	return list
 }
 
 func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {

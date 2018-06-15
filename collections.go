@@ -173,7 +173,7 @@ func (c *Collection) SetIndex(i *Index) error {
 		return ids, nil
 	}
 
-	i.getRangeIDsFunc = func(indexedValue []byte, keepEqual, increasing bool, nb int) (allIDs *IDs, err error) {
+	i.getRangeIDsFunc = func(indexedValue []byte, keepEqual, increasing bool) (allIDs *IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			// Initiate the cursor (iterator)
@@ -200,11 +200,6 @@ func (c *Collection) SetIndex(i *Index) error {
 			}
 
 			for {
-				if len(allIDs.IDs) >= nb {
-					allIDs.IDs = allIDs.IDs[:nb]
-					return nil
-				}
-
 				indexedValue, idsAsByte := nextFunc()
 				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 					break
@@ -266,7 +261,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		return
 	}
 
-	if len(q.getActions) <= 0 {
+	if len(q.filters) <= 0 {
 		return nil, fmt.Errorf("query has not get action")
 	}
 
@@ -288,9 +283,9 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	}
 
 	for _, index := range c.Indexes {
-		for _, action := range q.getActions {
-			if index.QueryApplyToIndex(action) {
-				go index.Query(ctx, action, finishedChan)
+		for _, filter := range q.filters {
+			if index.DoesFilterApplyToIndex(filter) {
+				go index.Query(ctx, filter, finishedChan)
 				nbToDo++
 			}
 		}
@@ -315,34 +310,6 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	}
 
 getDone:
-	if len(q.cleanActions) <= 0 {
-		goto cleanDone
-	}
-
-	nbToDo = 0
-	for _, index := range c.Indexes {
-		for _, action := range q.cleanActions {
-			go index.Query(ctx, action, finishedChan)
-			nbToDo++
-		}
-	}
-
-	for {
-		select {
-		case tmpIDs := <-finishedChan:
-			for _, id := range tmpIDs.IDs {
-				tree.Delete(id)
-			}
-			nbToDo--
-			if nbToDo <= 0 {
-				goto cleanDone
-			}
-		case <-ctx.Done():
-			return nil, fmt.Errorf("clean context timeout")
-		}
-	}
-
-cleanDone:
 
 	fn, ret := iterator(q.limit)
 	tree.Ascend(fn)

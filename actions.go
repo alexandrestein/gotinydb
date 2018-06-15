@@ -1,73 +1,130 @@
 package gotinydb
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 )
 
 type (
-	// Action defines the way the query will be performed
-	Action struct {
-		selector       []string
-		operation      ActionType
-		compareToValue interface{}
-		equal          bool
+	// Filter defines the way the query will be performed
+	Filter struct {
+		selector []string
+		operator FilterOperator
+		values   []*FilterValue
+		equal    bool
+	}
 
-		limit int
+	// FilterValue defines the value we need to compare to
+	FilterValue struct {
+		Value interface{}
+		Type  vars.IndexType
 	}
 )
 
-// NewAction returns a new Action pointer with the given ActionType
-func NewAction(t ActionType) *Action {
-	return &Action{
-		operation: t,
+// NewFilter returns a new Action pointer with the given FilterOperator
+func NewFilter(t FilterOperator) *Filter {
+	return &Filter{
+		operator: t,
 	}
+}
+
+// NewFilterValue build a new filter value to be used inside the filters
+func NewFilterValue(value interface{}) (*FilterValue, error) {
+	var t vars.IndexType
+	switch value.(type) {
+	case string:
+		t = vars.StringIndex
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		t = vars.IntIndex
+	case time.Time:
+		t = vars.TimeIndex
+	case []byte:
+		t = vars.BytesIndex
+	default:
+		return nil, vars.ErrWrongType
+	}
+
+	filterValue := new(FilterValue)
+	filterValue.Type = t
+	filterValue.Value = value
+
+	return filterValue, nil
+}
+
+// MustNewFilterValue same as above but call is certain the type is OK
+func MustNewFilterValue(value interface{}) *FilterValue {
+	v, _ := NewFilterValue(value)
+	return v
 }
 
 // CompareTo defines the value you want to compare to
-func (a *Action) CompareTo(val interface{}) *Action {
-	a.compareToValue = val
-	return a
+func (f *Filter) CompareTo(val interface{}) *Filter {
+	// Build the value if possible
+	filterValue, parseErr := NewFilterValue(val)
+	// If any error the value is not added
+	if parseErr != nil {
+		return f
+	}
+
+	// If the slice is nil or if the slice is allready more than one element and is not a Equal
+	// statement. In this case only the last value will be used
+	if f.values == nil {
+		f.values = []*FilterValue{filterValue}
+		return f
+	}
+
+	if len(f.values) > 1 {
+		if f.GetType() == Greater || f.GetType() == Less {
+			f.values = []*FilterValue{filterValue}
+			return f
+		}
+	}
+
+	// If the slice exist and the filter is Equal more than one value can be checked
+	f.values = append(f.values, filterValue)
+	return f
 }
 
 // ValueToCompareAsBytes returns the given value as bytes to make it easy to compare
-func (a *Action) ValueToCompareAsBytes() []byte {
-	switch a.compareToValue.(type) {
-	case string:
-		bytes, _ := vars.StringToBytes(a.compareToValue)
-		return bytes
-	case int, int8, int32, int64, uint, uint8, uint32, uint64:
-		bytes, _ := vars.IntToBytes(a.compareToValue)
-		return bytes
-	case time.Time:
-		bytes, _ := vars.TimeToBytes(a.compareToValue)
-		return bytes
-	case []byte:
-		return a.compareToValue.([]byte)
+func (f *Filter) ValueToCompareAsBytes(n int) []byte {
+	if n >= len(f.values) {
+		fmt.Println("big")
+		return []byte{}
 	}
-	return []byte{}
+	return f.values[n].Bytes()
 }
 
-// GetType returns the type of the action given at the initialisation
-func (a *Action) GetType() ActionType {
-	return a.operation
+// GetType returns the type of the filter given at the initialization
+func (f *Filter) GetType() FilterOperator {
+	return f.operator
 }
 
 // EqualWanted defines if the exact corresponding key is retrieved or not.
-func (a *Action) EqualWanted() *Action {
-	a.equal = true
-	return a
+func (f *Filter) EqualWanted() *Filter {
+	f.equal = true
+	return f
 }
 
 // SetSelector defines the configurable limit of IDs.
-func (a *Action) SetSelector(s []string) *Action {
-	a.selector = s
-	return a
+func (f *Filter) SetSelector(s []string) *Filter {
+	f.selector = s
+	return f
 }
 
-// SetLimit defines the limit of the given action
-func (a *Action) SetLimit(limit int) *Action {
-	a.limit = limit
-	return a
+// Bytes returns the value as a slice of bytes
+func (f *FilterValue) Bytes() []byte {
+	var bytes []byte
+	switch f.Type {
+	case vars.StringIndex:
+		bytes, _ = vars.StringToBytes(f.Value)
+	case vars.IntIndex:
+		bytes, _ = vars.IntToBytes(f.Value)
+	case vars.TimeIndex:
+		bytes, _ = vars.TimeToBytes(f.Value)
+	case vars.BytesIndex:
+		return f.Value.([]byte)
+	}
+	return bytes
 }
