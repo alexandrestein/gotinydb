@@ -255,3 +255,25 @@ func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte) error) (n in
 	}
 	return
 }
+
+// One get one element and put it into the pointer
+func (r *ResponseQuery) One(destination interface{}) (bool, error) {
+	if r.actualPosition >= len(r.ObjectsAsBytes)-1 {
+		return false, nil
+	}
+
+	err := json.Unmarshal(r.ObjectsAsBytes[r.actualPosition], destination)
+	r.actualPosition++
+
+	return true, err
+}
+
+// // All returns all values into a slice of pointer
+// func (r *ResponseQuery) All(destination interface{}) error {
+// 	for i, objectAsBytes := range r.ObjectsAsBytes {
+// 		err := json.Unmarshal(objectAsBytes, destination[i])
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// }

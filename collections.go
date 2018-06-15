@@ -292,7 +292,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	c.startTransaction()
 	defer c.endTransaction()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20000000)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	tree := btree.New(10)
@@ -309,6 +309,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	for _, index := range c.Indexes {
 		for _, filter := range q.filters {
 			if index.DoesFilterApplyToIndex(filter) {
+				fmt.Println("apply", filter)
 				go index.Query(ctx, filter, finishedChan)
 				nbToDo++
 			}
@@ -323,6 +324,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 					fromTree := tree.Get(id)
 					if fromTree == nil {
 						tree.ReplaceOrInsert(id)
+						continue
 					}
 					fromTree.(*ID).Increment()
 				}
@@ -356,7 +358,7 @@ queriesDone:
 	}
 	response.IDs = response.IDs[:len(response.IDs)-1]
 	response.ObjectsAsBytes = response.ObjectsAsBytes[:len(response.ObjectsAsBytes)-1]
-	
+
 	return
 }
 
