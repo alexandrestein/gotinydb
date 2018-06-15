@@ -24,7 +24,11 @@ type (
 	}
 
 	// ID is a type to order IDs during query to be compatible with the tree query
-	ID string
+	ID struct {
+		content     string
+		occurrences int
+		ch          chan bool
+	}
 
 	// IDs defines a list of ID. The struct is needed to build a pointer to be
 	// passed to deferent functions
@@ -87,6 +91,31 @@ func iterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
 	}, ret
 }
 
+// NewID returns a new ID with zero occurrence
+func NewID(id string) *ID {
+	ret := new(ID)
+	ret.content = id
+	ret.occurrences = 0
+	ret.ch = make(chan bool, 5)
+	go ret.incrementLoop()
+	return ret
+}
+
+func (i *ID) incrementLoop() {
+	for {
+		_, ok := <-i.ch
+		if !ok {
+			return
+		}
+		i.occurrences++
+	}
+}
+
+// Increment add +1 to the occurrence counter
+func (i *ID) Increment() {
+	i.ch <- true
+}
+
 // Less must provide a strict weak ordering.
 // If !a.Less(b) && !b.Less(a), we treat this to mean a == b
 func (i *ID) Less(compareToItem btree.Item) bool {
@@ -95,7 +124,7 @@ func (i *ID) Less(compareToItem btree.Item) bool {
 		return false
 	}
 
-	return (*i < *compareTo)
+	return (i.content < compareTo.content)
 }
 
 func (i *ID) treeItem() btree.Item {
@@ -106,7 +135,7 @@ func (i *ID) String() string {
 	if i == nil {
 		return ""
 	}
-	return string(*i)
+	return i.content
 }
 
 // NewIDs build a new Ids pointer from a slice of bytes

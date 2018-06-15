@@ -27,7 +27,7 @@ func TestIDsLess(t *testing.T) {
 func TestIDsIterators(t *testing.T) {
 	tree := btree.New(3)
 	for i := 1000; i < 10000; i++ {
-		id := ID(fmt.Sprintf("%d", i))
+		id := NewID(fmt.Sprintf("%d", i))
 		tree.ReplaceOrInsert(id.treeItem())
 	}
 
@@ -71,6 +71,6 @@ func TestIDsIterators(t *testing.T) {
 }
 
 func buildSmallAndBig(t *testing.T) (small, big *ID) {
-	smallVar, bigVar := ID("2000"), ID("7000")
-	return &smallVar, &bigVar
+	smallVar, bigVar := NewID("2000"), NewID("7000")
+	return smallVar, bigVar
 }

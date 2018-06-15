@@ -252,8 +252,8 @@ func (c *Collection) SetIndex(i *Index) error {
 				return parseIDsErr
 			}
 
-			id := ID(idAsString)
-			ids.AddID(&id)
+			id := NewID(idAsString)
+			ids.AddID(id)
 			idsAsBytes = ids.MustMarshal()
 
 			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
