@@ -27,6 +27,11 @@ type (
 		startTransactionTicket chan bool
 		endTransactionTicket   chan bool
 	}
+
+	collectionPutRequest struct {
+		id      string
+		content []byte
+	}
 )
 
 // Put add the given content to database with the given ID
@@ -54,7 +59,8 @@ func (c *Collection) Put(id string, content interface{}) error {
 		contentAsBytes = jsonBytes
 	}
 
-	if err := c.put(id, contentAsBytes); err != nil {
+	putRequest := &collectionPutRequest{id, contentAsBytes}
+	if err := c.put(putRequest); err != nil {
 		return err
 	}
 
@@ -67,9 +73,15 @@ func (c *Collection) Put(id string, content interface{}) error {
 	return nil
 }
 
-func (c *Collection) put(id string, content []byte) error {
+func (c *Collection) put(elements ...*collectionPutRequest) error {
 	if mainInsertErr := c.Store.Update(func(txn *badger.Txn) error {
-		return txn.Set(c.buildStoreID(id), content)
+		for _, putRequest := range elements {
+			err := txn.Set(c.buildStoreID(putRequest.id), putRequest.content)
+			if err != nil {
+				return fmt.Errorf("error inserting %q: %s", putRequest.id, err.Error())
+			}
+		}
+		return nil
 	}); mainInsertErr != nil {
 		return mainInsertErr
 	}
