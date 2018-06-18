@@ -34,7 +34,7 @@ func init() {
 
 func main() {
 	ret := []*User{}
-	for i := 0; i < 3000; i++ {
+	for i := 0; i < 50; i++ {
 		nbPossibilities := len(names) - 1
 
 		user := new(User)
@@ -44,12 +44,12 @@ func main() {
 		if rand.Int()%20 == 0 {
 			user.Balance = -user.Balance
 		}
-		user.Age = uint8(rand.Intn(110))
+		user.Age = uint8(rand.Intn(20))
 		user.LastLogin = time.Now().Add(-time.Second * time.Duration(rand.Intn(63331200)))
 
 		address := new(Address)
 		address.City = names[rand.Intn(nbPossibilities)]
-		address.ZipCode = uint(rand.Intn(99999))
+		address.ZipCode = uint(rand.Intn(99))
 		user.Address = address
 
 		ret = append(ret, user)
