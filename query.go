@@ -90,7 +90,8 @@ func iterator(nbFilters, maxResponse int) (func(next btree.Item) (over bool), *I
 			return false
 		}
 
-		if nextAsID.occurrences == nbFilters {
+		// Check that all occurrences have been saved
+		if nextAsID.Occurrences(nbFilters) {
 			ret.IDs = append(ret.IDs, nextAsID)
 		}
 		return true
@@ -109,17 +110,30 @@ func NewID(id string) *ID {
 
 func (i *ID) incrementLoop() {
 	for {
-		_, ok := <-i.ch
+		trueIncrement, ok := <-i.ch
 		if !ok {
 			return
 		}
-		i.occurrences++
+		if trueIncrement {
+			i.occurrences++
+		}
 	}
 }
 
 // Increment add +1 to the occurrence counter
 func (i *ID) Increment() {
 	i.ch <- true
+}
+
+// Occurrences take care that the channel is empty and all occurence have been saved
+func (i *ID) Occurrences(target int) bool {
+	i.ch <- false
+	close(i.ch)
+
+	if i.occurrences == target {
+		return true
+	}
+	return false
 }
 
 // Less must provide a strict weak ordering.

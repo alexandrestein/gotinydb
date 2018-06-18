@@ -1,7 +1,6 @@
 package gotinydb
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
@@ -90,7 +89,6 @@ func (f *Filter) CompareTo(val interface{}) *Filter {
 // ValueToCompareAsBytes returns the given value as bytes to make it easy to compare
 func (f *Filter) ValueToCompareAsBytes(n int) []byte {
 	if n >= len(f.values) {
-		fmt.Println("big")
 		return []byte{}
 	}
 	return f.values[n].Bytes()

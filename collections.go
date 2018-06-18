@@ -190,7 +190,6 @@ func (c *Collection) SetIndex(i *Index) error {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			asBytes := bucket.Get(indexedValue)
-			fmt.Println(len(asBytes), string(asBytes))
 			ids, err = NewIDs(asBytes)
 			return err
 		}); err != nil {
@@ -258,8 +257,6 @@ func (c *Collection) SetIndex(i *Index) error {
 			ids.AddID(id)
 			idsAsBytes = ids.MustMarshal()
 			close(id.ch)
-
-			fmt.Println("index ", string(idsAsBytes))
 
 			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
 				return err
@@ -380,8 +377,6 @@ queriesDone:
 		if i >= q.limit {
 			break
 		}
-
-		fmt.Println("lkjhqsmhc", string(responsesAsBytes[i]))
 
 		response.List[i] = &ResponseQueryElem{
 			ID:             ret.IDs[i],
