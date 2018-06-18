@@ -255,6 +255,7 @@ func (c *Collection) SetIndex(i *Index) error {
 			id := NewID(idAsString)
 			ids.AddID(id)
 			idsAsBytes = ids.MustMarshal()
+			close(id.ch)
 
 			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
 				return err
@@ -309,7 +310,6 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	for _, index := range c.Indexes {
 		for _, filter := range q.filters {
 			if index.DoesFilterApplyToIndex(filter) {
-				fmt.Println("apply", filter)
 				go index.Query(ctx, filter, finishedChan)
 				nbToDo++
 			}
@@ -323,6 +323,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 				for _, id := range tmpIDs.IDs {
 					fromTree := tree.Get(id)
 					if fromTree == nil {
+						id.Increment()
 						tree.ReplaceOrInsert(id)
 						continue
 					}
@@ -340,11 +341,10 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	}
 
 queriesDone:
-
 	fn, ret := iterator(len(q.filters), q.limit)
 	tree.Ascend(fn)
 
-	response = NewResponseQuery(q.limit)
+	response = NewResponseQuery(len(ret.IDs))
 	response.query = q
 
 	responsesAsBytes, err := c.get(ret.Strings()...)
@@ -352,12 +352,15 @@ queriesDone:
 		return nil, err
 	}
 
-	for i, responseAsBytes := range responsesAsBytes {
-		response.IDs[i] = ret.IDs[i]
-		response.ObjectsAsBytes[i] = responseAsBytes
+	for i := range responsesAsBytes {
+		if i >= q.limit {
+			break
+		}
+		response.List[i] = &ResponseQueryElem{
+			ID:             ret.IDs[i],
+			ContentAsBytes: responsesAsBytes[i],
+		}
 	}
-	response.IDs = response.IDs[:len(response.IDs)-1]
-	response.ObjectsAsBytes = response.ObjectsAsBytes[:len(response.ObjectsAsBytes)-1]
 
 	return
 }

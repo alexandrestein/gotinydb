@@ -25,7 +25,7 @@ type (
 
 	// ID is a type to order IDs during query to be compatible with the tree query
 	ID struct {
-		content     string
+		Content     string
 		occurrences int
 		ch          chan bool
 	}
@@ -41,11 +41,15 @@ type (
 
 	// ResponseQuery holds the results of a query
 	ResponseQuery struct {
-		IDs            []*ID
-		ObjectsAsBytes [][]byte
-
+		List           []*ResponseQueryElem
 		actualPosition int
 		query          *Query
+	}
+
+	// ResponseQueryElem defines the response as a pointer
+	ResponseQueryElem struct {
+		ID             *ID
+		ContentAsBytes []byte
 	}
 )
 
@@ -96,9 +100,9 @@ func iterator(nbFilters, maxResponse int) (func(next btree.Item) (over bool), *I
 // NewID returns a new ID with zero occurrence
 func NewID(id string) *ID {
 	ret := new(ID)
-	ret.content = id
+	ret.Content = id
 	ret.occurrences = 0
-	ret.ch = make(chan bool, 5)
+	ret.ch = make(chan bool, 0)
 	go ret.incrementLoop()
 	return ret
 }
@@ -126,7 +130,7 @@ func (i *ID) Less(compareToItem btree.Item) bool {
 		return false
 	}
 
-	return (i.content < compareTo.content)
+	return (i.Content < compareTo.Content)
 }
 
 func (i *ID) treeItem() btree.Item {
@@ -137,7 +141,7 @@ func (i *ID) String() string {
 	if i == nil {
 		return ""
 	}
-	return i.content
+	return i.Content
 }
 
 // NewIDs build a new Ids pointer from a slice of bytes
@@ -152,6 +156,11 @@ func NewIDs(idsAsBytes []byte) (*IDs, error) {
 	err := json.Unmarshal(idsAsBytes, ids)
 	if err != nil {
 		return nil, err
+	}
+
+	// Init the channel used to count the number of occurrences of a given ID.
+	for i, id := range ids.IDs {
+		ids.IDs[i] = NewID(id.String())
 	}
 
 	return ids, nil
@@ -199,7 +208,7 @@ func (i *IDs) MustMarshal() []byte {
 func (i *IDs) Strings() []string {
 	ret := make([]string, len(i.IDs))
 	for j, id := range i.IDs {
-		ret[j] = id.content
+		ret[j] = id.Content
 	}
 	return ret
 }
@@ -207,47 +216,69 @@ func (i *IDs) Strings() []string {
 // NewResponseQuery build a new ResponseQuery pointer with the given limit
 func NewResponseQuery(limit int) *ResponseQuery {
 	r := new(ResponseQuery)
-	r.IDs = make([]*ID, limit)
-	r.ObjectsAsBytes = make([][]byte, limit)
+	r.List = make([]*ResponseQueryElem, limit)
 	return r
 }
 
 // Len returns the length of the given response
 func (r *ResponseQuery) Len() int {
-	return len(r.IDs)
+	return len(r.List)
 }
 
 // First is part of the mechanism to run the response in a range statement
 func (r *ResponseQuery) First() (i int, id string, objAsByte []byte) {
-	if 0 >= len(r.IDs) || 0 >= len(r.ObjectsAsBytes) {
-		return 0, "", nil
+	if len(r.List) < 0 {
+		return -1, "", nil
 	}
+
 	r.actualPosition = 0
-	return 0, r.IDs[0].String(), r.ObjectsAsBytes[0]
+	return 0, r.List[0].ID.String(), r.List[0].ContentAsBytes
 }
 
 // Next can be used in a range loop statement like `for i, id, objAsByte := c.First(); k != nil; k, v = c.Next() {`
 func (r *ResponseQuery) Next() (i int, id string, objAsByte []byte) {
-	i = r.actualPosition
 	r.actualPosition++
-	if i >= len(r.IDs) || i >= len(r.ObjectsAsBytes) {
-		return 0, "", nil
-	}
-	return i, r.IDs[i].String(), r.ObjectsAsBytes[i]
+	return r.next()
 }
 
-// Range is a function to make easy to do some actions to the set of result
-func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte) error) (n int, err error) {
+// Last is part of the mechanism to run the response in a range statement
+func (r *ResponseQuery) Last() (i int, id string, objAsByte []byte) {
+	lastSlot := len(r.List) - 1
+	if lastSlot < 0 {
+		return -1, "", nil
+	}
+
+	r.actualPosition = lastSlot
+	return lastSlot, r.List[lastSlot].ID.String(), r.List[lastSlot].ContentAsBytes
+}
+
+// Prev can be used in a range loop statement like `for i, id, objAsByte := c.Last(); k != nil; k, v = c.Prev() {`
+func (r *ResponseQuery) Prev() (i int, id string, objAsByte []byte) {
+	r.actualPosition--
+	return r.next()
+}
+
+// Is called by r.Next r.Prev to get their next values
+func (r *ResponseQuery) next() (i int, id string, objAsByte []byte) {
+	if r.actualPosition >= len(r.List) || r.actualPosition < 0 {
+		return -1, "", nil
+	}
+	return r.actualPosition, r.List[r.actualPosition].ID.String(), r.List[r.actualPosition].ContentAsBytes
+}
+
+// All is a function to make easy to do some actions to the set of result.
+//
+func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int, err error) {
 	n = 0
 	if r == nil {
 		return 0, vars.ErrNotFound
 	}
-	for i, id := range r.IDs {
-		objAsBytes := r.ObjectsAsBytes[i]
-		if objAsBytes == nil {
+
+	for _, elem := range r.List {
+		if n >= len(r.List) {
 			break
 		}
-		err = fn(id.String(), objAsBytes)
+		err = fn(elem.ID.String(), elem.ContentAsBytes)
 		if err != nil {
 			return
 		}
@@ -257,15 +288,21 @@ func (r *ResponseQuery) Range(fn func(id string, objAsBytes []byte) error) (n in
 }
 
 // One get one element and put it into the pointer
-func (r *ResponseQuery) One(destination interface{}) (bool, error) {
-	if r.actualPosition >= len(r.ObjectsAsBytes)-1 {
-		return false, nil
+func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
+	if r.actualPosition >= len(r.List) {
+		return "", vars.ErrTheResponseIsOver
 	}
 
-	err := json.Unmarshal(r.ObjectsAsBytes[r.actualPosition], destination)
+	id = r.List[r.actualPosition].ID.String()
+	err = json.Unmarshal(r.List[r.actualPosition].ContentAsBytes, destination)
 	r.actualPosition++
 
-	return true, err
+	return id, err
+}
+
+// ResetPosition reset the position counter to zero
+func (r *ResponseQuery) ResetPosition() {
+	r.actualPosition = 0
 }
 
 // // All returns all values into a slice of pointer

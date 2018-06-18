@@ -33,24 +33,29 @@ func TestCollection_Query(t *testing.T) {
 		return
 	}
 
-	doneChan := make(chan error, 0)
-
-	// users1 := unmarshalDataSet(dataSet1)
-	// users2 := unmarshalDataSet(dataSet2)
+	// Get deferent versions of dataset
+	users1 := unmarshalDataSet(dataSet1)
+	users2 := unmarshalDataSet(dataSet2)
 	users3 := unmarshalDataSet(dataSet3)
-	// for i := range users1 {
-	// 	go updateUser(c, users1[i], users2[i], users3[i], doneChan)
-	// }
-	// for i := 0; i < len(users1)-1; i++ {
-	// 	err := <-doneChan
-	// 	if err != nil {
-	// 		t.Error(err)
-	// 		return
-	// 	}
-	// }
 
-	go insertObjectsForConcurrent(c, dataSet3, doneChan)
-	<-doneChan
+	doneChan := make(chan error, 0)
+	for i := 0; i < len(users1); i++ {
+		// Inserts and updates user 2 times
+		go updateUser(c, users1[i], users2[i], users3[i], doneChan)
+	}
+	for i := 0; i < len(users1); i++ {
+		err := <-doneChan
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	// go insertObjectsForConcurrent(c, dataSet3, doneChan)
+	// <-doneChan
+
+	// // Lets everything calm down a bit
+	// time.Sleep(time.Millisecond * 50)
 
 	tests := []struct {
 		name         string
@@ -59,8 +64,8 @@ func TestCollection_Query(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			"One Equal string filter limit 1",
-			NewQuery().SetLimit(1).Get(
+			"One Equal string filter limit 10",
+			NewQuery().SetLimit(10).Get(
 				NewFilter(Equal).SetSelector([]string{"Email"}).CompareTo("Jeanette-2829@Molnar.com"),
 			),
 			[]*User{users3[2829]},
@@ -76,34 +81,64 @@ func TestCollection_Query(t *testing.T) {
 			}
 
 			if gotResponse.Len() != len(tt.wantResponse) {
-				t.Errorf("returned %d objects but the expected %d", gotResponse.Len(), len(tt.wantResponse))
+				t.Errorf("returned %d objects but the expected %d\n%v", gotResponse.Len(), len(tt.wantResponse), gotResponse.List)
 				return
 			}
 
 			ret := make([]*User, gotResponse.Len())
 
-			// for _, _, v := gotResponse.First(); v != nil; _, _, v = gotResponse.Next() {
+			// i := 0
+			// if n, err := gotResponse.All(func(id string, objAsBytes []byte) error {
+			// 	tmpUser := new(User)
+			// 	err := json.Unmarshal(objAsBytes, tmpUser)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// 	ret[i] = tmpUser
+
+			// 	i++
+			// 	return nil
+			// }); err != nil {
+			// 	t.Errorf("error during range action: %s", err.Error())
+			// 	return
+			// } else if n != gotResponse.Len() {
+			// 	t.Errorf("the response is not long %d as expected %d", n, gotResponse.Len())
+			// 	return
+			// }
+
+			for i, _, v := gotResponse.First(); i >= 0; i, _, v = gotResponse.Next() {
+				user := new(User)
+				err := json.Unmarshal(v, user)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				ret[i] = user
+			}
+
+			// for i, _, v := gotResponse.Last(); i >= 0; i, _, v = gotResponse.Prev() {
 			// 	user := new(User)
 			// 	err := json.Unmarshal(v, user)
 			// 	if err != nil {
 			// 		t.Error(err)
 			// 		return
 			// 	}
-			// 	ret = append(ret, user)
+			// 	ret[i] = user
 			// }
 
-			for i := 0; i < gotResponse.Len(); i++ {
-				user := new(User)
-				notOver, err := gotResponse.One(user)
-				if err != nil {
-					t.Error(err)
-					return
-				}
-				if !notOver {
-					break
-				}
-				ret[i] = user
-			}
+			// for i := 0; true; i++ {
+			// 	user := new(User)
+			// 	_, err := gotResponse.One(user)
+			// 	if err != nil {
+			// 		if err == vars.ErrTheResponseIsOver {
+			// 			break
+			// 		}
+			// 		t.Error(err)
+			// 		return
+			// 	}
+
+			// 	ret[i] = user
+			// }
 
 			if !reflect.DeepEqual(ret, tt.wantResponse) {
 				had := ""
@@ -112,8 +147,8 @@ func TestCollection_Query(t *testing.T) {
 					had = fmt.Sprintf("%s\n%s", had, string(userAsJSON))
 				}
 				wanted := ""
-				for _, objecyAsBytes := range gotResponse.ObjectsAsBytes {
-					wanted = fmt.Sprintf("%s\n%s", wanted, string(objecyAsBytes))
+				for _, responseObject := range gotResponse.List {
+					wanted = fmt.Sprintf("%s\n%s", wanted, string(responseObject.ContentAsBytes))
 				}
 				t.Errorf("Collection.Query() = %s\n, want %s\n", had, wanted)
 			}
