@@ -34,28 +34,29 @@ func TestCollection_Query(t *testing.T) {
 	}
 
 	// Get deferent versions of dataset
-	users1 := unmarshalDataSet(dataSet1)
-	users2 := unmarshalDataSet(dataSet2)
+	// users1 := unmarshalDataSet(dataSet1)
+	// users2 := unmarshalDataSet(dataSet2)
 	users3 := unmarshalDataSet(dataSet3)
 
 	doneChan := make(chan error, 0)
-	for i := 0; i < len(users1); i++ {
-		// Inserts and updates user 2 times
-		go updateUser(c, users1[i], users2[i], users3[i], doneChan)
-	}
-	for i := 0; i < len(users1); i++ {
-		err := <-doneChan
-		if err != nil {
-			t.Error(err)
-			return
-		}
-	}
+	// for i := 0; i < len(users1); i++ {
+	// 	// Inserts and updates user 2 times
+	// 	go updateUser(c, users1[i], users2[i], users3[i], doneChan)
+	// }
+	// for i := 0; i < len(users1); i++ {
+	// 	err := <-doneChan
+	// 	if err != nil {
+	// 		t.Error(err)
+	// 		return
+	// 	}
+	// }
 
-	// go insertObjectsForConcurrent(c, dataSet3, doneChan)
-	// <-doneChan
+	go insertObjectsForConcurrent(c, dataSet3, doneChan)
 
-	// // Lets everything calm down a bit
-	// time.Sleep(time.Millisecond * 50)
+	if err := <-doneChan; err != nil {
+		t.Error(err.Error())
+		return
+	}
 
 	tests := []struct {
 		name         string
@@ -66,7 +67,16 @@ func TestCollection_Query(t *testing.T) {
 		{
 			"One Equal string filter limit 10",
 			NewQuery().SetLimit(10).Get(
-				NewFilter(Equal).SetSelector([]string{"Email"}).CompareTo("Jeanette-2829@Molnar.com"),
+				NewFilter(Equal).SetSelector([]string{"Email"}).
+					CompareTo("Jeanette-2829@Molnar.com"),
+			),
+			[]*User{users3[2829]},
+			false,
+		}, {
+			"Many Equal integer filter limit 10",
+			NewQuery().SetLimit(10).Get(
+				NewFilter(Equal).SetSelector([]string{"Age"}).
+					CompareTo(50),
 			),
 			[]*User{users3[2829]},
 			false,
@@ -113,6 +123,8 @@ func TestCollection_Query(t *testing.T) {
 					t.Error(err)
 					return
 				}
+
+				fmt.Println(user)
 				ret[i] = user
 			}
 
@@ -150,7 +162,7 @@ func TestCollection_Query(t *testing.T) {
 				for _, responseObject := range gotResponse.List {
 					wanted = fmt.Sprintf("%s\n%s", wanted, string(responseObject.ContentAsBytes))
 				}
-				t.Errorf("Collection.Query() = %s\n, want %s\n", had, wanted)
+				t.Errorf("Had %s\nwant %s\n", had, wanted)
 			}
 		})
 	}

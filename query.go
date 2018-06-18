@@ -146,24 +146,26 @@ func (i *ID) String() string {
 
 // NewIDs build a new Ids pointer from a slice of bytes
 func NewIDs(idsAsBytes []byte) (*IDs, error) {
-	ids := new(IDs)
+	ret := new(IDs)
 
 	if idsAsBytes == nil || len(idsAsBytes) == 0 {
-		ids.IDs = []*ID{}
-		return ids, nil
+		return ret, nil
 	}
 
-	err := json.Unmarshal(idsAsBytes, ids)
+	ids := []string{}
+
+	err := json.Unmarshal(idsAsBytes, &ids)
 	if err != nil {
 		return nil, err
 	}
 
 	// Init the channel used to count the number of occurrences of a given ID.
-	for i, id := range ids.IDs {
-		ids.IDs[i] = NewID(id.String())
+	for _, id := range ids {
+		// ret.IDs[i] = NewID(id)
+		ret.IDs = append(ret.IDs, NewID(id))
 	}
 
-	return ids, nil
+	return ret, nil
 }
 
 // RmID removes the given ID from the list
@@ -195,12 +197,14 @@ func (i *IDs) AddID(idToAdd *ID) {
 
 // Marshal convert the given IDs pointer as a slice of bytes or returns an error if any
 func (i *IDs) Marshal() ([]byte, error) {
-	return json.Marshal(i)
+	// idsAsString := i.Strings()
+	// return json.Marshal(&idsAsString)
+	return json.Marshal(i.Strings())
 }
 
 // MustMarshal convert the given IDs pointer as a slice of bytes or nil if any error
 func (i *IDs) MustMarshal() []byte {
-	ret, _ := json.Marshal(i)
+	ret, _ := i.Marshal()
 	return ret
 }
 
@@ -227,7 +231,7 @@ func (r *ResponseQuery) Len() int {
 
 // First is part of the mechanism to run the response in a range statement
 func (r *ResponseQuery) First() (i int, id string, objAsByte []byte) {
-	if len(r.List) < 0 {
+	if len(r.List) <= 0 {
 		return -1, "", nil
 	}
 

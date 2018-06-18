@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/alexandrestein/gotinydb/vars"
@@ -99,8 +100,8 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 // Query do the given filter and ad it to the tree
 func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *IDs) {
 	done := false
-	// Make sure to reply as over
 	defer func() {
+		// Make sure to reply as done
 		if !done {
 			finishedChan <- nil
 			return
@@ -118,6 +119,8 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 				log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
 				return
 			}
+
+			fmt.Println("tmpIDs", tmpIDs.Strings())
 
 			ids.AddIDs(tmpIDs)
 		}

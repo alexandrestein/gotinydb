@@ -189,7 +189,9 @@ func (c *Collection) SetIndex(i *Index) error {
 	i.getIDsFunc = func(indexedValue []byte) (ids *IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
-			ids, err = NewIDs(bucket.Get(indexedValue))
+			asBytes := bucket.Get(indexedValue)
+			fmt.Println(len(asBytes), string(asBytes))
+			ids, err = NewIDs(asBytes)
 			return err
 		}); err != nil {
 			return nil, err
@@ -257,6 +259,8 @@ func (c *Collection) SetIndex(i *Index) error {
 			idsAsBytes = ids.MustMarshal()
 			close(id.ch)
 
+			fmt.Println("index ", string(idsAsBytes))
+
 			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
 				return err
 			}
@@ -286,27 +290,36 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		return
 	}
 
+	// If no filter the query stops
 	if len(q.filters) <= 0 {
 		return nil, fmt.Errorf("query has not get action")
 	}
 
+	// wait for the database to have less open transactions
 	c.startTransaction()
 	defer c.endTransaction()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	tree := btree.New(10)
-
-	finishedChan := make(chan *IDs, 16)
-	defer close(finishedChan)
-	nbToDo := 0
 
 	// If no index stop the query
 	if len(c.Indexes) <= 0 {
 		return
 	}
 
+	// Set a timout
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	// Init the destination
+	tree := btree.New(10)
+
+	// Initialize the channel which will confirm that all queries are done
+	finishedChan := make(chan *IDs, 16)
+	defer close(finishedChan)
+
+	// This count the number of running index query for this actual collection query
+	nbToDo := 0
+
+	// Goes through all index of the collection to define which index
+	// will take care of the given filter
 	for _, index := range c.Indexes {
 		for _, filter := range q.filters {
 			if index.DoesFilterApplyToIndex(filter) {
@@ -316,46 +329,60 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		}
 	}
 
+	// Loop every response from the index query
 	for {
 		select {
 		case tmpIDs := <-finishedChan:
 			if tmpIDs != nil {
+				// Add IDs into the response tree
 				for _, id := range tmpIDs.IDs {
+					// Try to get the id from the tree
 					fromTree := tree.Get(id)
 					if fromTree == nil {
+						// If not in the tree add it
 						id.Increment()
 						tree.ReplaceOrInsert(id)
 						continue
 					}
+					// if allready increment the counter
 					fromTree.(*ID).Increment()
 				}
 			}
+			// Save the fact that one more query has been respond
 			nbToDo--
+			// If nomore query to wait, quit the loop
 			if nbToDo <= 0 {
 				goto queriesDone
 			}
 		case <-ctx.Done():
-			return nil, fmt.Errorf("get context timeout")
+			return nil, vars.ErrTimeOut
 		}
 
 	}
 
 queriesDone:
+
+	// iterate the response tree to get only IDs which has been found in every index queries
 	fn, ret := iterator(len(q.filters), q.limit)
 	tree.Ascend(fn)
 
+	// Build the response for the caller
 	response = NewResponseQuery(len(ret.IDs))
 	response.query = q
-
+	// Get every content of the query from the database
 	responsesAsBytes, err := c.get(ret.Strings()...)
 	if err != nil {
 		return nil, err
 	}
 
+	// Range the response values as slice of bytes
 	for i := range responsesAsBytes {
 		if i >= q.limit {
 			break
 		}
+
+		fmt.Println("lkjhqsmhc", string(responsesAsBytes[i]))
+
 		response.List[i] = &ResponseQueryElem{
 			ID:             ret.IDs[i],
 			ContentAsBytes: responsesAsBytes[i],

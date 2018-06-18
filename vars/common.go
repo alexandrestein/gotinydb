@@ -18,6 +18,8 @@ var (
 	ErrNotFound = fmt.Errorf("not found")
 	// ErrEmptyID defines error when the given id is empty
 	ErrEmptyID = fmt.Errorf("empty ID")
+	// ErrTimeOut defines the error when the query is timed out
+	ErrTimeOut = fmt.Errorf("timed out")
 
 	// ErrTheResponseIsOver defines error when *ResponseQuery.One is called and all response has been returned
 	ErrTheResponseIsOver = fmt.Errorf("the response has no more values")
