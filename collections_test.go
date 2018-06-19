@@ -3,8 +3,11 @@ package gotinydb
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"reflect"
+	"runtime"
+	"runtime/pprof"
 	"testing"
 )
 
@@ -34,29 +37,50 @@ func TestCollection_Query(t *testing.T) {
 	}
 
 	// Get deferent versions of dataset
-	// users1 := unmarshalDataSet(dataSet1)
-	// users2 := unmarshalDataSet(dataSet2)
-	// users3 := unmarshalDataSet(smallDataSet3)
+	users1 := unmarshalDataSet(dataSet1)
+	users2 := unmarshalDataSet(dataSet2)
+	users3 := unmarshalDataSet(dataSet3)
 
 	doneChan := make(chan error, 0)
-	// for i := 0; i < len(users1); i++ {
-	// 	// Inserts and updates user 2 times
-	// 	go updateUser(c, users1[i], users2[i], users3[i], doneChan)
-	// }
-	// for i := 0; i < len(users1); i++ {
-	// 	err := <-doneChan
-	// 	if err != nil {
-	// 		t.Error(err)
-	// 		return
-	// 	}
-	// }
-
-	go insertObjectsForConcurrent(c, smallDataSet3, doneChan)
-	if err, ok := <-doneChan; !ok {
-	} else if err != nil {
-		t.Error(err.Error())
-		return
+	for i := 0; i < len(users1); i++ {
+		// Inserts and updates user 2 times
+		go updateUser(c, users1[i], users2[i], users3[i], doneChan)
 	}
+	for i := 0; i < len(users1); i++ {
+		err := <-doneChan
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	f, err := os.Create("cpuprofile")
+	if err != nil {
+		log.Fatal("could not create CPU profile: ", err)
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("could not start CPU profile: ", err)
+	}
+	defer pprof.StopCPUProfile()
+
+	defer func() {
+		f, err = os.Create("memprofile")
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+		f.Close()
+	}()
+
+	// go insertObjectsForConcurrent(c, smallDataSet3, doneChan)
+	// if err, ok := <-doneChan; !ok {
+	// } else if err != nil {
+	// 	t.Error(err.Error())
+	// 	return
+	// }
 
 	tests := []struct {
 		name         string

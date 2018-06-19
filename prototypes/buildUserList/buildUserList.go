@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -34,12 +35,12 @@ func init() {
 
 func main() {
 	ret := []*User{}
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 300; i++ {
 		nbPossibilities := len(names) - 1
 
 		user := new(User)
 		user.ID = fmt.Sprintf("%d", i)
-		user.Email = fmt.Sprintf("%s-%d@%s.com", names[rand.Intn(nbPossibilities)], i, names[rand.Intn(nbPossibilities)])
+		user.Email = fmt.Sprintf("%s-%d@%s.com", strings.ToLower(names[rand.Intn(nbPossibilities)]), rand.Intn(99), strings.ToLower(names[rand.Intn(nbPossibilities)]))
 		user.Balance = rand.Int63()
 		if rand.Int()%20 == 0 {
 			user.Balance = -user.Balance
