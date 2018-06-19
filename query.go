@@ -1,7 +1,9 @@
 package gotinydb
 
 import (
+	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/google/btree"
@@ -103,32 +105,48 @@ func NewID(id string) *ID {
 	ret := new(ID)
 	ret.Content = id
 	ret.occurrences = 0
-	ret.ch = make(chan bool, 0)
-	go ret.incrementLoop()
 	return ret
 }
 
-func (i *ID) incrementLoop() {
+func (i *ID) incrementLoop(ctx context.Context) {
 	for {
-		trueIncrement, ok := <-i.ch
-		if !ok {
+		select {
+		case trueIncrement, ok := <-i.ch:
+			if !ok {
+				return
+			}
+			if trueIncrement {
+				i.occurrences++
+			}
+		case <-ctx.Done():
+			i.occurrences = 0
+			close(i.ch)
+			i.ch = nil
 			return
-		}
-		if trueIncrement {
-			i.occurrences++
 		}
 	}
 }
 
 // Increment add +1 to the occurrence counter
-func (i *ID) Increment() {
+func (i *ID) Increment(ctx context.Context) {
+	if i.ch == nil {
+		i.ch = make(chan bool, 0)
+		go i.incrementLoop(ctx)
+	}
+waitForChanToOpen:
+	if i.ch == nil {
+		time.Sleep(time.Millisecond)
+		goto waitForChanToOpen
+	}
 	i.ch <- true
 }
 
-// Occurrences take care that the channel is empty and all occurence have been saved
+// Occurrences take care that the channel is empty and all occurrences have been saved
 func (i *ID) Occurrences(target int) bool {
+	if i.ch == nil {
+		return false
+	}
 	i.ch <- false
-	close(i.ch)
 
 	if i.occurrences == target {
 		return true

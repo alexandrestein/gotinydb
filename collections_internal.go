@@ -114,7 +114,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErr, indexErr chan
 	}
 }
 
-func (c *Collection) cleanRefs(idAsString string) error {
+func (c *Collection) cleanRefs(ctx context.Context, idAsString string) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
 		indexBucket := tx.Bucket([]byte("indexes"))
 		refsBucket := tx.Bucket([]byte("refs"))

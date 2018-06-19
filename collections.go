@@ -26,6 +26,8 @@ type (
 		nbTransactionLimit     int
 		startTransactionTicket chan bool
 		endTransactionTicket   chan bool
+
+		transactionTimeout time.Duration
 	}
 
 	collectionPutRequest struct {
@@ -39,7 +41,10 @@ func (c *Collection) Put(id string, content interface{}) error {
 	c.startTransaction()
 	defer c.endTransaction()
 
-	if err := c.cleanRefs(id); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
+	defer cancel()
+
+	if err := c.cleanRefs(ctx, id); err != nil {
 		return err
 	}
 
@@ -58,9 +63,6 @@ func (c *Collection) Put(id string, content interface{}) error {
 
 		contentAsBytes = jsonBytes
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
 
 	storeErr := make(chan error, 0)
 	indexErr := make(chan error, 0)
@@ -147,9 +149,12 @@ func (c *Collection) Get(id string, pointer interface{}) ([]byte, error) {
 		return nil, vars.ErrEmptyID
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
+	defer cancel()
+
 	contentAsBytes := []byte{}
 
-	response, getErr := c.get(id)
+	response, getErr := c.get(ctx, id)
 	if getErr != nil {
 		return nil, getErr
 	}
@@ -171,7 +176,7 @@ func (c *Collection) Get(id string, pointer interface{}) ([]byte, error) {
 	return contentAsBytes, nil
 }
 
-func (c *Collection) get(ids ...string) ([][]byte, error) {
+func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 	ret := make([][]byte, len(ids))
 	if err := c.Store.View(func(txn *badger.Txn) error {
 		for i, id := range ids {
@@ -207,6 +212,9 @@ func (c *Collection) Delete(id string) error {
 	c.startTransaction()
 	defer c.endTransaction()
 
+	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
+	defer cancel()
+
 	if id == "" {
 		return vars.ErrEmptyID
 	}
@@ -217,7 +225,7 @@ func (c *Collection) Delete(id string) error {
 		return rmStoreErr
 	}
 
-	return c.deleteIndexes(id)
+	return c.deleteIndexes(ctx, id)
 }
 
 // SetIndex enable the collection to index field or sub field
@@ -236,11 +244,11 @@ func (c *Collection) SetIndex(i *Index) error {
 		return err
 	}
 
-	i.getIDsFunc = func(indexedValue []byte) (ids *IDs, err error) {
+	i.getIDsFunc = func(ctx context.Context, indexedValue []byte) (ids *IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			asBytes := bucket.Get(indexedValue)
-			ids, err = NewIDs(asBytes)
+			ids, err = NewIDs( asBytes)
 			return err
 		}); err != nil {
 			return nil, err
@@ -248,7 +256,7 @@ func (c *Collection) SetIndex(i *Index) error {
 		return ids, nil
 	}
 
-	i.getRangeIDsFunc = func(indexedValue []byte, keepEqual, increasing bool) (allIDs *IDs, err error) {
+	i.getRangeIDsFunc = func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (allIDs *IDs, err error) {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			// Initiate the cursor (iterator)
@@ -260,7 +268,7 @@ func (c *Collection) SetIndex(i *Index) error {
 				return unmarshalIDsErr
 			}
 
-			allIDs, _ = NewIDs(nil)
+			allIDs, _ = NewIDs( nil)
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
@@ -279,7 +287,7 @@ func (c *Collection) SetIndex(i *Index) error {
 				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 					break
 				}
-				ids, unmarshalIDsErr := NewIDs(idsAsByte)
+				ids, unmarshalIDsErr := NewIDs( idsAsByte)
 				if unmarshalIDsErr != nil {
 					return unmarshalIDsErr
 				}
@@ -298,15 +306,14 @@ func (c *Collection) SetIndex(i *Index) error {
 			refsBucket := tx.Bucket([]byte("refs"))
 
 			idsAsBytes := indexBucket.Get(indexedValue)
-			ids, parseIDsErr := NewIDs(idsAsBytes)
+			ids, parseIDsErr := NewIDs( idsAsBytes)
 			if parseIDsErr != nil {
 				return parseIDsErr
 			}
 
-			id := NewID(idAsString)
+			id := NewID( idAsString)
 			ids.AddID(id)
 			idsAsBytes = ids.MustMarshal()
-			close(id.ch)
 
 			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
 				return err
@@ -371,7 +378,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	}
 
 	// Set a timout
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
 	defer cancel()
 
 	// Init the destination
@@ -406,12 +413,12 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 					fromTree := tree.Get(id)
 					if fromTree == nil {
 						// If not in the tree add it
-						id.Increment()
+						id.Increment(ctx)
 						tree.ReplaceOrInsert(id)
 						continue
 					}
 					// if allready increment the counter
-					fromTree.(*ID).Increment()
+					fromTree.(*ID).Increment(ctx)
 				}
 			}
 			// Save the fact that one more query has been respond
@@ -436,7 +443,7 @@ queriesDone:
 	response = NewResponseQuery(len(ret.IDs))
 	response.query = q
 	// Get every content of the query from the database
-	responsesAsBytes, err := c.get(ret.Strings()...)
+	responsesAsBytes, err := c.get(ctx, ret.Strings()...)
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +463,7 @@ queriesDone:
 	return
 }
 
-func (c *Collection) deleteIndexes(id string) error {
+func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
 		refsBucket := tx.Bucket([]byte("refs"))
 
@@ -468,7 +475,7 @@ func (c *Collection) deleteIndexes(id string) error {
 
 		for _, ref := range refs.Refs {
 			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
-			ids, err := NewIDs(indexBucket.Get(ref.IndexedValue))
+			ids, err := NewIDs( indexBucket.Get(ref.IndexedValue))
 			if err != nil {
 				return err
 			}

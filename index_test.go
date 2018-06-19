@@ -125,6 +125,7 @@ func checkObjectsForConcurrent(c *Collection, dataSet []byte, done chan error) {
 	for _, user := range users {
 		retrievedUser := new(User)
 		if _, err := c.Get(user.ID, retrievedUser); err != nil {
+			fmt.Println(c.Name, user.ID)
 			done <- err
 			return
 		}

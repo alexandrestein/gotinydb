@@ -1,8 +1,10 @@
 package gotinydb
 
 import (
+	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/btree"
 )
@@ -27,20 +29,25 @@ func TestIDsLess(t *testing.T) {
 func TestIDsIterators(t *testing.T) {
 	tree := btree.New(3)
 	count := 0
-	for i := 1000; i < 10000; i++ {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	for i := 100; i < 1000; i++ {
 		count++
 		id := NewID(fmt.Sprintf("%d", i))
+		id.Increment(ctx)
 		tree.ReplaceOrInsert(id.treeItem())
 	}
 
-	iter, ret := iterator(0, 20)
+	iter, ret := iterator(1, 20)
 	tree.Ascend(iter)
 	if len(ret.IDs) != 20 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
-	iter, ret = iterator(0, 10)
+	iter, ret = iterator(1, 10)
 	tree.Descend(iter)
 	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
@@ -49,21 +56,21 @@ func TestIDsIterators(t *testing.T) {
 
 	small, big := buildSmallAndBig(t)
 
-	iter, ret = iterator(0, 10)
+	iter, ret = iterator(1, 10)
 	tree.AscendGreaterOrEqual(small, iter)
 	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
-	iter, ret = iterator(0, 10)
+	iter, ret = iterator(1, 10)
 	tree.AscendLessThan(small, iter)
 	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
-	iter, ret = iterator(0, 10)
+	iter, ret = iterator(1, 10)
 	tree.DescendRange(big, small, iter)
 	if len(ret.IDs) != 10 {
 		t.Errorf("returned value are not long as expected")
@@ -77,10 +84,11 @@ func TestIDsIterators(t *testing.T) {
 		if !ok {
 			return false
 		}
-		nextAsID.Increment()
+		nextAsID.Increment(ctx)
 		overChan <- true
 		return true
 	}
+
 	for i := 0; i < 3; i++ {
 		go tree.Ascend(funcAddIncremental)
 	}

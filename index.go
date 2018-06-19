@@ -16,8 +16,8 @@ type (
 		Selector []string
 		Type     vars.IndexType
 
-		getIDsFunc      func(indexedValue []byte) (*IDs, error)
-		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
+		getIDsFunc      func(ctx context.Context, indexedValue []byte) (*IDs, error)
+		getRangeIDsFunc func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
 		setIDFunc       func(ctx context.Context, storeErr, indexErr chan error, indexedValue []byte, id string)
 	}
 
@@ -113,7 +113,7 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 	// If equal just this leave will be send
 	case Equal:
 		for _, value := range filter.values {
-			tmpIDs, getErr := i.getIDsFunc(value.Bytes())
+			tmpIDs, getErr := i.getIDsFunc(ctx, value.Bytes())
 			if getErr != nil {
 				log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
 				return
@@ -128,7 +128,7 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 			greater = false
 		}
 
-		tmpIDs, getIdsErr := i.getRangeIDsFunc(filter.ValueToCompareAsBytes(0), filter.equal, greater)
+		tmpIDs, getIdsErr := i.getRangeIDsFunc(ctx, filter.ValueToCompareAsBytes(0), filter.equal, greater)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
 			return

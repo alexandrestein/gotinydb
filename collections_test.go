@@ -68,20 +68,19 @@ func TestCollection_Query(t *testing.T) {
 			"One Equal string filter limit 10",
 			NewQuery().SetLimit(10).Get(
 				NewFilter(Equal).SetSelector([]string{"Email"}).
-					CompareTo("Jeanette-2829@Molnar.com"),
+					CompareTo("gödel-76@rudolph.com"),
 			),
-			// []*User{users3[2829]},
-			nil,
+			[]*User{users3[0]},
 			false,
-		}, {
-			"Many Equal integer filter no limit",
-			NewQuery().Get(
-				NewFilter(Equal).SetSelector([]string{"Age"}).
-					CompareTo(uint8(50)),
-			),
-			// []*User{users3[38], users3[174], users3[321], users3[430], users3[528], users3[545], users3[589], users3[996], users3[1026], users3[1152], users3[1164], users3[1336], users3[1389], users3[1632], users3[1688], users3[1763], users3[1850], users3[2003], users3[2007], users3[2302], users3[2458], users3[2564], users3[2663], users3[2726], users3[2743], users3[2848], users3[2951], users3[2959], users3[2997], users3[2998]},
-			nil,
-			false,
+			// }, {
+			// 	"Many Equal integer filter no limit",
+			// 	NewQuery().Get(
+			// 		NewFilter(Equal).SetSelector([]string{"Age"}).
+			// 			CompareTo(uint8(2)),
+			// 	).SetLimit(5),
+			// 	// []*User{users3[38], users3[174], users3[321], users3[430], users3[528], users3[545], users3[589], users3[996], users3[1026], users3[1152], users3[1164], users3[1336], users3[1389], users3[1632], users3[1688], users3[1763], users3[1850], users3[2003], users3[2007], users3[2302], users3[2458], users3[2564], users3[2663], users3[2726], users3[2743], users3[2848], users3[2951], users3[2959], users3[2997], users3[2998]},
+			// 	nil,
+			// 	false,
 		},
 	}
 	for _, tt := range tests {
