@@ -18,7 +18,7 @@ type (
 
 		getIDsFunc      func(indexedValue []byte) (*IDs, error)
 		getRangeIDsFunc func(indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
-		setIDFunc       func(indexedValue []byte, id string) error
+		setIDFunc       func(ctx context.Context, storeErr, indexErr chan error, indexedValue []byte, id string)
 	}
 
 	// Refs defines an struct to manage the references of a given object

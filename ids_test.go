@@ -52,7 +52,6 @@ func TestIDsIterators(t *testing.T) {
 	iter, ret = iterator(0, 10)
 	tree.AscendGreaterOrEqual(small, iter)
 	if len(ret.IDs) != 10 {
-		fmt.Println(ret.IDs)
 		t.Errorf("returned value are not long as expected")
 		return
 	}

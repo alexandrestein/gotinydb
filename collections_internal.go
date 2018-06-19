@@ -1,8 +1,10 @@
 package gotinydb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -82,25 +84,34 @@ func (c *Collection) buildStoreID(id string) []byte {
 	return []byte(fmt.Sprintf("%s_%s", c.ID[:4], objectID))
 }
 
-func (c *Collection) putIntoIndexes(id string, content interface{}) error {
-	indexErrors := map[string]error{}
+func (c *Collection) putIntoIndexes(ctx context.Context, storeErr, indexErr chan error, id string, content interface{}) error {
+	runingIndex := 0
+	internalIndexErr := make(chan error, 8)
+
 	for _, index := range c.Indexes {
 		if val, apply := index.Apply(content); apply {
-			putInIndexErr := index.setIDFunc(val, id)
-			if putInIndexErr != nil {
-				return putInIndexErr
-			}
+			runingIndex++
+			go index.setIDFunc(ctx, storeErr, internalIndexErr, val, id)
 		}
 	}
 
-	if len(indexErrors) > 1 {
-		errorString := "updating the index: "
-		for indexName, err := range indexErrors {
-			errorString += fmt.Sprintf("index %q: %s\n", indexName, err.Error())
+	for {
+		select {
+		case _, ok := <-internalIndexErr:
+			if !ok {
+				return nil
+			}
+
+			runingIndex--
+			if runingIndex <= 0 {
+				close(indexErr)
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
 		}
-		return fmt.Errorf(errorString)
+		time.Sleep(time.Millisecond)
 	}
-	return nil
 }
 
 func (c *Collection) cleanRefs(idAsString string) error {

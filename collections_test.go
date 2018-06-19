@@ -3,18 +3,15 @@ package gotinydb
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"reflect"
-	"runtime"
-	"runtime/pprof"
 	"testing"
 )
 
 func TestCollection_Query(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
+	// if testing.Short() {
+	// 	t.Skip("skipping test in short mode.")
+	// }
 
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
@@ -53,27 +50,6 @@ func TestCollection_Query(t *testing.T) {
 			return
 		}
 	}
-
-	f, err := os.Create("cpuprofile")
-	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
-	}
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal("could not start CPU profile: ", err)
-	}
-	defer pprof.StopCPUProfile()
-
-	defer func() {
-		f, err = os.Create("memprofile")
-		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
-		}
-		runtime.GC() // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal("could not write memory profile: ", err)
-		}
-		f.Close()
-	}()
 
 	// go insertObjectsForConcurrent(c, smallDataSet3, doneChan)
 	// if err, ok := <-doneChan; !ok {

@@ -59,21 +59,53 @@ func (c *Collection) Put(id string, content interface{}) error {
 		contentAsBytes = jsonBytes
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	storeErr := make(chan error, 0)
+	indexErr := make(chan error, 0)
+
 	putRequest := &collectionPutRequest{id, contentAsBytes}
-	if err := c.put(putRequest); err != nil {
-		return err
-	}
+	go c.put(ctx, storeErr, indexErr, putRequest)
 
 	if !isBin {
-		if err := c.putIntoIndexes(id, content); err != nil {
-			return err
-		}
+		go c.putIntoIndexes(ctx, storeErr, indexErr, id, content)
+	} else {
+		close(indexErr)
 	}
 
-	return nil
+	storeDone, indexDone := false, false
+	for {
+		select {
+		case err, ok := <-storeErr:
+			if !ok {
+				storeDone = true
+				if storeDone && indexDone {
+					return nil
+				}
+			}
+
+			if err != nil {
+				return err
+			}
+		case err, ok := <-indexErr:
+			if !ok {
+				indexDone = true
+				if storeDone && indexDone {
+					return nil
+				}
+			}
+			return err
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		time.Sleep(time.Millisecond)
+	}
 }
 
-func (c *Collection) put(elements ...*collectionPutRequest) error {
+func (c *Collection) put(ctx context.Context, storeErr, indexErr chan error, elements ...*collectionPutRequest) error {
+	isClosed := false
+
 	if mainInsertErr := c.Store.Update(func(txn *badger.Txn) error {
 		for _, putRequest := range elements {
 			err := txn.Set(c.buildStoreID(putRequest.id), putRequest.content)
@@ -81,8 +113,26 @@ func (c *Collection) put(elements ...*collectionPutRequest) error {
 				return fmt.Errorf("error inserting %q: %s", putRequest.id, err.Error())
 			}
 		}
-		return nil
+
+		close(storeErr)
+		isClosed = true
+
+		// Wait for the index process to end.
+		// If any error the actions are rollbacked
+		select {
+		case _, ok := <-indexErr:
+			// If the channel is closed means that their was no error
+			if !ok {
+				return nil
+			}
+			return fmt.Errorf("issue on the index")
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}); mainInsertErr != nil {
+		if !isClosed {
+			storeErr <- mainInsertErr
+		}
 		return mainInsertErr
 	}
 	return nil
@@ -242,8 +292,8 @@ func (c *Collection) SetIndex(i *Index) error {
 		return allIDs, nil
 	}
 
-	i.setIDFunc = func(indexedValue []byte, idAsString string) error {
-		return c.DB.Update(func(tx *bolt.Tx) error {
+	i.setIDFunc = func(ctx context.Context, storeErr, indexErr chan error, indexedValue []byte, idAsString string) {
+		if err := c.DB.Update(func(tx *bolt.Tx) error {
 			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			refsBucket := tx.Bucket([]byte("refs"))
 
@@ -274,8 +324,27 @@ func (c *Collection) SetIndex(i *Index) error {
 			refs.ObjectHashID = vars.BuildID(id.String())
 			refs.SetIndexedValue(i.Name, indexedValue)
 
-			return refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
-		})
+			putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
+			if putErr != nil {
+				return nil
+			}
+
+			indexErr <- nil
+
+			select {
+			case _, ok := <-storeErr:
+				if !ok {
+					return nil
+				}
+				return fmt.Errorf("issue on the store")
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+		}); err != nil {
+			indexErr <- err
+			return
+		}
 	}
 
 	return nil
