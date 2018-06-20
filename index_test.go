@@ -114,7 +114,8 @@ func setIndexes(c *Collection) error {
 func insertObjectsForConcurrent(c *Collection, dataSet []byte, done chan error) {
 	users := unmarshalDataSet(dataSet)
 
-	for _, user := range users {
+	for _, user := range users[:1] {
+		// for _, user := range users {
 		if err := c.Put(user.ID, user); err != nil {
 			done <- err
 			return
@@ -128,17 +129,11 @@ func insertObjectsForConcurrent(c *Collection, dataSet []byte, done chan error) 
 func checkObjectsForConcurrent(c *Collection, dataSet []byte, done chan error) {
 	users := unmarshalDataSet(dataSet)
 
-	for _, user := range users {
-		nbTry := 0
+	for _, user := range users[:1] {
+		// for _, user := range users {
 		retrievedUser := new(User)
-	retry:
 		if _, err := c.Get(user.ID, retrievedUser); err != nil {
-			fmt.Println(c.Name, user.ID, nbTry)
-			if nbTry < 10 {
-				nbTry++
-				time.Sleep(time.Second)
-				goto retry
-			}
+			fmt.Println(c.Name, user.ID)
 			done <- err
 			return
 		}

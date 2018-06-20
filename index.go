@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/alexandrestein/gotinydb/vars"
+	"github.com/boltdb/bolt"
 	"github.com/fatih/structs"
 )
 
@@ -18,7 +19,7 @@ type (
 
 		getIDsFunc      func(ctx context.Context, indexedValue []byte) (*IDs, error)
 		getRangeIDsFunc func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
-		setIDFunc       func(ctx context.Context, storeErr, indexErr chan error, indexedValue []byte, id string)
+		getTx           func(update bool) (*bolt.Tx, error)
 	}
 
 	// Refs defines an struct to manage the references of a given object

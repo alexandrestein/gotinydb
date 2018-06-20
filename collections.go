@@ -46,10 +46,6 @@ func (c *Collection) Put(id string, content interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
 	defer cancel()
 
-	if err := c.cleanRefs(ctx, id); err != nil {
-		return err
-	}
-
 	isBin := false
 	contentAsBytes := []byte{}
 	if bytes, ok := content.([]byte); ok {
@@ -66,24 +62,25 @@ func (c *Collection) Put(id string, content interface{}) error {
 		contentAsBytes = jsonBytes
 	}
 
-	storeErr := make(chan error, 0)
-	indexErr := make(chan error, 0)
+	storeErrChan := make(chan error, 0)
+	indexErrChan := make(chan error, 0)
 
 	putRequest := &collectionPutRequest{id, contentAsBytes}
-	go c.put(ctx, storeErr, indexErr, putRequest)
+	go c.put(ctx, storeErrChan, indexErrChan, putRequest)
 
 	if !isBin {
-		go c.putIntoIndexes(ctx, storeErr, indexErr, id, content)
+		go c.putIntoIndexes(ctx, storeErrChan, indexErrChan, id, content)
 	} else {
-		close(indexErr)
+		close(indexErrChan)
 	}
 
 	storeDone, indexDone := false, false
 	for {
 		select {
-		case err, ok := <-storeErr:
+		case err, ok := <-storeErrChan:
 			if !ok {
 				storeDone = true
+				storeErrChan = nil
 				if storeDone && indexDone {
 					return nil
 				}
@@ -92,9 +89,10 @@ func (c *Collection) Put(id string, content interface{}) error {
 			if err != nil {
 				return err
 			}
-		case err, ok := <-indexErr:
+		case err, ok := <-indexErrChan:
 			if !ok {
 				indexDone = true
+				indexErrChan = nil
 				if storeDone && indexDone {
 					return nil
 				}
@@ -107,39 +105,32 @@ func (c *Collection) Put(id string, content interface{}) error {
 	}
 }
 
-func (c *Collection) put(ctx context.Context, storeErr, indexErr chan error, elements ...*collectionPutRequest) error {
-	isClosed := false
-
-	if mainInsertErr := c.Store.Update(func(txn *badger.Txn) error {
+func (c *Collection) put(ctx context.Context, storeDone, indexDone chan error, elements ...*collectionPutRequest) error {
+	return c.Store.Update(func(txn *badger.Txn) error {
 		for _, putRequest := range elements {
 			err := txn.Set(c.buildStoreID(putRequest.id), putRequest.content)
 			if err != nil {
-				return fmt.Errorf("error inserting %q: %s", putRequest.id, err.Error())
+				err = fmt.Errorf("error inserting %q: %s", putRequest.id, err.Error())
+				storeDone <- err
+				return err
 			}
 		}
 
-		close(storeErr)
-		isClosed = true
+		close(storeDone)
 
 		// Wait for the index process to end.
 		// If any error the actions are rollbacked
 		select {
-		case _, ok := <-indexErr:
-			// If the channel is closed means that their was no error
+		case err, ok := <-indexDone:
 			if !ok {
 				return nil
 			}
-			return fmt.Errorf("issue on the index")
+			// If the channel is closed means that their was no error
+			return fmt.Errorf("issue on the index: %s", err.Error())
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-	}); mainInsertErr != nil {
-		if !isClosed {
-			storeErr <- mainInsertErr
-		}
-		return mainInsertErr
-	}
-	return nil
+	})
 }
 
 // Get retrieves the content of the given ID
@@ -302,59 +293,59 @@ func (c *Collection) SetIndex(i *Index) error {
 		return allIDs, nil
 	}
 
-	i.setIDFunc = func(ctx context.Context, storeErr, indexErr chan error, indexedValue []byte, idAsString string) {
-		if err := c.DB.Update(func(tx *bolt.Tx) error {
-			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
-			refsBucket := tx.Bucket([]byte("refs"))
+	// i.setIDFunc = func(ctx context.Context, storeErr, indexErr chan error, indexedValue []byte, idAsString string) {
+	// 	if err := c.DB.Update(func(tx *bolt.Tx) error {
+	// 		indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
+	// 		refsBucket := tx.Bucket([]byte("refs"))
 
-			idsAsBytes := indexBucket.Get(indexedValue)
-			ids, parseIDsErr := NewIDs(idsAsBytes)
-			if parseIDsErr != nil {
-				return parseIDsErr
-			}
+	// 		idsAsBytes := indexBucket.Get(indexedValue)
+	// 		ids, parseIDsErr := NewIDs(idsAsBytes)
+	// 		if parseIDsErr != nil {
+	// 			return parseIDsErr
+	// 		}
 
-			id := NewID(idAsString)
-			ids.AddID(id)
-			idsAsBytes = ids.MustMarshal()
+	// 		id := NewID(idAsString)
+	// 		ids.AddID(id)
+	// 		idsAsBytes = ids.MustMarshal()
 
-			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
-				return err
-			}
+	// 		if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
+	// 			return err
+	// 		}
 
-			refsAsBytes := refsBucket.Get(vars.BuildBytesID(id.String()))
-			refs := NewRefs()
-			if refsAsBytes == nil && len(refsAsBytes) > 0 {
-				if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-					return err
-				}
-			}
+	// 		refsAsBytes := refsBucket.Get(vars.BuildBytesID(id.String()))
+	// 		refs := NewRefs()
+	// 		if refsAsBytes == nil && len(refsAsBytes) > 0 {
+	// 			if err := json.Unmarshal(refsAsBytes, refs); err != nil {
+	// 				return err
+	// 			}
+	// 		}
 
-			refs.ObjectID = id.String()
-			refs.ObjectHashID = vars.BuildID(id.String())
-			refs.SetIndexedValue(i.Name, indexedValue)
+	// 		refs.ObjectID = id.String()
+	// 		refs.ObjectHashID = vars.BuildID(id.String())
+	// 		refs.SetIndexedValue(i.Name, indexedValue)
 
-			putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
-			if putErr != nil {
-				return nil
-			}
+	// 		putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
+	// 		if putErr != nil {
+	// 			return nil
+	// 		}
 
-			indexErr <- nil
+	// 		indexErr <- nil
 
-			select {
-			case _, ok := <-storeErr:
-				if !ok {
-					return nil
-				}
-				return fmt.Errorf("issue on the store")
-			case <-ctx.Done():
-				return ctx.Err()
-			}
+	// 		select {
+	// 		case _, ok := <-storeErr:
+	// 			if !ok {
+	// 				return nil
+	// 			}
+	// 			return fmt.Errorf("issue on the store")
+	// 		case <-ctx.Done():
+	// 			return ctx.Err()
+	// 		}
 
-		}); err != nil {
-			indexErr <- err
-			return
-		}
-	}
+	// 	}); err != nil {
+	// 		indexErr <- err
+	// 		return
+	// 	}
+	// }
 
 	return nil
 }
