@@ -28,6 +28,11 @@ func (d *DB) initBadger() error {
 	return nil
 }
 
+func (d *DB) waitForClose() {
+	<-d.ctx.Done()
+	d.Close()
+}
+
 func (d *DB) loadCollections() error {
 	colsIDs, getColsIDsErr := d.getCollectionsIDs()
 	if getColsIDsErr != nil {
@@ -54,7 +59,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 
 	c.transactionTimeout = time.Second * 5
 
-	c.initTransactionTickets()
+	c.initTransactionTickets(d.ctx)
 
 	if colID == "" && colName == "" {
 		return nil, fmt.Errorf("name and ID can't be empty")
@@ -65,13 +70,13 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c.ID = colID
 	c.Name = colName
 
-	db, openDBerr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
-	if openDBerr != nil {
-		return nil, openDBerr
+	db, openDBErr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
+	if openDBErr != nil {
+		return nil, openDBErr
 	}
 	c.DB = db
 
-	// Try to load the collection informations
+	// Try to load the collection information
 	if err := c.loadInfos(); err != nil {
 		// If not exists try to build it
 		if err == vars.ErrNotFound {

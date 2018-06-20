@@ -1,11 +1,13 @@
 package gotinydb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 )
@@ -15,9 +17,12 @@ func TestConcurrentCollections(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(testPath)
+	db, openDBErr := Open(ctx, testPath)
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return
@@ -74,6 +79,7 @@ func TestConcurrentCollections(t *testing.T) {
 		err := <-doneChan
 		if err != nil {
 			t.Error(err)
+			time.Sleep(time.Second * 1)
 			return
 		}
 	}
@@ -123,9 +129,16 @@ func checkObjectsForConcurrent(c *Collection, dataSet []byte, done chan error) {
 	users := unmarshalDataSet(dataSet)
 
 	for _, user := range users {
+		nbTry := 0
 		retrievedUser := new(User)
+	retry:
 		if _, err := c.Get(user.ID, retrievedUser); err != nil {
-			fmt.Println(c.Name, user.ID)
+			fmt.Println(c.Name, user.ID, nbTry)
+			if nbTry < 10 {
+				nbTry++
+				time.Sleep(time.Second)
+				goto retry
+			}
 			done <- err
 			return
 		}

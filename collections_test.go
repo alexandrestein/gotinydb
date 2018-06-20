@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,9 +14,12 @@ func TestCollection_Query(t *testing.T) {
 	// 	t.Skip("skipping test in short mode.")
 	// }
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(testPath)
+	db, openDBErr := Open(ctx, testPath)
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return

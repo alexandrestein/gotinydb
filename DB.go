@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dgraph-io/badger"
@@ -12,13 +13,16 @@ type (
 		Path        string
 		ValueStore  *badger.DB
 		Collections []*Collection
+
+		ctx context.Context
 	}
 )
 
 // Open simply opens a new or existing database
-func Open(path string) (*DB, error) {
+func Open(ctx context.Context, path string) (*DB, error) {
 	d := new(DB)
 	d.Path = path
+	d.ctx = ctx
 	if err := d.buildPath(); err != nil {
 		return nil, err
 	}

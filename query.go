@@ -120,7 +120,6 @@ func (i *ID) incrementLoop(ctx context.Context) {
 			}
 		case <-ctx.Done():
 			i.occurrences = 0
-			close(i.ch)
 			i.ch = nil
 			return
 		}

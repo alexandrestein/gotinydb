@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha1"
 	"fmt"
@@ -36,9 +37,12 @@ func TestOpenAndClose(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(testPath)
+	db, openDBErr := Open(ctx, testPath)
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return
@@ -55,9 +59,12 @@ func TestCreateCollection(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(testPath)
+	db, openDBErr := Open(ctx, testPath)
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return
@@ -88,9 +95,13 @@ func TestPutGetAndDeleteObjectCollection(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(testPath)
+	db, openDBErr := Open(ctx, testPath)
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return
@@ -143,9 +154,13 @@ func TestPutGetAndDeleteBinCollection(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(testPath)
+	db, openDBErr := Open(ctx, testPath)
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return

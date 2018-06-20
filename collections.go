@@ -28,6 +28,8 @@ type (
 		endTransactionTicket   chan bool
 
 		transactionTimeout time.Duration
+
+		ctx context.Context
 	}
 
 	collectionPutRequest struct {
@@ -248,7 +250,7 @@ func (c *Collection) SetIndex(i *Index) error {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			asBytes := bucket.Get(indexedValue)
-			ids, err = NewIDs( asBytes)
+			ids, err = NewIDs(asBytes)
 			return err
 		}); err != nil {
 			return nil, err
@@ -268,7 +270,7 @@ func (c *Collection) SetIndex(i *Index) error {
 				return unmarshalIDsErr
 			}
 
-			allIDs, _ = NewIDs( nil)
+			allIDs, _ = NewIDs(nil)
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
@@ -287,7 +289,7 @@ func (c *Collection) SetIndex(i *Index) error {
 				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 					break
 				}
-				ids, unmarshalIDsErr := NewIDs( idsAsByte)
+				ids, unmarshalIDsErr := NewIDs(idsAsByte)
 				if unmarshalIDsErr != nil {
 					return unmarshalIDsErr
 				}
@@ -306,12 +308,12 @@ func (c *Collection) SetIndex(i *Index) error {
 			refsBucket := tx.Bucket([]byte("refs"))
 
 			idsAsBytes := indexBucket.Get(indexedValue)
-			ids, parseIDsErr := NewIDs( idsAsBytes)
+			ids, parseIDsErr := NewIDs(idsAsBytes)
 			if parseIDsErr != nil {
 				return parseIDsErr
 			}
 
-			id := NewID( idAsString)
+			id := NewID(idAsString)
 			ids.AddID(id)
 			idsAsBytes = ids.MustMarshal()
 
@@ -475,7 +477,7 @@ func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 
 		for _, ref := range refs.Refs {
 			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
-			ids, err := NewIDs( indexBucket.Get(ref.IndexedValue))
+			ids, err := NewIDs(indexBucket.Get(ref.IndexedValue))
 			if err != nil {
 				return err
 			}

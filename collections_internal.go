@@ -50,7 +50,7 @@ func (c *Collection) init(name string) error {
 	})
 }
 
-func (c *Collection) initTransactionTickets() {
+func (c *Collection) initTransactionTickets(ctx context.Context) {
 	c.startTransactionTicket = make(chan bool, 0)
 	c.endTransactionTicket = make(chan bool, c.nbTransactionLimit)
 
@@ -59,13 +59,21 @@ func (c *Collection) initTransactionTickets() {
 			if c.nbTransaction < c.nbTransactionLimit {
 				select {
 				case c.startTransactionTicket <- true:
+					// Unlock the caller of Collection.startTransaction
 					c.nbTransaction++
 				case <-c.endTransactionTicket:
+					// In case a transaction is done
 					c.nbTransaction--
+				case <-ctx.Done():
+					return
 				}
 			} else {
-				<-c.endTransactionTicket
-				c.nbTransaction--
+				select {
+				case <-c.endTransactionTicket:
+					c.nbTransaction--
+				case <-ctx.Done():
+					return
+				}
 			}
 		}
 	}()
