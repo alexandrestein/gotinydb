@@ -22,93 +22,49 @@ type (
 		DB    *bolt.DB
 		Store *badger.DB
 
-		nbTransaction          int
-		nbTransactionLimit     int
-		startTransactionTicket chan bool
-		endTransactionTicket   chan bool
+		writeTransactionChan chan *writeTransaction
 
 		transactionTimeout time.Duration
 
 		ctx context.Context
 	}
-
-	collectionPutRequest struct {
-		id      string
-		content []byte
-	}
 )
 
 // Put add the given content to database with the given ID
 func (c *Collection) Put(id string, content interface{}) error {
-	c.startTransaction()
-	defer c.endTransaction()
-
 	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
 	defer cancel()
 
-	isBin := false
-	contentAsBytes := []byte{}
+	tr := newTransaction(id)
+	tr.ctx = ctx
+	tr.contentInterface = content
+
 	if bytes, ok := content.([]byte); ok {
-		isBin = true
-		contentAsBytes = bytes
+		tr.bin = true
+		tr.contentAsBytes = bytes
 	}
 
-	if !isBin {
+	if !tr.bin {
 		jsonBytes, marshalErr := json.Marshal(content)
 		if marshalErr != nil {
 			return marshalErr
 		}
 
-		contentAsBytes = jsonBytes
+		tr.contentAsBytes = jsonBytes
 	}
 
-	storeErrChan := make(chan error, 0)
-	indexErrChan := make(chan error, 0)
-
-	putRequest := &collectionPutRequest{id, contentAsBytes}
-	go c.put(ctx, storeErrChan, indexErrChan, putRequest)
-
-	if !isBin {
-		go c.putIntoIndexes(ctx, storeErrChan, indexErrChan, id, content)
-	} else {
-		close(indexErrChan)
+	c.runTransaction(tr)
+	err := <-tr.responseChan
+	if err != nil {
+		return err
 	}
-
-	storeDone, indexDone := false, false
-	for {
-		select {
-		case err, ok := <-storeErrChan:
-			if !ok {
-				storeDone = true
-				storeErrChan = nil
-				if storeDone && indexDone {
-					return nil
-				}
-			}
-
-			if err != nil {
-				return err
-			}
-		case err, ok := <-indexErrChan:
-			if !ok {
-				indexDone = true
-				indexErrChan = nil
-				if storeDone && indexDone {
-					return nil
-				}
-			}
-			return err
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-		time.Sleep(time.Millisecond)
-	}
+	return nil
 }
 
-func (c *Collection) put(ctx context.Context, storeDone, indexDone chan error, elements ...*collectionPutRequest) error {
+func (c *Collection) putIntoStore(ctx context.Context, storeDone, indexDone chan error, elements ...*writeTransaction) error {
 	return c.Store.Update(func(txn *badger.Txn) error {
 		for _, putRequest := range elements {
-			err := txn.Set(c.buildStoreID(putRequest.id), putRequest.content)
+			err := txn.Set(c.buildStoreID(putRequest.id), putRequest.contentAsBytes)
 			if err != nil {
 				err = fmt.Errorf("error inserting %q: %s", putRequest.id, err.Error())
 				storeDone <- err
@@ -135,9 +91,6 @@ func (c *Collection) put(ctx context.Context, storeDone, indexDone chan error, e
 
 // Get retrieves the content of the given ID
 func (c *Collection) Get(id string, pointer interface{}) ([]byte, error) {
-	c.startTransaction()
-	defer c.endTransaction()
-
 	if id == "" {
 		return nil, vars.ErrEmptyID
 	}
@@ -202,9 +155,6 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 
 // Delete removes the corresponding object if the given ID
 func (c *Collection) Delete(id string) error {
-	c.startTransaction()
-	defer c.endTransaction()
-
 	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
 	defer cancel()
 
@@ -223,9 +173,6 @@ func (c *Collection) Delete(id string) error {
 
 // SetIndex enable the collection to index field or sub field
 func (c *Collection) SetIndex(i *Index) error {
-	c.startTransaction()
-	defer c.endTransaction()
-
 	c.Indexes = append(c.Indexes, i)
 	if err := c.DB.Update(func(tx *bolt.Tx) error {
 		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
@@ -360,10 +307,6 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	if len(q.filters) <= 0 {
 		return nil, fmt.Errorf("query has not get action")
 	}
-
-	// wait for the database to have less open transactions
-	c.startTransaction()
-	defer c.endTransaction()
 
 	// If no index stop the query
 	if len(c.Indexes) <= 0 {

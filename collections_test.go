@@ -172,3 +172,14 @@ func TestCollection_Query(t *testing.T) {
 		})
 	}
 }
+
+func TestCollection_Query_Loop(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		if !t.Run(
+			fmt.Sprintf("%d", i),
+			TestCollection_Query,
+		) {
+			return
+		}
+	}
+}

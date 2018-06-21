@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -49,40 +50,99 @@ func (c *Collection) init(name string) error {
 	})
 }
 
-func (c *Collection) initTransactionTickets(ctx context.Context) {
-	c.startTransactionTicket = make(chan bool, 0)
-	c.endTransactionTicket = make(chan bool, c.nbTransactionLimit)
-
+func (c *Collection) initWriteTransactionChan(ctx context.Context) {
+	c.writeTransactionChan = make(chan *writeTransaction, 1000)
 	go func() {
 		for {
-			if c.nbTransaction < c.nbTransactionLimit {
-				select {
-				case c.startTransactionTicket <- true:
-					// Unlock the caller of Collection.startTransaction
-					c.nbTransaction++
-				case <-c.endTransactionTicket:
-					// In case a transaction is done
-					c.nbTransaction--
-				case <-ctx.Done():
-					return
-				}
-			} else {
-				select {
-				case <-c.endTransactionTicket:
-					c.nbTransaction--
-				case <-ctx.Done():
-					return
-				}
+			select {
+			case tr := <-c.writeTransactionChan:
+				c.putTransaction(tr)
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
 }
 
-func (c *Collection) startTransaction() {
-	<-c.startTransactionTicket
+// func (c *Collection) initTransactionTickets(ctx context.Context) {
+// 	c.startTransactionTicket = make(chan bool, 0)
+// 	c.endTransactionTicket = make(chan bool, c.nbTransactionLimit)
+
+// 	go func() {
+// 		for {
+// 			if c.nbTransaction < c.nbTransactionLimit {
+// 				select {
+// 				case c.startTransactionTicket <- true:
+// 					// Unlock the caller of Collection.startTransaction
+// 					c.nbTransaction++
+// 				case <-c.endTransactionTicket:
+// 					// In case a transaction is done
+// 					c.nbTransaction--
+// 				case <-ctx.Done():
+// 					return
+// 				}
+// 			} else {
+// 				select {
+// 				case <-c.endTransactionTicket:
+// 					c.nbTransaction--
+// 				case <-ctx.Done():
+// 					return
+// 				}
+// 			}
+// 		}
+// 	}()
+// }
+
+func (c *Collection) putTransaction(tr *writeTransaction) {
+	storeErrChan := make(chan error, 0)
+	indexErrChan := make(chan error, 0)
+
+	go c.putIntoStore(tr.ctx, storeErrChan, indexErrChan, tr)
+
+	if !tr.bin {
+		go c.putIntoIndexes(tr.ctx, storeErrChan, indexErrChan, tr.id, tr.contentInterface)
+	} else {
+		close(indexErrChan)
+	}
+
+	storeDone, indexDone := false, false
+	for {
+		select {
+		case err, ok := <-storeErrChan:
+			if !ok {
+				storeDone = true
+				storeErrChan = nil
+				if storeDone && indexDone {
+					tr.responseChan <- nil
+					return
+				}
+			}
+
+			if err != nil {
+				tr.responseChan <- err
+				return
+			}
+		case err, ok := <-indexErrChan:
+			if !ok {
+				indexDone = true
+				indexErrChan = nil
+				if storeDone && indexDone {
+					tr.responseChan <- nil
+					return
+				}
+			}
+			tr.responseChan <- err
+			return
+		case <-tr.ctx.Done():
+			tr.responseChan <- tr.ctx.Err()
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
 }
-func (c *Collection) endTransaction() {
-	c.endTransactionTicket <- true
+
+func (c *Collection) runTransaction(tr *writeTransaction) {
+	c.writeTransactionChan <- tr
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
