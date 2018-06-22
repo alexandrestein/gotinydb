@@ -108,7 +108,7 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 		}
 	}()
 
-	ids, _ := NewIDs(nil)
+	ids, _ := NewIDs(ctx, nil)
 
 	switch filter.GetType() {
 	// If equal just this leave will be send

@@ -150,7 +150,7 @@ func (c *Collection) buildStoreID(id string) []byte {
 
 func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
-		err := c.cleanRefs(tx, writeTransaction.id)
+		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
 			return err
 		}
@@ -161,13 +161,13 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 				refsBucket := tx.Bucket([]byte("refs"))
 
 				idsAsBytes := indexBucket.Get(indexedValue)
-				ids, parseIDsErr := NewIDs(idsAsBytes)
+				ids, parseIDsErr := NewIDs(ctx, idsAsBytes)
 				if parseIDsErr != nil {
 					indexErrChan <- parseIDsErr
 					return parseIDsErr
 				}
 
-				id := NewID(writeTransaction.id)
+				id := NewID(ctx, writeTransaction.id)
 				ids.AddID(id)
 				idsAsBytes = ids.MustMarshal()
 
@@ -223,7 +223,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 
 }
 
-func (c *Collection) cleanRefs(tx *bolt.Tx, idAsString string) error {
+func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString string) error {
 	indexBucket := tx.Bucket([]byte("indexes"))
 	refsBucket := tx.Bucket([]byte("refs"))
 
@@ -241,7 +241,7 @@ func (c *Collection) cleanRefs(tx *bolt.Tx, idAsString string) error {
 		for _, index := range c.Indexes {
 			if index.Name == ref.IndexName {
 				// If reference present in this index the reference is cleaned
-				ids, newIDErr := NewIDs(indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
+				ids, newIDErr := NewIDs(ctx, indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
 				if newIDErr != nil {
 					return newIDErr
 				}

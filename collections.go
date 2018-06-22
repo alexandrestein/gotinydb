@@ -199,7 +199,7 @@ func (c *Collection) SetIndex(i *Index) error {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			asBytes := bucket.Get(indexedValue)
-			ids, err = NewIDs(asBytes)
+			ids, err = NewIDs(ctx, asBytes)
 			return err
 		}); err != nil {
 			return nil, err
@@ -214,12 +214,12 @@ func (c *Collection) SetIndex(i *Index) error {
 			iter := bucket.Cursor()
 			// Go to the requested position
 			firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
-			firstIDsValue, unmarshalIDsErr := NewIDs(firstIDsAsByte)
+			firstIDsValue, unmarshalIDsErr := NewIDs(ctx, firstIDsAsByte)
 			if unmarshalIDsErr != nil {
 				return unmarshalIDsErr
 			}
 
-			allIDs, _ = NewIDs(nil)
+			allIDs, _ = NewIDs(ctx, nil)
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
@@ -238,7 +238,7 @@ func (c *Collection) SetIndex(i *Index) error {
 				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 					break
 				}
-				ids, unmarshalIDsErr := NewIDs(idsAsByte)
+				ids, unmarshalIDsErr := NewIDs(ctx, idsAsByte)
 				if unmarshalIDsErr != nil {
 					return unmarshalIDsErr
 				}
@@ -360,12 +360,12 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 					fromTree := tree.Get(id)
 					if fromTree == nil {
 						// If not in the tree add it
-						id.Increment(ctx)
+						id.Increment()
 						tree.ReplaceOrInsert(id)
 						continue
 					}
 					// if allready increment the counter
-					fromTree.(*ID).Increment(ctx)
+					fromTree.(*ID).Increment()
 				}
 			}
 			// Save the fact that one more query has been respond
@@ -375,9 +375,9 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 				goto queriesDone
 			}
 		case <-ctx.Done():
+			fmt.Println("sioubsdvlkmlqeflmkml", ctx.Err())
 			return nil, vars.ErrTimeOut
 		}
-
 	}
 
 queriesDone:
@@ -422,7 +422,7 @@ func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 
 		for _, ref := range refs.Refs {
 			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
-			ids, err := NewIDs(indexBucket.Get(ref.IndexedValue))
+			ids, err := NewIDs(ctx, indexBucket.Get(ref.IndexedValue))
 			if err != nil {
 				return err
 			}

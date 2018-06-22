@@ -3,7 +3,6 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/google/btree"
@@ -101,15 +100,18 @@ func iterator(nbFilters, maxResponse int) (func(next btree.Item) (over bool), *I
 }
 
 // NewID returns a new ID with zero occurrence
-func NewID(id string) *ID {
+func NewID(ctx context.Context, id string) *ID {
 	ret := new(ID)
 	ret.Content = id
 	ret.occurrences = 0
+	ret.ch = make(chan bool, 0)
+
+	go ret.incrementLoop(ctx)
+
 	return ret
 }
 
 func (i *ID) incrementLoop(ctx context.Context) {
-	i.ch = make(chan bool, 0)
 
 	for {
 		select {
@@ -129,17 +131,7 @@ func (i *ID) incrementLoop(ctx context.Context) {
 }
 
 // Increment add +1 to the occurrence counter
-func (i *ID) Increment(ctx context.Context) {
-	if i.ch == nil {
-		go i.incrementLoop(ctx)
-	}
-
-waitForChanToOpen:
-	if i.ch == nil {
-		time.Sleep(time.Millisecond)
-		goto waitForChanToOpen
-	}
-
+func (i *ID) Increment() {
 	i.ch <- true
 }
 
@@ -179,7 +171,7 @@ func (i *ID) String() string {
 }
 
 // NewIDs build a new Ids pointer from a slice of bytes
-func NewIDs(idsAsBytes []byte) (*IDs, error) {
+func NewIDs(ctx context.Context, idsAsBytes []byte) (*IDs, error) {
 	ret := new(IDs)
 
 	if idsAsBytes == nil || len(idsAsBytes) == 0 {
@@ -196,7 +188,7 @@ func NewIDs(idsAsBytes []byte) (*IDs, error) {
 	// Init the channel used to count the number of occurrences of a given ID.
 	for _, id := range ids {
 		// ret.IDs[i] = NewID(id)
-		ret.IDs = append(ret.IDs, NewID(id))
+		ret.IDs = append(ret.IDs, NewID(ctx, id))
 	}
 
 	return ret, nil

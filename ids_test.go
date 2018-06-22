@@ -10,7 +10,10 @@ import (
 )
 
 func TestIDsLess(t *testing.T) {
-	small, big := buildSmallAndBig(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	small, big := buildSmallAndBig(ctx, t)
 
 	if !small.Less(big) {
 		t.Error("small is declared as not smaller than big")
@@ -35,8 +38,8 @@ func TestIDsIterators(t *testing.T) {
 
 	for i := 100; i < 1000; i++ {
 		count++
-		id := NewID(fmt.Sprintf("%d", i))
-		id.Increment(ctx)
+		id := NewID(ctx, fmt.Sprintf("%d", i))
+		id.Increment()
 		tree.ReplaceOrInsert(id.treeItem())
 	}
 
@@ -54,7 +57,7 @@ func TestIDsIterators(t *testing.T) {
 		return
 	}
 
-	small, big := buildSmallAndBig(t)
+	small, big := buildSmallAndBig(ctx, t)
 
 	iter, ret = iterator(1, 10)
 	tree.AscendGreaterOrEqual(small, iter)
@@ -84,7 +87,7 @@ func TestIDsIterators(t *testing.T) {
 		if !ok {
 			return false
 		}
-		nextAsID.Increment(ctx)
+		nextAsID.Increment()
 		overChan <- true
 		return true
 	}
@@ -104,7 +107,7 @@ func TestIDsIterators(t *testing.T) {
 	}
 }
 
-func buildSmallAndBig(t *testing.T) (small, big *ID) {
-	smallVar, bigVar := NewID("2000"), NewID("7000")
+func buildSmallAndBig(ctx context.Context, t *testing.T) (small, big *ID) {
+	smallVar, bigVar := NewID(ctx, "2000"), NewID(ctx, "7000")
 	return smallVar, bigVar
 }
