@@ -109,6 +109,8 @@ func NewID(id string) *ID {
 }
 
 func (i *ID) incrementLoop(ctx context.Context) {
+	i.ch = make(chan bool, 0)
+
 	for {
 		select {
 		case trueIncrement, ok := <-i.ch:
@@ -129,14 +131,15 @@ func (i *ID) incrementLoop(ctx context.Context) {
 // Increment add +1 to the occurrence counter
 func (i *ID) Increment(ctx context.Context) {
 	if i.ch == nil {
-		i.ch = make(chan bool, 0)
 		go i.incrementLoop(ctx)
 	}
+
 waitForChanToOpen:
 	if i.ch == nil {
 		time.Sleep(time.Millisecond)
 		goto waitForChanToOpen
 	}
+
 	i.ch <- true
 }
 
