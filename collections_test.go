@@ -180,7 +180,7 @@ func TestCollection_Loop_Query(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		if !t.Run(
 			fmt.Sprintf("%d", i),
 			TestCollection_Query,

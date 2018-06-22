@@ -230,7 +230,7 @@ func (c *Collection) cleanRefs(tx *bolt.Tx, idAsString string) error {
 	// Get the references of the given ID
 	refsAsBytes := refsBucket.Get(vars.BuildBytesID(idAsString))
 	refs := NewRefs()
-	if refsAsBytes == nil && len(refsAsBytes) > 0 {
+	if refsAsBytes != nil && len(refsAsBytes) > 0 {
 		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
 			return err
 		}
