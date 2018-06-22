@@ -10,13 +10,14 @@ type (
 		responseChan     chan error
 		ctx              context.Context
 		bin              bool
+		done             bool
 	}
 )
 
 func newTransaction(id string) *writeTransaction {
 	tr := new(writeTransaction)
 	tr.id = id
-	tr.responseChan = make(chan error, 1)
+	tr.responseChan = make(chan error, 0)
 
 	return tr
 }

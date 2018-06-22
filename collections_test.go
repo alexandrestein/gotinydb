@@ -87,6 +87,7 @@ func TestCollection_Query(t *testing.T) {
 			// 	false,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotResponse, err := c.Query(tt.args)
@@ -164,8 +165,9 @@ func TestCollection_Query(t *testing.T) {
 					had = fmt.Sprintf("%s\n%s", had, string(userAsJSON))
 				}
 				wanted := ""
-				for _, responseObject := range gotResponse.List {
-					wanted = fmt.Sprintf("%s\n%s", wanted, string(responseObject.ContentAsBytes))
+				for _, wantedValue := range tt.wantResponse {
+					wantedValueAsBytes, _ := json.Marshal(wantedValue)
+					wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
 				}
 				t.Errorf("Had %s\nwant %s\n", had, wanted)
 			}
@@ -173,8 +175,12 @@ func TestCollection_Query(t *testing.T) {
 	}
 }
 
-func TestCollection_Query_Loop(t *testing.T) {
-	for i := 0; i < 100; i++ {
+func TestCollection_Loop_Query(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	for i := 0; i < 1000; i++ {
 		if !t.Run(
 			fmt.Sprintf("%d", i),
 			TestCollection_Query,

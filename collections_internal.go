@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -100,22 +99,19 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	go c.putIntoStore(tr.ctx, storeErrChan, indexErrChan, tr)
 
 	if !tr.bin {
-		go c.putIntoIndexes(tr.ctx, storeErrChan, indexErrChan, tr.id, tr.contentInterface)
+		go c.putIntoIndexes(tr.ctx, storeErrChan, indexErrChan, tr)
 	} else {
 		close(indexErrChan)
 	}
 
-	storeDone, indexDone := false, false
+	storeErrChanClosed, indexErrChanClosed := false, false
 	for {
 		select {
 		case err, ok := <-storeErrChan:
 			if !ok {
-				storeDone = true
 				storeErrChan = nil
-				if storeDone && indexDone {
-					tr.responseChan <- nil
-					return
-				}
+				storeErrChanClosed = true
+				break
 			}
 
 			if err != nil {
@@ -124,25 +120,26 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 			}
 		case err, ok := <-indexErrChan:
 			if !ok {
-				indexDone = true
 				indexErrChan = nil
-				if storeDone && indexDone {
-					tr.responseChan <- nil
-					return
-				}
+				indexErrChanClosed = true
+				break
 			}
-			tr.responseChan <- err
-			return
+
+			if err != nil {
+				tr.responseChan <- err
+				return
+			}
 		case <-tr.ctx.Done():
 			tr.responseChan <- tr.ctx.Err()
 			return
 		}
-		time.Sleep(time.Millisecond)
-	}
-}
 
-func (c *Collection) runTransaction(tr *writeTransaction) {
-	c.writeTransactionChan <- tr
+		if storeErrChanClosed && indexErrChanClosed {
+			tr.done = true
+			tr.responseChan <- nil
+			return
+		}
+	}
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
@@ -151,31 +148,31 @@ func (c *Collection) buildStoreID(id string) []byte {
 	return []byte(fmt.Sprintf("%s_%s", c.ID[:4], objectID))
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, storeDone, indexDone chan error, idAsString string, content interface{}) error {
+func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
-		err := c.cleanRefs(tx, idAsString)
+		err := c.cleanRefs(tx, writeTransaction.id)
 		if err != nil {
 			return err
 		}
 
 		for _, index := range c.Indexes {
-			if indexedValue, apply := index.Apply(content); apply {
+			if indexedValue, apply := index.Apply(writeTransaction.contentInterface); apply {
 				indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
 				refsBucket := tx.Bucket([]byte("refs"))
 
 				idsAsBytes := indexBucket.Get(indexedValue)
 				ids, parseIDsErr := NewIDs(idsAsBytes)
 				if parseIDsErr != nil {
-					indexDone <- parseIDsErr
+					indexErrChan <- parseIDsErr
 					return parseIDsErr
 				}
 
-				id := NewID(idAsString)
+				id := NewID(writeTransaction.id)
 				ids.AddID(id)
 				idsAsBytes = ids.MustMarshal()
 
 				if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
-					indexDone <- err
+					indexErrChan <- err
 					return err
 				}
 
@@ -183,7 +180,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeDone, indexDone ch
 				refs := NewRefs()
 				if refsAsBytes == nil && len(refsAsBytes) > 0 {
 					if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-						indexDone <- err
+						indexErrChan <- err
 						return err
 					}
 				}
@@ -194,21 +191,32 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeDone, indexDone ch
 
 				putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
 				if putErr != nil {
-					indexDone <- err
+					indexErrChan <- err
 					return err
 				}
 			}
 		}
 
-		close(indexDone)
+		close(indexErrChan)
 
+		nbTry := 0
+	waitForEnd:
 		select {
-		case err, ok := <-storeDone:
+		case err, ok := <-storeErrChan:
 			if !ok {
 				return nil
 			}
-			return fmt.Errorf("issue on the store: %s", err.Error())
+			if err != nil {
+				return fmt.Errorf("issue on the store: %s", err.Error())
+			}
+			return nil
 		case <-ctx.Done():
+			if writeTransaction.done {
+				if nbTry < 5 {
+					goto waitForEnd
+				}
+				nbTry++
+			}
 			return ctx.Err()
 		}
 	})

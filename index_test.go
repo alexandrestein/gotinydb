@@ -133,7 +133,6 @@ func checkObjectsForConcurrent(c *Collection, dataSet []byte, done chan error) {
 		// for _, user := range users {
 		retrievedUser := new(User)
 		if _, err := c.Get(user.ID, retrievedUser); err != nil {
-			fmt.Println(c.Name, user.ID)
 			done <- err
 			return
 		}
@@ -209,19 +208,20 @@ func unmarshalDataSet(dataSet []byte) []*User {
 // 	}
 // }
 
-func updateUser(c *Collection, v1, v2, v3 *User, done chan error) {
+func updateUser(c *Collection, v1, v2, v3 *User, done chan error) error {
 	if err := c.Put(v1.ID, v1); err != nil {
 		done <- err
-		return
+		return err
 	}
 	if err := c.Put(v1.ID, v2); err != nil {
 		done <- err
-		return
+		return err
 	}
 	if err := c.Put(v1.ID, v3); err != nil {
 		done <- err
-		return
+		return err
 	}
 
 	done <- nil
+	return nil
 }

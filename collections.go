@@ -53,39 +53,50 @@ func (c *Collection) Put(id string, content interface{}) error {
 		tr.contentAsBytes = jsonBytes
 	}
 
-	c.runTransaction(tr)
+	// Run the insertion
+	c.writeTransactionChan <- tr
+	// And wait for the end of the insertion
 	err := <-tr.responseChan
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (c *Collection) putIntoStore(ctx context.Context, storeDone, indexDone chan error, elements ...*writeTransaction) error {
+func (c *Collection) putIntoStore(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
 	return c.Store.Update(func(txn *badger.Txn) error {
-		for _, putRequest := range elements {
-			err := txn.Set(c.buildStoreID(putRequest.id), putRequest.contentAsBytes)
-			if err != nil {
-				err = fmt.Errorf("error inserting %q: %s", putRequest.id, err.Error())
-				storeDone <- err
-				return err
-			}
+		err := txn.Set(c.buildStoreID(writeTransaction.id), writeTransaction.contentAsBytes)
+		if err != nil {
+			err = fmt.Errorf("error inserting %q: %s", writeTransaction.id, err.Error())
+			storeErrChan <- err
+			return err
 		}
 
-		close(storeDone)
+		close(storeErrChan)
 
+		nbTry := 0
+	waitForEnd:
 		// Wait for the index process to end.
 		// If any error the actions are rollbacked
 		select {
-		case err, ok := <-indexDone:
+		case err, ok := <-indexErrChan:
 			if !ok {
 				return nil
 			}
-			// If the channel is closed means that their was no error
-			return fmt.Errorf("issue on the index: %s", err.Error())
+			if err != nil {
+				return fmt.Errorf("issue on the index: %s", err.Error())
+			}
 		case <-ctx.Done():
+			if writeTransaction.done {
+				if nbTry < 5 {
+					goto waitForEnd
+				}
+				nbTry++
+			}
 			return ctx.Err()
 		}
+		return nil
 	})
 }
 
