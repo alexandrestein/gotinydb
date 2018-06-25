@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 
@@ -31,7 +32,7 @@ type (
 
 	// ID is a type to order IDs during query to be compatible with the tree query
 	ID struct {
-		Content     string
+		ID          string
 		occurrences int
 		ch          chan bool
 		// values defines the different values and selector that called this ID
@@ -41,6 +42,7 @@ type (
 		// This is for the ordering
 		less         func(btree.Item) bool
 		selectorHash uint64
+		getRefsFunc  func(id string) *Refs
 	}
 
 	// IDs defines a list of ID. The struct is needed to build a pointer to be
@@ -99,7 +101,7 @@ func (q *Query) Get(f *Filter) *Query {
 	return q
 }
 
-func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64) (func(next btree.Item) (over bool), *btree.BTree) {
+func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64, getRefsFunc func(id string) *Refs) (func(next btree.Item) (over bool), *btree.BTree) {
 	ret := btree.New(5)
 
 	return func(next btree.Item) bool {
@@ -115,6 +117,7 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 		if nextAsID.Occurrences(nbFilters) {
 			nextAsID.less = nextAsID.lessValue
 			nextAsID.selectorHash = orderSelectorHash
+			nextAsID.getRefsFunc = getRefsFunc
 			ret.ReplaceOrInsert(nextAsID)
 		}
 		return true
@@ -141,7 +144,7 @@ func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *IDs
 // NewID returns a new ID with zero occurrence
 func NewID(ctx context.Context, id string) *ID {
 	ret := new(ID)
-	ret.Content = id
+	ret.ID = id
 	ret.occurrences = 0
 	ret.ch = make(chan bool, 0)
 	ret.less = ret.lessID
@@ -200,7 +203,7 @@ func (i *ID) lessID(compareToItem btree.Item) bool {
 		return false
 	}
 
-	return (i.Content < compareTo.Content)
+	return (i.ID < compareTo.ID)
 }
 
 func (i *ID) lessValue(compareToItem btree.Item) bool {
@@ -209,7 +212,17 @@ func (i *ID) lessValue(compareToItem btree.Item) bool {
 		return false
 	}
 
-	return (i.Content < compareTo.Content)
+	if i.values[i.selectorHash] == nil {
+		refs := i.getRefsFunc(i.ID)
+		for _, ref := range refs.Refs {
+			i.values[ref.IndexHash] = ref.IndexedValue
+		}
+	}
+
+	if bytes.Compare(i.values[i.selectorHash], compareTo.values[i.selectorHash]) < 0 {
+		return true
+	}
+	return false
 }
 
 func (i *ID) treeItem() btree.Item {
@@ -220,7 +233,7 @@ func (i *ID) String() string {
 	if i == nil {
 		return ""
 	}
-	return i.Content
+	return i.ID
 }
 
 // NewIDs build a new Ids pointer from a slice of bytes
@@ -294,7 +307,7 @@ func (i *IDs) MustMarshal() []byte {
 func (i *IDs) Strings() []string {
 	ret := make([]string, len(i.IDs))
 	for j, id := range i.IDs {
-		ret[j] = id.Content
+		ret[j] = id.ID
 	}
 	return ret
 }

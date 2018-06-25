@@ -35,6 +35,7 @@ type (
 	// Ref defines the relations between a object with some index with indexed value
 	Ref struct {
 		IndexName    string
+		IndexHash    uint64
 		IndexedValue []byte
 	}
 )
@@ -130,6 +131,11 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 				return
 			}
 
+			for _, tmpID := range tmpIDs.IDs {
+				tmpID.values[i.selectorHash] = value.Bytes()
+
+			}
+
 			ids.AddIDs(tmpIDs)
 		}
 
@@ -176,7 +182,7 @@ func (r *Refs) IDasBytes() []byte {
 // SetIndexedValue add to the list of references this one.
 // The indexName define the index it belongs to and indexedVal defines what value
 // is indexed.
-func (r *Refs) SetIndexedValue(indexName string, indexedVal []byte) {
+func (r *Refs) SetIndexedValue(indexName string, indexHash uint64, indexedVal []byte) {
 	for _, ref := range r.Refs {
 		if ref.IndexName == indexName {
 			ref.IndexedValue = indexedVal
@@ -186,6 +192,7 @@ func (r *Refs) SetIndexedValue(indexName string, indexedVal []byte) {
 
 	ref := new(Ref)
 	ref.IndexName = indexName
+	ref.IndexHash = indexHash
 	ref.IndexedValue = indexedVal
 	r.Refs = append(r.Refs, ref)
 }

@@ -43,14 +43,14 @@ func TestIDsOccurrenceIterators(t *testing.T) {
 		tree.ReplaceOrInsert(id.treeItem())
 	}
 
-	iter, ret := occurrenceTreeIterator(1, 20, 0)
+	iter, ret := occurrenceTreeIterator(1, 20, 0, nil)
 	tree.Ascend(iter)
 	if ret.Len() != 20 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
-	iter, ret = occurrenceTreeIterator(1, 10, 0)
+	iter, ret = occurrenceTreeIterator(1, 10, 0, nil)
 	tree.Descend(iter)
 	if ret.Len() != 10 {
 		t.Errorf("returned value are not long as expected")
@@ -59,21 +59,21 @@ func TestIDsOccurrenceIterators(t *testing.T) {
 
 	small, big := buildSmallAndBig(ctx, t)
 
-	iter, ret = occurrenceTreeIterator(1, 10, 0)
+	iter, ret = occurrenceTreeIterator(1, 10, 0, nil)
 	tree.AscendGreaterOrEqual(small, iter)
 	if ret.Len() != 10 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
-	iter, ret = occurrenceTreeIterator(1, 10, 0)
+	iter, ret = occurrenceTreeIterator(1, 10, 0, nil)
 	tree.AscendLessThan(small, iter)
 	if ret.Len() != 10 {
 		t.Errorf("returned value are not long as expected")
 		return
 	}
 
-	iter, ret = occurrenceTreeIterator(1, 10, 0)
+	iter, ret = occurrenceTreeIterator(1, 10, 0, nil)
 	tree.DescendRange(big, small, iter)
 	if ret.Len() != 10 {
 		t.Errorf("returned value are not long as expected")
@@ -100,7 +100,7 @@ func TestIDsOccurrenceIterators(t *testing.T) {
 		<-overChan
 	}
 
-	iter, ret = occurrenceTreeIterator(4, 20, 0)
+	iter, ret = occurrenceTreeIterator(4, 20, 0, nil)
 	tree.Ascend(iter)
 	if ret.Len() != 20 {
 		t.Errorf("returned value are %d not long as expected %d", ret.Len(), 20)

@@ -385,8 +385,16 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 
 queriesDone:
 
+	getRefFunc := func(id string) (refs *Refs) {
+		c.DB.View(func(tx *bolt.Tx) error {
+			refs, _ = c.getRefs(tx, id)
+			return nil
+		})
+		return refs
+	}
+
 	// iterate the response tree to get only IDs which has been found in every index queries
-	occurrenceFunc, retTree := occurrenceTreeIterator(len(q.filters), q.internalLimit, q.order)
+	occurrenceFunc, retTree := occurrenceTreeIterator(len(q.filters), q.internalLimit, q.order, getRefFunc)
 	tree.Ascend(occurrenceFunc)
 
 	// get the ids in the order and with the given limit
@@ -423,12 +431,16 @@ queriesDone:
 
 func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
-		refsBucket := tx.Bucket([]byte("refs"))
+		// refsBucket := tx.Bucket([]byte("refs"))
 
-		refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
-		refs := NewRefsFromDB(refsAsBytes)
-		if refs == nil {
-			return fmt.Errorf("references mal formed: %s", string(refsAsBytes))
+		// refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
+		// refs := NewRefsFromDB(refsAsBytes)
+		// if refs == nil {
+		// 	return fmt.Errorf("references mal formed: %s", string(refsAsBytes))
+		// }
+		refs, getRefsErr := c.getRefs(tx, id)
+		if getRefsErr != nil {
+			return getRefsErr
 		}
 
 		for _, ref := range refs.Refs {
@@ -445,4 +457,15 @@ func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 
 		return nil
 	})
+}
+
+func (c *Collection) getRefs(tx *bolt.Tx, id string) (*Refs, error) {
+	refsBucket := tx.Bucket([]byte("refs"))
+
+	refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
+	refs := NewRefsFromDB(refsAsBytes)
+	if refs == nil {
+		return nil, fmt.Errorf("references mal formed: %s", string(refsAsBytes))
+	}
+	return refs, nil
 }

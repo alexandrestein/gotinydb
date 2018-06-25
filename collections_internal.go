@@ -193,7 +193,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 					return err
 				}
 
-				refs.SetIndexedValue(index.Name, indexedValue)
+				refs.SetIndexedValue(index.Name, index.selectorHash, indexedValue)
 			}
 		}
 
