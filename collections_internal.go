@@ -101,8 +101,7 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	if !tr.bin {
 		go c.putIntoIndexes(tr.ctx, storeErrChan, indexErrChan, tr)
 	} else {
-
-		close(indexErrChan)
+		go c.onlyCleanRefs(tr.ctx, storeErrChan, indexErrChan, tr)
 	}
 
 	storeErrChanClosed, indexErrChanClosed := false, false
@@ -203,30 +202,68 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 			return err
 		}
 
-		close(indexErrChan)
+		// 	close(indexErrChan)
 
-		nbTry := 0
-	waitForEnd:
-		select {
-		case err, ok := <-storeErrChan:
-			if !ok {
-				return nil
-			}
-			if err != nil {
-				return fmt.Errorf("issue on the store: %s", err.Error())
-			}
-			return nil
-		case <-ctx.Done():
-			if writeTransaction.done {
-				if nbTry < 5 {
-					goto waitForEnd
-				}
-				nbTry++
-			}
-			return ctx.Err()
-		}
+		// 	nbTry := 0
+		// waitForEnd:
+		// 	select {
+		// 	case err, ok := <-storeErrChan:
+		// 		if !ok {
+		// 			return nil
+		// 		}
+		// 		if err != nil {
+		// 			return fmt.Errorf("issue on the store: %s", err.Error())
+		// 		}
+		// 		return nil
+		// 	case <-ctx.Done():
+		// 		if writeTransaction.done {
+		// 			if nbTry < 5 {
+		// 				goto waitForEnd
+		// 			}
+		// 			nbTry++
+		// 		}
+		// 		return ctx.Err()
+		// 	}
+		return c.endOfIndexUpdate(ctx, storeErrChan, indexErrChan, writeTransaction)
 	})
+}
 
+func (c *Collection) onlyCleanRefs(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
+	return c.DB.Update(func(tx *bolt.Tx) error {
+		err := c.cleanRefs(ctx, tx, writeTransaction.id)
+		if err != nil {
+			indexErrChan <- err
+			return err
+		}
+
+		return c.endOfIndexUpdate(ctx, storeErrChan, indexErrChan, writeTransaction)
+	})
+}
+
+func (c *Collection) endOfIndexUpdate(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
+
+	close(indexErrChan)
+
+	nbTry := 0
+waitForEnd:
+	select {
+	case err, ok := <-storeErrChan:
+		if !ok {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("issue on the store: %s", err.Error())
+		}
+		return nil
+	case <-ctx.Done():
+		if writeTransaction.done {
+			if nbTry < 5 {
+				goto waitForEnd
+			}
+			nbTry++
+		}
+		return ctx.Err()
+	}
 }
 
 func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString string) error {
