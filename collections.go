@@ -375,7 +375,6 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 				goto queriesDone
 			}
 		case <-ctx.Done():
-			fmt.Println("sioubsdvlkmlqeflmkml", ctx.Err())
 			return nil, vars.ErrTimeOut
 		}
 	}

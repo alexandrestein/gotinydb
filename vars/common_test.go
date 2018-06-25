@@ -33,3 +33,23 @@ func TestTypeName(t *testing.T) {
 		return
 	}
 }
+
+func TestBuildSelectorHash(t *testing.T) {
+	selectors := [][]string{
+		{"userName"},
+		{"auth", "ssh"},
+		{"email"},
+	}
+	expectedResults := []uint64{
+		469024096205709603,
+		256693521140565194,
+		17382524093592847791,
+	}
+
+	for i := range selectors {
+		if ret := BuildSelectorHash(selectors[i]); ret != expectedResults[i] {
+			t.Errorf("wrong result expected %d but had %d", expectedResults[i], ret)
+		}
+	}
+
+}

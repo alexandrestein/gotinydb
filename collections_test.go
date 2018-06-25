@@ -175,17 +175,17 @@ func TestCollection_Query(t *testing.T) {
 	}
 }
 
-func TestCollection_Loop_Query(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
+// func TestCollection_Loop_Query(t *testing.T) {
+// 	if testing.Short() {
+// 		t.Skip("skipping test in short mode.")
+// 	}
 
-	for i := 0; i < 100; i++ {
-		if !t.Run(
-			fmt.Sprintf("%d", i),
-			TestCollection_Query,
-		) {
-			return
-		}
-	}
-}
+// 	for i := 0; i < 100; i++ {
+// 		if !t.Run(
+// 			fmt.Sprintf("%d", i),
+// 			TestCollection_Query,
+// 		) {
+// 			return
+// 		}
+// 	}
+// }

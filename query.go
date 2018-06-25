@@ -29,6 +29,9 @@ type (
 		Content     string
 		occurrences int
 		ch          chan bool
+		// values defines the different values and selector that called this ID
+		// selectors are defined by a hash 64
+		values map[uint64]interface{}
 	}
 
 	// IDs defines a list of ID. The struct is needed to build a pointer to be
@@ -169,7 +172,7 @@ func (i *ID) String() string {
 }
 
 // NewIDs build a new Ids pointer from a slice of bytes
-func NewIDs(ctx context.Context, idsAsBytes []byte) (*IDs, error) {
+func NewIDs(ctx context.Context, selector []string, referredValue interface{}, idsAsBytes []byte) (*IDs, error) {
 	ret := new(IDs)
 
 	if idsAsBytes == nil || len(idsAsBytes) == 0 {
@@ -185,8 +188,9 @@ func NewIDs(ctx context.Context, idsAsBytes []byte) (*IDs, error) {
 
 	// Init the channel used to count the number of occurrences of a given ID.
 	for _, id := range ids {
-		// ret.IDs[i] = NewID(id)
-		ret.IDs = append(ret.IDs, NewID(ctx, id))
+		newID := NewID(ctx, id)
+		newID.values[vars.BuildSelectorHash(selector)] = referredValue
+		ret.IDs = append(ret.IDs, newID)
 	}
 
 	return ret, nil

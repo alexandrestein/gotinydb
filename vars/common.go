@@ -41,3 +41,13 @@ func BuildID(id string) string {
 func BuildBytesID(id string) []byte {
 	return []byte(BuildID(id))
 }
+
+// BuildSelectorHash returns a string hash of the selector
+func BuildSelectorHash(selector []string) uint64 {
+	key := make([]byte, highwayhash.Size)
+	hasher, _ := highwayhash.New64(key)
+	for _, filedName := range selector {
+		hasher.Write([]byte(filedName))
+	}
+	return hasher.Sum64()
+}
