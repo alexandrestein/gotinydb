@@ -92,17 +92,18 @@ func TestIDsIterators(t *testing.T) {
 		return true
 	}
 
-	for i := 0; i < 3; i++ {
+	nbOccurrences := 3
+	for i := 0; i < nbOccurrences; i++ {
 		go tree.Ascend(funcAddIncremental)
 	}
-	for index := 0; index < count; index++ {
+	for index := 0; index < count*nbOccurrences; index++ {
 		<-overChan
 	}
 
-	iter, ret = iterator(3, 20)
+	iter, ret = iterator(4, 20)
 	tree.Ascend(iter)
 	if len(ret.IDs) != 20 {
-		t.Errorf("returned value are not long as expected")
+		t.Errorf("returned value are %d not long as expected %d", len(ret.IDs), 20)
 		return
 	}
 }

@@ -90,7 +90,6 @@ func iterator(nbFilters, maxResponse int) (func(next btree.Item) (over bool), *I
 		if !ok {
 			return false
 		}
-
 		// Check that all occurrences have been saved
 		if nextAsID.Occurrences(nbFilters) {
 			ret.IDs = append(ret.IDs, nextAsID)
@@ -112,7 +111,6 @@ func NewID(ctx context.Context, id string) *ID {
 }
 
 func (i *ID) incrementLoop(ctx context.Context) {
-
 	for {
 		select {
 		case trueIncrement, ok := <-i.ch:
