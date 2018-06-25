@@ -100,10 +100,7 @@ func setIndexes(c *Collection) error {
 	}
 
 	for _, indexParams := range indexes {
-		index := new(Index)
-		index.Name = indexParams.name
-		index.Selector = indexParams.selector
-		index.Type = indexParams.t
+		index := NewIndex(indexParams.name, indexParams.selector, indexParams.t)
 		if err := c.SetIndex(index); err != nil {
 			return err
 		}

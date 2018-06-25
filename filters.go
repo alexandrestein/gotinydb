@@ -9,10 +9,11 @@ import (
 type (
 	// Filter defines the way the query will be performed
 	Filter struct {
-		selector []string
-		operator FilterOperator
-		values   []*FilterValue
-		equal    bool
+		selector     []string
+		selectorHash uint64
+		operator     FilterOperator
+		values       []*FilterValue
+		equal        bool
 	}
 
 	// FilterValue defines the value we need to compare to
@@ -67,21 +68,19 @@ func (f *Filter) CompareTo(val interface{}) *Filter {
 		return f
 	}
 
-	// If the slice is nil or if the slice is allready more than one element and is not a Equal
-	// statement. In this case only the last value will be used
-	if f.values == nil {
+	// If the slice is nil or if the filter is not a between filter
+	// the filter list has only one element
+	if f.values == nil || f.operator != Between {
 		f.values = []*FilterValue{filterValue}
 		return f
 	}
 
-	if len(f.values) > 1 {
-		if f.GetType() == Greater || f.GetType() == Less {
-			f.values = []*FilterValue{filterValue}
-			return f
-		}
+	// Limit the numbers of 2 filters
+	if len(f.values) >= 2 {
+		f.values[1] = filterValue
 	}
 
-	// If the slice exist and the filter is Equal more than one value can be checked
+	// Add the second value if it's between filter
 	f.values = append(f.values, filterValue)
 	return f
 }
@@ -108,6 +107,7 @@ func (f *Filter) EqualWanted() *Filter {
 // SetSelector defines the configurable limit of IDs.
 func (f *Filter) SetSelector(s []string) *Filter {
 	f.selector = s
+	f.selectorHash = vars.BuildSelectorHash(s)
 	return f
 }
 

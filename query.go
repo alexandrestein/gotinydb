@@ -14,6 +14,7 @@ const (
 	NotEqual FilterOperator = "ne"
 	Greater  FilterOperator = "gr"
 	Less     FilterOperator = "le"
+	Between  FilterOperator = "bw"
 )
 
 type (
@@ -21,7 +22,11 @@ type (
 	Query struct {
 		filters []*Filter
 
-		limit int
+		order     uint64 // is the selector hash representation
+		ascendent bool   // defines the way of the order
+
+		limit         int
+		internalLimit int
 	}
 
 	// ID is a type to order IDs during query to be compatible with the tree query
@@ -31,7 +36,11 @@ type (
 		ch          chan bool
 		// values defines the different values and selector that called this ID
 		// selectors are defined by a hash 64
-		values map[uint64]interface{}
+		values map[uint64][]byte
+
+		// This is for the ordering
+		less         func(btree.Item) bool
+		selectorHash uint64
 	}
 
 	// IDs defines a list of ID. The struct is needed to build a pointer to be
@@ -58,16 +67,25 @@ type (
 )
 
 // NewQuery build a new query object.
-// It also set the default limit to 1000.
+// It also set the default limit to 100.
 func NewQuery() *Query {
+	defaultLimit := 100
 	return &Query{
-		limit: 1000,
+		limit:         defaultLimit,
+		internalLimit: defaultLimit * 10,
 	}
 }
 
 // SetLimit defines the configurable limit of IDs.
 func (q *Query) SetLimit(l int) *Query {
 	q.limit = l
+	return q
+}
+
+// SetOrder defines the order of the response
+func (q *Query) SetOrder(selector []string, ascendent bool) *Query {
+	q.order = vars.BuildSelectorHash(selector)
+	q.ascendent = ascendent
 	return q
 }
 
@@ -81,7 +99,29 @@ func (q *Query) Get(f *Filter) *Query {
 	return q
 }
 
-func iterator(nbFilters, maxResponse int) (func(next btree.Item) (over bool), *IDs) {
+func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64) (func(next btree.Item) (over bool), *btree.BTree) {
+	ret := btree.New(5)
+
+	return func(next btree.Item) bool {
+		if ret.Len() >= maxResponse {
+			return false
+		}
+
+		nextAsID, ok := next.(*ID)
+		if !ok {
+			return false
+		}
+		// Check that all occurrences have been saved
+		if nextAsID.Occurrences(nbFilters) {
+			nextAsID.less = nextAsID.lessValue
+			nextAsID.selectorHash = orderSelectorHash
+			ret.ReplaceOrInsert(nextAsID)
+		}
+		return true
+	}, ret
+}
+
+func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
 	ret := new(IDs)
 
 	return func(next btree.Item) bool {
@@ -93,10 +133,7 @@ func iterator(nbFilters, maxResponse int) (func(next btree.Item) (over bool), *I
 		if !ok {
 			return false
 		}
-		// Check that all occurrences have been saved
-		if nextAsID.Occurrences(nbFilters) {
-			ret.IDs = append(ret.IDs, nextAsID)
-		}
+		ret.IDs = append(ret.IDs, nextAsID)
 		return true
 	}, ret
 }
@@ -107,6 +144,8 @@ func NewID(ctx context.Context, id string) *ID {
 	ret.Content = id
 	ret.occurrences = 0
 	ret.ch = make(chan bool, 0)
+	ret.less = ret.lessID
+	ret.values = map[uint64][]byte{}
 
 	go ret.incrementLoop(ctx)
 
@@ -149,9 +188,22 @@ func (i *ID) Occurrences(target int) bool {
 	return false
 }
 
-// Less must provide a strict weak ordering.
-// If !a.Less(b) && !b.Less(a), we treat this to mean a == b
+// Less implements the btree.Item interface. It can be an indexation
+// on the ID or on the value
 func (i *ID) Less(compareToItem btree.Item) bool {
+	return i.less(compareToItem)
+}
+
+func (i *ID) lessID(compareToItem btree.Item) bool {
+	compareTo, ok := compareToItem.(*ID)
+	if !ok {
+		return false
+	}
+
+	return (i.Content < compareTo.Content)
+}
+
+func (i *ID) lessValue(compareToItem btree.Item) bool {
 	compareTo, ok := compareToItem.(*ID)
 	if !ok {
 		return false
@@ -172,7 +224,7 @@ func (i *ID) String() string {
 }
 
 // NewIDs build a new Ids pointer from a slice of bytes
-func NewIDs(ctx context.Context, selector []string, referredValue interface{}, idsAsBytes []byte) (*IDs, error) {
+func NewIDs(ctx context.Context, selectorHash uint64, referredValue []byte, idsAsBytes []byte) (*IDs, error) {
 	ret := new(IDs)
 
 	if idsAsBytes == nil || len(idsAsBytes) == 0 {
@@ -189,7 +241,9 @@ func NewIDs(ctx context.Context, selector []string, referredValue interface{}, i
 	// Init the channel used to count the number of occurrences of a given ID.
 	for _, id := range ids {
 		newID := NewID(ctx, id)
-		newID.values[vars.BuildSelectorHash(selector)] = referredValue
+		if selectorHash != 0 && referredValue != nil {
+			newID.values[selectorHash] = referredValue
+		}
 		ret.IDs = append(ret.IDs, newID)
 	}
 

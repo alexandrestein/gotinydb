@@ -199,7 +199,7 @@ func (c *Collection) SetIndex(i *Index) error {
 		if err := c.DB.View(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			asBytes := bucket.Get(indexedValue)
-			ids, err = NewIDs(ctx, asBytes)
+			ids, err = NewIDs(ctx, i.selectorHash, indexedValue, asBytes)
 			return err
 		}); err != nil {
 			return nil, err
@@ -214,12 +214,12 @@ func (c *Collection) SetIndex(i *Index) error {
 			iter := bucket.Cursor()
 			// Go to the requested position
 			firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
-			firstIDsValue, unmarshalIDsErr := NewIDs(ctx, firstIDsAsByte)
+			firstIDsValue, unmarshalIDsErr := NewIDs(ctx, i.selectorHash, indexedValue, firstIDsAsByte)
 			if unmarshalIDsErr != nil {
 				return unmarshalIDsErr
 			}
 
-			allIDs, _ = NewIDs(ctx, nil)
+			allIDs, _ = NewIDs(ctx, i.selectorHash, indexedValue, nil)
 
 			// if the asked value is found
 			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
@@ -238,7 +238,7 @@ func (c *Collection) SetIndex(i *Index) error {
 				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 					break
 				}
-				ids, unmarshalIDsErr := NewIDs(ctx, idsAsByte)
+				ids, unmarshalIDsErr := NewIDs(ctx, i.selectorHash, indexedValue, idsAsByte)
 				if unmarshalIDsErr != nil {
 					return unmarshalIDsErr
 				}
@@ -349,6 +349,10 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		}
 	}
 
+	if nbToDo == 0 {
+		return nil, fmt.Errorf("no index found")
+	}
+
 	// Loop every response from the index query
 	for {
 		select {
@@ -382,8 +386,16 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 queriesDone:
 
 	// iterate the response tree to get only IDs which has been found in every index queries
-	fn, ret := iterator(len(q.filters), q.limit)
-	tree.Ascend(fn)
+	occurrenceFunc, retTree := occurrenceTreeIterator(len(q.filters), q.internalLimit, q.order)
+	tree.Ascend(occurrenceFunc)
+
+	// get the ids in the order and with the given limit
+	orderFunc, ret := orderTreeIterator(q.limit)
+	if q.ascendent {
+		retTree.Ascend(orderFunc)
+	} else {
+		retTree.Descend(orderFunc)
+	}
 
 	// Build the response for the caller
 	response = NewResponseQuery(len(ret.IDs))
@@ -421,7 +433,7 @@ func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 
 		for _, ref := range refs.Refs {
 			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
-			ids, err := NewIDs(ctx, indexBucket.Get(ref.IndexedValue))
+			ids, err := NewIDs(ctx, 0, nil, indexBucket.Get(ref.IndexedValue))
 			if err != nil {
 				return err
 			}

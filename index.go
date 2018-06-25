@@ -13,9 +13,10 @@ import (
 type (
 	// Index defines the struct to manage indexation
 	Index struct {
-		Name     string
-		Selector []string
-		Type     vars.IndexType
+		Name         string
+		Selector     []string
+		selectorHash uint64
+		Type         vars.IndexType
 
 		getIDsFunc      func(ctx context.Context, indexedValue []byte) (*IDs, error)
 		getRangeIDsFunc func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
@@ -38,6 +39,17 @@ type (
 	}
 )
 
+// NewIndex build a new Index pointer
+func NewIndex(name string, selector []string, t vars.IndexType) *Index {
+	ret := new(Index)
+	ret.Name = name
+	ret.Selector = selector
+	ret.selectorHash = vars.BuildSelectorHash(selector)
+	ret.Type = t
+
+	return ret
+}
+
 // Apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
 func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
@@ -59,10 +71,8 @@ func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
 // DoesFilterApplyToIndex only check if the filter belongs to the index
 func (i *Index) DoesFilterApplyToIndex(filter *Filter) (ok bool) {
 	// Check the selector
-	for j := range i.Selector {
-		if filter.selector[j] != i.Selector[j] {
-			return false
-		}
+	if filter.selectorHash != i.selectorHash {
+		return false
 	}
 
 	// If at least one of the value has the right type the index need to be queried
@@ -108,7 +118,7 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 		}
 	}()
 
-	ids, _ := NewIDs(ctx, nil)
+	ids, _ := NewIDs(ctx, filter.selectorHash, nil, nil)
 
 	switch filter.GetType() {
 	// If equal just this leave will be send

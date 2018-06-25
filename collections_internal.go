@@ -161,7 +161,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 				refsBucket := tx.Bucket([]byte("refs"))
 
 				idsAsBytes := indexBucket.Get(indexedValue)
-				ids, parseIDsErr := NewIDs(ctx, idsAsBytes)
+				ids, parseIDsErr := NewIDs(ctx, 0, nil, idsAsBytes)
 				if parseIDsErr != nil {
 					indexErrChan <- parseIDsErr
 					return parseIDsErr
@@ -241,7 +241,7 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString stri
 		for _, index := range c.Indexes {
 			if index.Name == ref.IndexName {
 				// If reference present in this index the reference is cleaned
-				ids, newIDErr := NewIDs(ctx, indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
+				ids, newIDErr := NewIDs(ctx, 0, nil, indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
 				if newIDErr != nil {
 					return newIDErr
 				}
