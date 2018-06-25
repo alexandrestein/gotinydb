@@ -55,13 +55,6 @@ func TestCollection_Query(t *testing.T) {
 		}
 	}
 
-	// go insertObjectsForConcurrent(c, smallDataSet3, doneChan)
-	// if err, ok := <-doneChan; !ok {
-	// } else if err != nil {
-	// 	t.Error(err.Error())
-	// 	return
-	// }
-
 	tests := []struct {
 		name         string
 		args         *Query
@@ -77,12 +70,12 @@ func TestCollection_Query(t *testing.T) {
 			[]*User{users3[0]},
 			false,
 		}, {
-			"Many Equal integer filter limit 5",
+			"Many Equal integer filter limit 5 order by email",
 			NewQuery().SetOrder([]string{"Email"}, true).Get(
 				NewFilter(Equal).SetSelector([]string{"Age"}).
 					CompareTo(uint8(5)),
 			).SetLimit(5),
-			[]*User{users3[38], users3[174], users3[44], users3[55], users3[77]},
+			[]*User{users3[144], users3[35], users3[178], users3[214], users3[224]},
 			false,
 		},
 	}
