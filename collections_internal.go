@@ -101,6 +101,7 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	if !tr.bin {
 		go c.putIntoIndexes(tr.ctx, storeErrChan, indexErrChan, tr)
 	} else {
+
 		close(indexErrChan)
 	}
 
@@ -155,10 +156,26 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 			return err
 		}
 
+		refsBucket := tx.Bucket([]byte("refs"))
+		refsAsBytes := refsBucket.Get(vars.BuildBytesID(writeTransaction.id))
+		refs := NewRefs()
+		if refsAsBytes != nil && len(refsAsBytes) > 0 {
+			if err := json.Unmarshal(refsAsBytes, refs); err != nil {
+				indexErrChan <- err
+				return err
+			}
+		}
+
+		if refs.ObjectID == "" {
+			refs.ObjectID = writeTransaction.id
+		}
+		if refs.ObjectHashID == "" {
+			refs.ObjectHashID = vars.BuildID(writeTransaction.id)
+		}
+
 		for _, index := range c.Indexes {
 			if indexedValue, apply := index.Apply(writeTransaction.contentInterface); apply {
 				indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
-				refsBucket := tx.Bucket([]byte("refs"))
 
 				idsAsBytes := indexBucket.Get(indexedValue)
 				ids, parseIDsErr := NewIDs(ctx, 0, nil, idsAsBytes)
@@ -176,25 +193,14 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 					return err
 				}
 
-				refsAsBytes := refsBucket.Get(vars.BuildBytesID(id.String()))
-				refs := NewRefs()
-				if refsAsBytes == nil && len(refsAsBytes) > 0 {
-					if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-						indexErrChan <- err
-						return err
-					}
-				}
-
-				refs.ObjectID = id.String()
-				refs.ObjectHashID = vars.BuildID(id.String())
 				refs.SetIndexedValue(index.Name, indexedValue)
-
-				putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
-				if putErr != nil {
-					indexErrChan <- err
-					return err
-				}
 			}
+		}
+
+		putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
+		if putErr != nil {
+			indexErrChan <- err
+			return err
 		}
 
 		close(indexErrChan)
