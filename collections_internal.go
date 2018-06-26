@@ -93,8 +93,8 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 // }
 
 func (c *Collection) putTransaction(tr *writeTransaction) {
-	storeDoneChannel := make(chan bool, 0)
-	indexDoneChannel := make(chan bool, 0)
+	storeDoneChannel := make(chan bool, 1)
+	indexDoneChannel := make(chan bool, 1)
 	storeErrChan := make(chan error, 1)
 	indexErrChan := make(chan error, 1)
 
@@ -109,6 +109,8 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	propagateFunc := func(ok bool, err error) {
 		storeDoneChannel <- ok
 		indexDoneChannel <- ok
+		<-storeDoneChannel
+		<-indexDoneChannel
 		tr.responseChan <- err
 		return
 	}
@@ -147,6 +149,7 @@ func (c *Collection) buildStoreID(id string) []byte {
 }
 
 func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
+	defer func() { doneChan <- true }()
 	return c.DB.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
@@ -227,6 +230,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 }
 
 func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
+	defer func() { doneChan <- true }()
 	return c.DB.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
@@ -246,10 +250,8 @@ func (c *Collection) endOfIndexUpdate(ctx context.Context, errChan chan error, d
 		if ok {
 			return nil
 		}
-		fmt.Println("error from outsid of the index")
 		return fmt.Errorf("error from outsid of the index")
 	case <-ctx.Done():
-		fmt.Println("bizare index", ctx.Err())
 		return ctx.Err()
 	}
 }

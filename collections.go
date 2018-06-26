@@ -60,7 +60,8 @@ func (c *Collection) Put(id string, content interface{}) error {
 }
 
 func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
-	return c.Store.Update(func(txn *badger.Txn) error {
+	defer func() { doneChan <- true }()
+	ret := c.Store.Update(func(txn *badger.Txn) error {
 		setErr := txn.Set(c.buildStoreID(writeTransaction.id), writeTransaction.contentAsBytes)
 		if setErr != nil {
 			err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
@@ -73,15 +74,15 @@ func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneC
 		select {
 		case ok := <-doneChan:
 			if ok {
+				txn.Commit(nil)
 				return nil
 			}
-			fmt.Println("error from outsid of the store")
 			return fmt.Errorf("error from outsid of the store")
 		case <-ctx.Done():
-			fmt.Println("bizare store", ctx.Err())
 			return ctx.Err()
 		}
 	})
+	return ret
 }
 
 // Get retrieves the content of the given ID
