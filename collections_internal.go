@@ -203,28 +203,6 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 			return err
 		}
 
-		// 	close(indexErrChan)
-
-		// 	nbTry := 0
-		// waitForEnd:
-		// 	select {
-		// 	case err, ok := <-storeErrChan:
-		// 		if !ok {
-		// 			return nil
-		// 		}
-		// 		if err != nil {
-		// 			return fmt.Errorf("issue on the store: %s", err.Error())
-		// 		}
-		// 		return nil
-		// 	case <-ctx.Done():
-		// 		if writeTransaction.done {
-		// 			if nbTry < 5 {
-		// 				goto waitForEnd
-		// 			}
-		// 			nbTry++
-		// 		}
-		// 		return ctx.Err()
-		// 	}
 		return c.endOfIndexUpdate(ctx, errChan, doneChan, writeTransaction)
 	})
 }

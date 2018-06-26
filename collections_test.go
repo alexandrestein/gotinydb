@@ -10,10 +10,6 @@ import (
 )
 
 func TestCollection_Query(t *testing.T) {
-	// if testing.Short() {
-	// 	t.Skip("skipping test in short mode.")
-	// }
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -78,6 +74,14 @@ func TestCollection_Query(t *testing.T) {
 					CompareTo(uint8(5)),
 			).SetLimits(5, 0),
 			[]*User{users3[144], users3[35], users3[178], users3[214], users3[224]},
+			false,
+		}, {
+			"Greater integer filter limit 5 order by ZipCode",
+			NewQuery().SetOrder([]string{"Address", "ZipCode"}, true).Get(
+				NewFilter(Greater).SetSelector([]string{"Address", "ZipCode"}).EqualWanted().
+					CompareTo(uint(50)),
+			).SetLimits(5, 0),
+			[]*User{users3[130], users3[154], users3[260], users3[264], users3[107]},
 			false,
 		},
 	}

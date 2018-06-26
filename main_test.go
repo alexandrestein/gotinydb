@@ -33,10 +33,6 @@ func init() {
 }
 
 func TestOpenAndClose(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -55,10 +51,6 @@ func TestOpenAndClose(t *testing.T) {
 }
 
 func TestCreateCollection(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -92,10 +84,6 @@ func TestCreateCollection(t *testing.T) {
 }
 
 func TestPutGetAndDeleteObjectCollection(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -151,10 +139,6 @@ func TestPutGetAndDeleteObjectCollection(t *testing.T) {
 }
 
 func TestPutGetAndDeleteBinCollection(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

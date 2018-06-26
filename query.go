@@ -53,6 +53,12 @@ type (
 		IDs []*ID
 	}
 
+	idsForOrderTree struct {
+		value     []byte
+		ids       []*ID
+		indexHash uint64
+	}
+
 	// FilterOperator defines the type of filter to perform
 	FilterOperator string
 
@@ -69,6 +75,39 @@ type (
 		ContentAsBytes []byte
 	}
 )
+
+func newIDsForOrderTree(orderValue []byte, indexHash uint64) *idsForOrderTree {
+	i := new(idsForOrderTree)
+	i.value = orderValue
+	i.ids = []*ID{}
+	i.indexHash = indexHash
+	return i
+}
+
+func (i *idsForOrderTree) addID(id *ID) {
+	i.ids = append(i.ids, id)
+}
+
+func (i *idsForOrderTree) Less(compareToItem btree.Item) bool {
+	compareTo, ok := compareToItem.(*idsForOrderTree)
+	if !ok {
+		return false
+	}
+
+	if len(i.value) == 0 && len(i.ids) > 0 {
+		refs := i.ids[0].getRefsFunc(i.ids[0].ID)
+		for _, ref := range refs.Refs {
+			if i.indexHash == ref.IndexHash {
+				i.value = ref.IndexedValue
+			}
+		}
+	}
+
+	if bytes.Compare(i.value, compareTo.value) < 0 {
+		return true
+	}
+	return false
+}
 
 // NewQuery build a new query object.
 // It also set the default limit.
@@ -137,7 +176,15 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 			nextAsID.less = nextAsID.lessValue
 			nextAsID.selectorHash = orderSelectorHash
 			nextAsID.getRefsFunc = getRefsFunc
-			ret.ReplaceOrInsert(nextAsID)
+
+			ids := newIDsForOrderTree(nextAsID.values[orderSelectorHash], orderSelectorHash)
+			idsFromTree := ret.Get(ids)
+			if idsFromTree == nil {
+				ids.addID(nextAsID)
+				ret.ReplaceOrInsert(ids)
+				return true
+			}
+			idsFromTree.(*idsForOrderTree).addID(nextAsID)
 		}
 		return true
 	}, ret
@@ -151,11 +198,18 @@ func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *IDs
 			return false
 		}
 
-		nextAsID, ok := next.(*ID)
+		nextAsIDs, ok := next.(*idsForOrderTree)
 		if !ok {
 			return false
 		}
-		ret.IDs = append(ret.IDs, nextAsID)
+
+		for _, id := range nextAsIDs.ids {
+			ret.IDs = append(ret.IDs, id)
+			if len(ret.IDs) >= maxResponse {
+				return false
+			}
+		}
+
 		return true
 	}, ret
 }

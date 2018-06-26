@@ -82,6 +82,9 @@ func (d *DB) SetConfig(conf *Conf) error {
 
 	for _, col := range d.Collections {
 		col.Conf = conf
+		for _, index := range col.Indexes {
+			index.Conf = conf
+		}
 	}
 	return nil
 }

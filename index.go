@@ -18,6 +18,8 @@ type (
 		selectorHash uint64
 		Type         vars.IndexType
 
+		Conf *Conf
+
 		getIDsFunc      func(ctx context.Context, indexedValue []byte) (*IDs, error)
 		getRangeIDsFunc func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
 		getTx           func(update bool) (*bolt.Tx, error)
@@ -145,7 +147,7 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 			greater = false
 		}
 
-		tmpIDs, getIdsErr := i.getRangeIDsFunc(ctx, filter.ValueToCompareAsBytes(0), filter.equal, greater)
+		tmpIDs, getIdsErr := i.getRangeIDsFunc(ctx, filter.values[0].Bytes(), filter.equal, greater)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
 			return

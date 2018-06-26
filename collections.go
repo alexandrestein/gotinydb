@@ -168,6 +168,7 @@ func (c *Collection) Delete(id string) error {
 
 // SetIndex enable the collection to index field or sub field
 func (c *Collection) SetIndex(i *Index) error {
+	i.Conf = c.Conf
 	c.Indexes = append(c.Indexes, i)
 	if err := c.DB.Update(func(tx *bolt.Tx) error {
 		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
@@ -196,7 +197,7 @@ func (c *Collection) SetIndex(i *Index) error {
 			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 			// Initiate the cursor (iterator)
 			iter := bucket.Cursor()
-			// Go to the requested position
+			// Go to the requested position and get the values of it
 			firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
 			firstIDsValue, unmarshalIDsErr := NewIDs(ctx, i.selectorHash, indexedValue, firstIDsAsByte)
 			if unmarshalIDsErr != nil {
@@ -227,7 +228,14 @@ func (c *Collection) SetIndex(i *Index) error {
 					return unmarshalIDsErr
 				}
 				allIDs.AddIDs(ids)
+
+				// Clean if to big
+				if len(allIDs.IDs) > i.Conf.InternalQueryLimit {
+					allIDs.IDs = allIDs.IDs[:i.Conf.InternalQueryLimit]
+					break
+				}
 			}
+
 			return nil
 		}); err != nil {
 			return nil, err
