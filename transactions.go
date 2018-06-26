@@ -10,7 +10,6 @@ type (
 		responseChan     chan error
 		ctx              context.Context
 		bin              bool
-		done             bool
 	}
 )
 

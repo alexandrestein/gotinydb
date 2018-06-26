@@ -68,6 +68,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 
 	c.ID = colID
 	c.Name = colName
+	c.ctx = d.ctx
 
 	db, openDBErr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
 	if openDBErr != nil {

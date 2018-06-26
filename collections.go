@@ -32,7 +32,7 @@ type (
 
 // Put add the given content to database with the given ID
 func (c *Collection) Put(id string, content interface{}) error {
-	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
+	ctx, cancel := context.WithTimeout(c.ctx, c.transactionTimeout)
 	defer cancel()
 
 	tr := newTransaction(id)
@@ -56,47 +56,31 @@ func (c *Collection) Put(id string, content interface{}) error {
 	// Run the insertion
 	c.writeTransactionChan <- tr
 	// And wait for the end of the insertion
-	err := <-tr.responseChan
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return <-tr.responseChan
 }
 
-func (c *Collection) putIntoStore(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
+func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	return c.Store.Update(func(txn *badger.Txn) error {
-		err := txn.Set(c.buildStoreID(writeTransaction.id), writeTransaction.contentAsBytes)
-		if err != nil {
-			err = fmt.Errorf("error inserting %q: %s", writeTransaction.id, err.Error())
-			storeErrChan <- err
+		setErr := txn.Set(c.buildStoreID(writeTransaction.id), writeTransaction.contentAsBytes)
+		if setErr != nil {
+			err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
+			errChan <- err
 			return err
 		}
 
-		close(storeErrChan)
+		errChan <- nil
 
-		nbTry := 0
-	waitForEnd:
-		// Wait for the index process to end.
-		// If any error the actions are rollbacked
 		select {
-		case err, ok := <-indexErrChan:
-			if !ok {
+		case ok := <-doneChan:
+			if ok {
 				return nil
 			}
-			if err != nil {
-				return fmt.Errorf("issue on the index: %s", err.Error())
-			}
+			fmt.Println("error from outsid of the store")
+			return fmt.Errorf("error from outsid of the store")
 		case <-ctx.Done():
-			if writeTransaction.done {
-				if nbTry < 5 {
-					goto waitForEnd
-				}
-				nbTry++
-			}
+			fmt.Println("bizare store", ctx.Err())
 			return ctx.Err()
 		}
-		return nil
 	})
 }
 

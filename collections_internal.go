@@ -93,52 +93,50 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 // }
 
 func (c *Collection) putTransaction(tr *writeTransaction) {
-	storeErrChan := make(chan error, 0)
-	indexErrChan := make(chan error, 0)
+	storeDoneChannel := make(chan bool, 0)
+	indexDoneChannel := make(chan bool, 0)
+	storeErrChan := make(chan error, 1)
+	indexErrChan := make(chan error, 1)
 
-	go c.putIntoStore(tr.ctx, storeErrChan, indexErrChan, tr)
+	go c.putIntoStore(tr.ctx, storeErrChan, storeDoneChannel, tr)
 
 	if !tr.bin {
-		go c.putIntoIndexes(tr.ctx, storeErrChan, indexErrChan, tr)
+		go c.putIntoIndexes(tr.ctx, indexErrChan, indexDoneChannel, tr)
 	} else {
-		go c.onlyCleanRefs(tr.ctx, storeErrChan, indexErrChan, tr)
+		go c.onlyCleanRefs(tr.ctx, indexErrChan, indexDoneChannel, tr)
 	}
 
-	storeErrChanClosed, indexErrChanClosed := false, false
-	for {
-		select {
-		case err, ok := <-storeErrChan:
-			if !ok {
-				storeErrChan = nil
-				storeErrChanClosed = true
+	propagateFunc := func(ok bool, err error) {
+		storeDoneChannel <- ok
+		indexDoneChannel <- ok
+		tr.responseChan <- err
+		return
+	}
+
+waitNext:
+	select {
+	case err := <-storeErrChan:
+		if err == nil {
+			storeErrChan = nil
+			if storeErrChan == nil && indexErrChan == nil {
+				propagateFunc(true, err)
 				break
 			}
-
-			if err != nil {
-				tr.responseChan <- err
-				return
-			}
-		case err, ok := <-indexErrChan:
-			if !ok {
-				indexErrChan = nil
-				indexErrChanClosed = true
+			goto waitNext
+		}
+		propagateFunc(false, err)
+	case err := <-indexErrChan:
+		if err == nil {
+			indexErrChan = nil
+			if storeErrChan == nil && indexErrChan == nil {
+				propagateFunc(true, err)
 				break
 			}
-
-			if err != nil {
-				tr.responseChan <- err
-				return
-			}
-		case <-tr.ctx.Done():
-			tr.responseChan <- tr.ctx.Err()
-			return
+			goto waitNext
 		}
-
-		if storeErrChanClosed && indexErrChanClosed {
-			tr.done = true
-			tr.responseChan <- nil
-			return
-		}
+		propagateFunc(false, err)
+	case <-tr.ctx.Done():
+		propagateFunc(false, tr.ctx.Err())
 	}
 }
 
@@ -148,7 +146,7 @@ func (c *Collection) buildStoreID(id string) []byte {
 	return []byte(fmt.Sprintf("%s_%s", c.ID[:4], objectID))
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
+func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
@@ -160,7 +158,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 		refs := NewRefs()
 		if refsAsBytes != nil && len(refsAsBytes) > 0 {
 			if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-				indexErrChan <- err
+				errChan <- err
 				return err
 			}
 		}
@@ -179,7 +177,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 				idsAsBytes := indexBucket.Get(indexedValue)
 				ids, parseIDsErr := NewIDs(ctx, 0, nil, idsAsBytes)
 				if parseIDsErr != nil {
-					indexErrChan <- parseIDsErr
+					errChan <- parseIDsErr
 					return parseIDsErr
 				}
 
@@ -188,7 +186,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 				idsAsBytes = ids.MustMarshal()
 
 				if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
-					indexErrChan <- err
+					errChan <- err
 					return err
 				}
 
@@ -198,7 +196,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 
 		putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
 		if putErr != nil {
-			indexErrChan <- err
+			errChan <- err
 			return err
 		}
 
@@ -224,44 +222,34 @@ func (c *Collection) putIntoIndexes(ctx context.Context, storeErrChan, indexErrC
 		// 		}
 		// 		return ctx.Err()
 		// 	}
-		return c.endOfIndexUpdate(ctx, storeErrChan, indexErrChan, writeTransaction)
+		return c.endOfIndexUpdate(ctx, errChan, doneChan, writeTransaction)
 	})
 }
 
-func (c *Collection) onlyCleanRefs(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
+func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
-			indexErrChan <- err
+			errChan <- err
 			return err
 		}
 
-		return c.endOfIndexUpdate(ctx, storeErrChan, indexErrChan, writeTransaction)
+		return c.endOfIndexUpdate(ctx, errChan, doneChan, writeTransaction)
 	})
 }
 
-func (c *Collection) endOfIndexUpdate(ctx context.Context, storeErrChan, indexErrChan chan error, writeTransaction *writeTransaction) error {
+func (c *Collection) endOfIndexUpdate(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
+	errChan <- nil
 
-	close(indexErrChan)
-
-	nbTry := 0
-waitForEnd:
 	select {
-	case err, ok := <-storeErrChan:
-		if !ok {
+	case ok := <-doneChan:
+		if ok {
 			return nil
 		}
-		if err != nil {
-			return fmt.Errorf("issue on the store: %s", err.Error())
-		}
-		return nil
+		fmt.Println("error from outsid of the index")
+		return fmt.Errorf("error from outsid of the index")
 	case <-ctx.Done():
-		if writeTransaction.done {
-			if nbTry < 5 {
-				goto waitForEnd
-			}
-			nbTry++
-		}
+		fmt.Println("bizare index", ctx.Err())
 		return ctx.Err()
 	}
 }
