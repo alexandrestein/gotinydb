@@ -2,19 +2,20 @@
 
 [![GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb?status.svg)](https://godoc.org/github.com/alexandrestein/gotinydb) [![Build Status](https://travis-ci.org/alexandrestein/gotinydb.svg?branch=master)](https://travis-ci.org/alexandrestein/gotinydb) [![codecov](https://codecov.io/gh/alexandreStein/GoTinyDB/branch/master/graph/badge.svg)](https://codecov.io/gh/alexandreStein/GoTinyDB) [![Go Report Card](https://goreportcard.com/badge/github.com/alexandrestein/gotinydb)](https://goreportcard.com/report/github.com/alexandrestein/gotinydb) [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
-The goal is to have a farly simple database wich is light and don't needs to fit in RAM. It supports indexing for most of the basic Golang types.
+The goal is to have a fairly simple database which is light and don't needs to fit in RAM. It supports indexing for most of the basic Golang types.
 
-<!-- ## Installing
+## Installing
 
 ```bash
 go get -u github.com/alexandrestein/gotinydb
 ```
 
-## Getting Started
+## Getting started
 
-The package is supposed to be used inside your sofware and at this point it is not supose to be a "real" database service.
+The package is supposed to be used inside your software and at this point it is not suppose to be a "real" database service.
 
-### Open database:
+### Open database
+
 ```golang
 db, initErr := New(internalTesting.Path)
 if initErr != nil {
@@ -24,30 +25,36 @@ if initErr != nil {
 defer db.Close()
 ```
 
-### Open collection:
+### Open collection
+
 ```golang
-col, colErr := db.Use("colectionName")
+col, colErr := db.Use("collectionName")
 if colErr != nil {
-  log.Fatal("openning test collection: %s", colErr.Error())
+  log.Fatal("opening test collection: %s", colErr.Error())
   return
 }
 ```
 
-### Setup an index for future queries:
+### Setup an index for future queries
+
 ```golang
 // If you have user object like this:
 // {UserName: string, Address: {Street: string, Num: int, City: string, ZIP: int}}
 // and you want to index the username and the ZIP code.
-if err := col.SetIndex(UserNameIndexName, utils.StringComparatorType, []string{"UserName"}); err != nil {
+index := NewIndex("userName", []string{"UserName"},  vars.StringIndex)
+if err := c.SetIndex(index); err != nil {
   log.Fatal(err)
 }
-if err := col.SetIndex(ZipIndexName, utils.IntComparatorType, []string{"Address","ZIP"}); err != nil {
+index := NewIndex("zip", []string{"Address","ZIP"},  vars.IntIndex)
+if err := c.SetIndex(index); err != nil {
   log.Fatal(err)
 }
 ```
+
 There is many types of index. Take a look at the [index documentation](https://godoc.org/github.com/alexandrestein/gotinydb/index).
 
-### Put some data in the collection:
+### Put some data in the collection
+
 ```golang
 putErr := col.Put(objectID, objectOrBytes)
 if putErr != nil {
@@ -55,11 +62,13 @@ if putErr != nil {
   return
 }
 ```
+
 The content can be an object or a stream of bytes. If it's a stream it needs to
 have the form of `[]byte{}`.
 This will adds and updates existing values.
 
-### Get some data from the collection directly by it's the ID:
+### Get some data from the collection directly by it's the ID
+
 ```golang
 getErr := col.Get(objectID, receiver)
 if getErr != nil {
@@ -67,31 +76,42 @@ if getErr != nil {
   return
 }
 ```
-The receiver can be an object ponter or a stream of bytes. If it's a stream it needs to
+
+The receiver can be an object pointer or a stream of bytes. If it's a stream it needs to
 have the form of `*bytes.Buffer`.
 
-### Get objects by query:
+### Get objects by query
+
 ```golang
-// Get IDs of object with ZIP code greater than 5000 less than 6000 and limited
-// to 100 responses starting with elements with ZIP code are the closest from 5000
-selector := []string{"Address","ZIP"}
-limit := 100
-q := NewQuery().SetLimit(limit)
-// This defines the elements you want to retreive
-wantAction := NewAction(Greater).SetSelector(selector).CompareTo(5000)
-// This will removes ids from the list if match
-doesNotWantAction := NewAction(Greater).SetSelector(selector).CompareTo(6000)
+// Get IDs of object with ZIP code greater than 50 limited to 5 responses ordered via zip code
+q := NewQuery().SetOrder([]string{"Address", "ZipCode"}, true).Get(
+  NewFilter(Greater).SetSelector([]string{"Address", "ZipCode"}).EqualWanted().
+    CompareTo(uint(50)),
+).SetLimits(5, 0)
 
-// Actualy do the query and get the IDs
-ids := col.Query(q.Get(wantAction).Keep(doesNotWantAction))
-
-// The first id will be 5000 if present and the rest will be orderd.
-for i, id := range ids {
-  fmt.Println(id)
+// Do the query
+response, err := c.Query(q)
+if err != nil {
+  log.Fatal(err)
 }
+
+// Get the results
+users := make([]*User, response.Len())
+for i, _, v := gotResponse.First(); i >= 0; i, _, v = gotResponse.Next() {
+  user := new(User)
+  err := json.Unmarshal(v, user)
+  if err != nil {
+    t.Error(err)
+    return
+  }
+
+  users[i] = user
+}
+
 ```
+
 This returns only a list of IDs. It's up to the caller to get the values he want
-with the Get function. -->
+with the Get function.
 
 ## Built With
 
@@ -101,7 +121,9 @@ with the Get function. -->
 
 ## To Do
 
-* everything...
+* Background indexing
+* Collection and Index deletion
+* Add some tests
 
 ## Contributing
 
@@ -129,5 +151,5 @@ This project is licensed under the "Apache License, Version 2.0" - see the [LICE
 
 ## Acknowledgments
 
-* I was looking for pure `golang` database for reasonable (not to big) data size. I checked [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match wich is not what I was looking for.
-* B-Tree is a good way to have ordered elements and is extramly scalable.
+* I was looking for pure `golang` database for reasonable (not to big) data size. I checked [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match which was not what I was looking for.
+* B-Tree is a good way to have ordered elements and is extremely scalable.
