@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -19,12 +18,12 @@ type (
 		Name, ID string
 		Indexes  []*Index
 
+		Conf *Conf
+
 		DB    *bolt.DB
 		Store *badger.DB
 
 		writeTransactionChan chan *writeTransaction
-
-		transactionTimeout time.Duration
 
 		ctx context.Context
 	}
@@ -32,7 +31,7 @@ type (
 
 // Put add the given content to database with the given ID
 func (c *Collection) Put(id string, content interface{}) error {
-	ctx, cancel := context.WithTimeout(c.ctx, c.transactionTimeout)
+	ctx, cancel := context.WithTimeout(c.ctx, c.Conf.TransactionTimeOut)
 	defer cancel()
 
 	tr := newTransaction(id)
@@ -91,7 +90,7 @@ func (c *Collection) Get(id string, pointer interface{}) ([]byte, error) {
 		return nil, vars.ErrEmptyID
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.Conf.TransactionTimeOut)
 	defer cancel()
 
 	contentAsBytes := []byte{}
@@ -151,7 +150,7 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 
 // Delete removes the corresponding object if the given ID
 func (c *Collection) Delete(id string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.Conf.TransactionTimeOut)
 	defer cancel()
 
 	if id == "" {
@@ -309,8 +308,15 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		return
 	}
 
+	if q.internalLimit > c.Conf.InternalQueryLimit {
+		q.internalLimit = c.Conf.InternalQueryLimit
+	}
+	if q.timeout > c.Conf.QueryTimeOut {
+		q.timeout = c.Conf.QueryTimeOut
+	}
+
 	// Set a timout
-	ctx, cancel := context.WithTimeout(context.Background(), c.transactionTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), q.timeout)
 	defer cancel()
 
 	// Init the destination

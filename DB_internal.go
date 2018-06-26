@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -56,7 +55,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c.ID = colID
 	c.Name = colName
 
-	c.transactionTimeout = time.Second * 5
+	c.Conf = d.Conf
 
 	c.initWriteTransactionChan(d.ctx)
 

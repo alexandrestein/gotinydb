@@ -26,6 +26,8 @@ func TestCollection_Query(t *testing.T) {
 	}
 	defer db.Close()
 
+	db.SetConfig(&Conf{DefaultTransactionTimeOut * 10, DefaultQueryTimeOut * 10, DefaultInternalQueryLimit})
+
 	c, userDBErr := db.Use("testCol")
 	if userDBErr != nil {
 		t.Error(userDBErr)
@@ -63,7 +65,7 @@ func TestCollection_Query(t *testing.T) {
 	}{
 		{
 			"One Equal string filter limit 10",
-			NewQuery().SetLimit(10).Get(
+			NewQuery().SetLimits(10, 0).Get(
 				NewFilter(Equal).SetSelector([]string{"Email"}).
 					CompareTo("gödel-76@rudolph.com"),
 			),
@@ -74,7 +76,7 @@ func TestCollection_Query(t *testing.T) {
 			NewQuery().SetOrder([]string{"Email"}, true).Get(
 				NewFilter(Equal).SetSelector([]string{"Age"}).
 					CompareTo(uint8(5)),
-			).SetLimit(5),
+			).SetLimits(5, 0),
 			[]*User{users3[144], users3[35], users3[178], users3[214], users3[224]},
 			false,
 		},

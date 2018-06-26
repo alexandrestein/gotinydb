@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/google/btree"
@@ -28,6 +29,7 @@ type (
 
 		limit         int
 		internalLimit int
+		timeout       time.Duration
 	}
 
 	// ID is a type to order IDs during query to be compatible with the tree query
@@ -69,18 +71,35 @@ type (
 )
 
 // NewQuery build a new query object.
-// It also set the default limit to 100.
+// It also set the default limit.
 func NewQuery() *Query {
-	defaultLimit := 100
 	return &Query{
-		limit:         defaultLimit,
-		internalLimit: defaultLimit * 10,
+		limit:         DefaultQueryLimit,
+		internalLimit: DefaultQueryLimit * 10,
+		timeout:       DefaultQueryTimeOut,
 	}
 }
 
-// SetLimit defines the configurable limit of IDs.
-func (q *Query) SetLimit(l int) *Query {
-	q.limit = l
+// SetLimits defines the configurable limit of IDs.
+// The first paramiters is the limit of the result.
+// The second define the internal limit of the query.
+// It can be omitted, in this case the internal limit is 10 times the responses limit.
+// If you have many many results in the intermediate results this can helps
+// you to have more room during query.
+// Note that internal limit can't go higher that the database is configured for.
+func (q *Query) SetLimits(resultsLimit, internalLimit int) *Query {
+	q.limit = resultsLimit
+	if internalLimit == 0 {
+		internalLimit = resultsLimit * 10
+	}
+	q.internalLimit = internalLimit
+	return q
+}
+
+// SetTimeout define the limit in time of the given query.
+// It will be canceled after the duration is passed.
+func (q *Query) SetTimeout(timeout time.Duration) *Query {
+	q.timeout = timeout
 	return q
 }
 
