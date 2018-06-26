@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestCollection_Query(t *testing.T) {
@@ -82,6 +83,14 @@ func TestCollection_Query(t *testing.T) {
 					CompareTo(uint(50)),
 			).SetLimits(5, 0),
 			[]*User{users3[130], users3[154], users3[260], users3[264], users3[107]},
+			false,
+		}, {
+			"Less time filter limit 5 order by time",
+			NewQuery().SetOrder([]string{"LastLogin"}, false).Get(
+				NewFilter(Less).SetSelector([]string{"LastLogin"}).
+					CompareTo(time.Now()),
+			).SetLimits(5, 0),
+			[]*User{users3[10], users3[129], users3[132], users3[108], users3[120]},
 			false,
 		},
 	}
