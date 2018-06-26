@@ -23,8 +23,6 @@ func TestCollection_Query(t *testing.T) {
 	}
 	defer db.Close()
 
-	db.SetConfig(&Conf{DefaultTransactionTimeOut * 10, DefaultQueryTimeOut * 10, DefaultInternalQueryLimit})
-
 	c, userDBErr := db.Use("testCol")
 	if userDBErr != nil {
 		t.Error(userDBErr)
@@ -35,6 +33,8 @@ func TestCollection_Query(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+	db.SetConfig(&Conf{DefaultTransactionTimeOut * 100, DefaultQueryTimeOut * 100, DefaultInternalQueryLimit})
 
 	// Get deferent versions of dataset
 	users1 := unmarshalDataSet(dataSet1)

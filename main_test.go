@@ -2,7 +2,6 @@ package gotinydb
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha1"
 	"fmt"
 	"os"
@@ -84,61 +83,19 @@ func TestCreateCollection(t *testing.T) {
 }
 
 func TestPutGetAndDeleteObjectCollection(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(ctx, testPath)
-	if openDBErr != nil {
-		t.Error(openDBErr)
-		return
-	}
-	defer db.Close()
-	c, userErr := db.Use("testCol")
-	if userErr != nil {
-		t.Error(userErr)
-		return
-	}
-
 	testUser := struct {
 		Login, Pass string
 	}{"User 1", "super password"}
-	if err := c.Put("testID", &testUser); err != nil {
-		t.Error(err)
-		return
-	}
 
-	retrievedTestUser := struct {
-		Login, Pass string
-	}{}
-	if _, getErr := c.Get("testID", &retrievedTestUser); getErr != nil {
-		t.Error(getErr)
-		return
-	}
-
-	if !reflect.DeepEqual(testUser, retrievedTestUser) {
-		t.Error("given object and retrieve on are not equal")
-		return
-	}
-
-	if delErr := c.Delete("testID"); delErr != nil {
-		t.Error(delErr)
-		return
-	}
-
-	retrievedTestUser = struct {
-		Login, Pass string
-	}{}
-
-	if _, getErr := c.Get("testID", &retrievedTestUser); getErr == nil {
-		t.Errorf("No error but the ID has been deleted")
-	} else if getErr != vars.ErrNotFound {
-		t.Error(getErr)
-	}
+	testPutGetAndDeleteCollection(t, "id", testUser, false)
 }
 
 func TestPutGetAndDeleteBinCollection(t *testing.T) {
+	content := make([]byte, 1000)
+	testPutGetAndDeleteCollection(t, "id", content, true)
+}
+
+func testPutGetAndDeleteCollection(t *testing.T, userID string, user interface{}, bin bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -150,42 +107,95 @@ func TestPutGetAndDeleteBinCollection(t *testing.T) {
 		return
 	}
 	defer db.Close()
+
 	c, userErr := db.Use("testCol")
 	if userErr != nil {
 		t.Error(userErr)
 		return
 	}
 
-	content := make([]byte, 1000)
-	if _, readRandErr := rand.Read(content); readRandErr != nil {
-		t.Error(readRandErr)
-		return
-	}
-
-	if err := c.Put("testID", content); err != nil {
+	if err := c.Put(userID, user); err != nil {
 		t.Error(err)
 		return
 	}
 
-	retrieveContent, getErr := c.Get("testID", nil)
-	if getErr != nil {
-		t.Error(getErr)
+	if !bin {
+		retrievedTestUser := struct {
+			Login, Pass string
+		}{}
+		if _, getErr := c.Get(userID, &retrievedTestUser); getErr != nil {
+			t.Error(getErr)
+			return
+		}
+		if !reflect.DeepEqual(user, retrievedTestUser) {
+			t.Error("given object and retrieve on are not equal")
+			return
+		}
+	} else {
+		retrieveContent, getErr := c.Get(userID, nil)
+		if getErr != nil {
+			t.Error(getErr)
+			return
+		}
+		if !reflect.DeepEqual(retrieveContent, user) {
+			t.Error("given object and retrieve on are not equal")
+			return
+		}
+	}
+
+	if err := db.Close(); err != nil {
+		t.Error(err)
+		return
+	}
+	cancel()
+
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+
+	db, openDBErr = Open(ctx, testPath)
+	if openDBErr != nil {
+		t.Error(openDBErr)
+		return
+	}
+	defer db.Close()
+
+	c, userErr = db.Use("testCol")
+	if userErr != nil {
+		t.Error(userErr)
 		return
 	}
 
-	if !reflect.DeepEqual(retrieveContent, content) {
-		t.Error("given object and retrieve on are not equal")
-		return
+	if !bin {
+		retrievedTestUser := struct {
+			Login, Pass string
+		}{}
+		if _, getErr := c.Get(userID, &retrievedTestUser); getErr != nil {
+			t.Error(getErr)
+			return
+		}
+		if !reflect.DeepEqual(user, retrievedTestUser) {
+			t.Error("given object and retrieve on are not equal")
+			return
+		}
+	} else {
+		retrieveContent, getErr := c.Get(userID, nil)
+		if getErr != nil {
+			t.Error(getErr)
+			return
+		}
+		if !reflect.DeepEqual(retrieveContent, user) {
+			t.Error("given object and retrieve on are not equal")
+			return
+		}
 	}
 
-	if delErr := c.Delete("testID"); delErr != nil {
+	if delErr := c.Delete(userID); delErr != nil {
 		t.Error(delErr)
 		return
 	}
 
-	retrieveContent, getErr = c.Get("testID", nil)
-	if getErr != vars.ErrNotFound {
-		t.Error(getErr)
+	if _, getErr := c.Get(userID, nil); getErr != vars.ErrNotFound {
+		t.Errorf("No error but the ID has been deleted")
 		return
 	}
 }
