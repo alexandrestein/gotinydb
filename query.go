@@ -171,10 +171,20 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 		if !ok {
 			return false
 		}
-		// Check that all occurrences have been saved
+		// Check that there is as must occurrences that the number of filters
 		if nextAsID.Occurrences(nbFilters) {
 			nextAsID.selectorHash = orderSelectorHash
 			nextAsID.getRefsFunc = getRefsFunc
+
+			if nextAsID.values[orderSelectorHash] == nil {
+				refs := getRefsFunc(nextAsID.ID)
+				for _, ref := range refs.Refs {
+					if ref.IndexHash == orderSelectorHash {
+						nextAsID.values[orderSelectorHash] = ref.IndexedValue
+						break
+					}
+				}
+			}
 
 			ids := newIDsForOrderTree(nextAsID.values[orderSelectorHash], orderSelectorHash)
 			idsFromTree := ret.Get(ids)

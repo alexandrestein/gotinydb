@@ -44,16 +44,7 @@ func queryFillUp(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*Use
 			t.Fatal(err)
 			return nil, nil
 		}
-		// Inserts and updates user 2 times
-		// go updateUser(c, users1[i], users2[i], users[i], doneChan)
 	}
-	// for i := 0; i < len(users); i++ {
-	// 	err := <-doneChan
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 		return nil, nil
-	// 	}
-	// }
 	return db, users
 }
 
@@ -128,6 +119,22 @@ func TestCollection_Query(t *testing.T) {
 			).SetLimits(5, 0),
 			[]*User{users3[10], users3[129], users3[132], users3[108], users3[120]},
 			false,
+		}, {
+			"Between int filter limit 10 order by age",
+			NewQuery().SetOrder([]string{"Age"}, true).Get(
+				NewFilter(Between).SetSelector([]string{"Address", "ZipCode"}).
+					CompareTo(uint(65)).CompareTo(uint(68)),
+			).SetLimits(10, 0),
+			[]*User{users3[145], users3[203], users3[72], users3[61], users3[92], users3[281]},
+			false,
+		}, {
+			"Between int filter limit 10 order by email",
+			NewQuery().SetOrder([]string{"Balance"}, false).Get(
+				NewFilter(Between).SetSelector([]string{"Balance"}).EqualWanted().
+					CompareTo(-104466272306065862).CompareTo(997373309132031595),
+			).SetLimits(10000, 0),
+			[]*User{users3[148], users3[102], users3[137], users3[288], users3[246], users3[21], users3[129], users3[293], users3[187], users3[73], users3[178], users3[175], users3[169], users3[88], users3[7], users3[44], users3[260], users3[115], users3[257], users3[281], users3[49], users3[19], users3[104], users3[82], users3[224], users3[57], users3[233], users3[125], users3[220], users3[62], users3[231]},
+			false,
 		},
 	}
 
@@ -140,7 +147,16 @@ func TestCollection_Query(t *testing.T) {
 			}
 
 			if gotResponse.Len() != len(tt.wantResponse) {
-				t.Errorf("returned %d objects but the expected %d\n%v", gotResponse.Len(), len(tt.wantResponse), gotResponse.List)
+				had := ""
+				for _, responseQuery := range gotResponse.List {
+					had = fmt.Sprintf("%s\n%s", had, string(responseQuery.ContentAsBytes))
+				}
+				wanted := ""
+				for _, wantedValue := range tt.wantResponse {
+					wantedValueAsBytes, _ := json.Marshal(wantedValue)
+					wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
+				}
+				t.Errorf("returned %d objects but the expected %d\nHad%s\nwant%s\n", gotResponse.Len(), len(tt.wantResponse), had, wanted)
 				return
 			}
 

@@ -90,7 +90,6 @@ func (c *Collection) delIndexesIntoConfigBucket(indexName string) error {
 		indexes := []*Index{}
 		err := json.Unmarshal(indexesAsBytes, &indexes)
 		if err != nil {
-			fmt.Println("errwsdv", err)
 			return err
 		}
 

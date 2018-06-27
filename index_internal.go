@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"bytes"
 	"context"
 	"reflect"
 )
@@ -21,7 +22,7 @@ func (i *Index) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids
 	return ids, nil
 }
 
-func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (allIDs *IDs, err error) {
+func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit []byte, keepEqual, increasing bool) (allIDs *IDs, err error) {
 	tx, getTxErr := i.getTx(false)
 	if getTxErr != nil {
 		return nil, getTxErr
@@ -60,6 +61,19 @@ func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue []byte,
 		if unmarshalIDsErr != nil {
 			return nil, unmarshalIDsErr
 		}
+
+		if limit != nil {
+			if keepEqual {
+				if bytes.Compare(limit, indexedValue) < 0 {
+					break
+				}
+			} else {
+				if bytes.Compare(limit, indexedValue) <= 0 {
+					break
+				}
+			}
+		}
+
 		allIDs.AddIDs(ids)
 
 		// Clean if to big

@@ -147,7 +147,16 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 			greater = false
 		}
 
-		tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.equal, greater)
+		tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), nil, filter.equal, greater)
+		if getIdsErr != nil {
+			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
+			return
+		}
+
+		ids.AddIDs(tmpIDs)
+
+	case Between:
+		tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.values[1].Bytes(), filter.equal, true)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
 			return
