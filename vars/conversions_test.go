@@ -61,7 +61,9 @@ func TestIntConversion(t *testing.T) {
 		t.Error(err)
 		return
 	}
+}
 
+func TestIntOrdering(t *testing.T) {
 	neg, _ := IntToBytes(-1)
 	null, _ := IntToBytes(0)
 	pos, _ := IntToBytes(1)

@@ -8,7 +8,6 @@ import (
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
-	"github.com/google/btree"
 )
 
 type (
@@ -225,105 +224,12 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	ctx, cancel := context.WithTimeout(context.Background(), q.timeout)
 	defer cancel()
 
-	// Init the destination
-	tree := btree.New(10)
-
-	// Initialize the channel which will confirm that all queries are done
-	finishedChan := make(chan *IDs, 16)
-	defer close(finishedChan)
-
-	// This count the number of running index query for this actual collection query
-	nbToDo := 0
-
-	// Goes through all index of the collection to define which index
-	// will take care of the given filter
-	for _, index := range c.Indexes {
-		for _, filter := range q.filters {
-			if index.DoesFilterApplyToIndex(filter) {
-				go index.Query(ctx, filter, finishedChan)
-				nbToDo++
-			}
-		}
-	}
-
-	if nbToDo == 0 {
-		return nil, fmt.Errorf("no index found")
-	}
-
-	// Loop every response from the index query
-	for {
-		select {
-		case tmpIDs := <-finishedChan:
-			if tmpIDs != nil {
-				// Add IDs into the response tree
-				for _, id := range tmpIDs.IDs {
-					// Try to get the id from the tree
-					fromTree := tree.Get(id)
-					if fromTree == nil {
-						// If not in the tree add it
-						id.Increment()
-						tree.ReplaceOrInsert(id)
-						continue
-					}
-					// if allready increment the counter
-					fromTree.(*ID).Increment()
-				}
-			}
-			// Save the fact that one more query has been respond
-			nbToDo--
-			// If nomore query to wait, quit the loop
-			if nbToDo <= 0 {
-				goto queriesDone
-			}
-		case <-ctx.Done():
-			return nil, vars.ErrTimeOut
-		}
-	}
-
-queriesDone:
-
-	getRefFunc := func(id string) (refs *Refs) {
-		c.DB.View(func(tx *bolt.Tx) error {
-			refs, _ = c.getRefs(tx, id)
-			return nil
-		})
-		return refs
-	}
-
-	// iterate the response tree to get only IDs which has been found in every index queries
-	occurrenceFunc, retTree := occurrenceTreeIterator(len(q.filters), q.internalLimit, q.order, getRefFunc)
-	tree.Ascend(occurrenceFunc)
-
-	// get the ids in the order and with the given limit
-	orderFunc, ret := orderTreeIterator(q.limit)
-	if q.ascendent {
-		retTree.Ascend(orderFunc)
-	} else {
-		retTree.Descend(orderFunc)
-	}
-
-	// Build the response for the caller
-	response = NewResponseQuery(len(ret.IDs))
-	response.query = q
-	// Get every content of the query from the database
-	responsesAsBytes, err := c.get(ctx, ret.Strings()...)
+	tree, err := c.queryGetIDs(ctx, q)
 	if err != nil {
 		return nil, err
 	}
 
-	// Range the response values as slice of bytes
-	for i := range responsesAsBytes {
-		if i >= q.limit {
-			break
-		}
-
-		response.List[i] = &ResponseQueryElem{
-			ID:             ret.IDs[i],
-			ContentAsBytes: responsesAsBytes[i],
-		}
-	}
-
-	return
+	return c.queryCleanAndOrder(ctx, q, tree)
 }
 
 func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
