@@ -49,6 +49,65 @@ func (c *Collection) init(name string) error {
 	})
 }
 
+func (c *Collection) getIndexesFromConfigBucket() []*Index {
+	indexes := []*Index{}
+	c.DB.View(func(tx *bolt.Tx) error {
+		indexesAsBytes := tx.Bucket([]byte("config")).Get([]byte("indexesList"))
+		json.Unmarshal(indexesAsBytes, &indexes)
+
+		return nil
+	})
+	return indexes
+}
+
+func (c *Collection) setIndexesIntoConfigBucket(index *Index) error {
+	return c.DB.Update(func(tx *bolt.Tx) error {
+		confBucket := tx.Bucket([]byte("config"))
+		indexesAsBytes := confBucket.Get([]byte("indexesList"))
+		indexes := []*Index{}
+		json.Unmarshal(indexesAsBytes, &indexes)
+
+		found := false
+		for i, tmpIndex := range indexes {
+			if tmpIndex.Name == index.Name {
+				indexes[i] = index
+				found = true
+				break
+			}
+		}
+		if !found {
+			indexes = append(indexes, index)
+		}
+
+		indexesAsBytes, _ = json.Marshal(indexes)
+		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
+	})
+}
+func (c *Collection) delIndexesIntoConfigBucket(indexName string) error {
+	return c.DB.Update(func(tx *bolt.Tx) error {
+		confBucket := tx.Bucket([]byte("config"))
+		indexesAsBytes := confBucket.Get([]byte("indexesList"))
+		indexes := []*Index{}
+		err := json.Unmarshal(indexesAsBytes, &indexes)
+		if err != nil {
+			fmt.Println("errwsdv", err)
+			return err
+		}
+
+		for i, index := range indexes {
+			if index.Name == indexName {
+				copy(indexes[i:], indexes[i+1:])
+				indexes[len(indexes)-1] = nil
+				indexes = indexes[:len(indexes)-1]
+				break
+			}
+		}
+
+		indexesAsBytes, _ = json.Marshal(indexes)
+		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
+	})
+}
+
 func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 	c.writeTransactionChan = make(chan *writeTransaction, 1000)
 	go func() {
@@ -62,35 +121,6 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 		}
 	}()
 }
-
-// func (c *Collection) initTransactionTickets(ctx context.Context) {
-// 	c.startTransactionTicket = make(chan bool, 0)
-// 	c.endTransactionTicket = make(chan bool, c.nbTransactionLimit)
-
-// 	go func() {
-// 		for {
-// 			if c.nbTransaction < c.nbTransactionLimit {
-// 				select {
-// 				case c.startTransactionTicket <- true:
-// 					// Unlock the caller of Collection.startTransaction
-// 					c.nbTransaction++
-// 				case <-c.endTransactionTicket:
-// 					// In case a transaction is done
-// 					c.nbTransaction--
-// 				case <-ctx.Done():
-// 					return
-// 				}
-// 			} else {
-// 				select {
-// 				case <-c.endTransactionTicket:
-// 					c.nbTransaction--
-// 				case <-ctx.Done():
-// 					return
-// 				}
-// 			}
-// 		}
-// 	}()
-// }
 
 func (c *Collection) putTransaction(tr *writeTransaction) {
 	storeDoneChannel := make(chan bool, 1)
@@ -193,7 +223,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 					return err
 				}
 
-				refs.SetIndexedValue(index.Name, index.selectorHash, indexedValue)
+				refs.SetIndexedValue(index.Name, index.SelectorHash, indexedValue)
 			}
 		}
 

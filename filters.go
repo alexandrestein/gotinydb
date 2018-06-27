@@ -53,11 +53,11 @@ func NewFilterValue(value interface{}) (*FilterValue, error) {
 	return filterValue, nil
 }
 
-// MustNewFilterValue same as above but call is certain the type is OK
-func MustNewFilterValue(value interface{}) *FilterValue {
-	v, _ := NewFilterValue(value)
-	return v
-}
+// // MustNewFilterValue same as above but call is certain the type is OK
+// func MustNewFilterValue(value interface{}) *FilterValue {
+// 	v, _ := NewFilterValue(value)
+// 	return v
+// }
 
 // CompareTo defines the value you want to compare to
 func (f *Filter) CompareTo(val interface{}) *Filter {

@@ -173,7 +173,6 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 		}
 		// Check that all occurrences have been saved
 		if nextAsID.Occurrences(nbFilters) {
-			nextAsID.less = nextAsID.lessValue
 			nextAsID.selectorHash = orderSelectorHash
 			nextAsID.getRefsFunc = getRefsFunc
 
@@ -220,7 +219,6 @@ func NewID(ctx context.Context, id string) *ID {
 	ret.ID = id
 	ret.occurrences = 0
 	ret.ch = make(chan bool, 0)
-	ret.less = ret.lessID
 	ret.values = map[uint64][]byte{}
 
 	go ret.incrementLoop(ctx)
@@ -267,35 +265,12 @@ func (i *ID) Occurrences(target int) bool {
 // Less implements the btree.Item interface. It can be an indexation
 // on the ID or on the value
 func (i *ID) Less(compareToItem btree.Item) bool {
-	return i.less(compareToItem)
-}
-
-func (i *ID) lessID(compareToItem btree.Item) bool {
 	compareTo, ok := compareToItem.(*ID)
 	if !ok {
 		return false
 	}
 
 	return (i.ID < compareTo.ID)
-}
-
-func (i *ID) lessValue(compareToItem btree.Item) bool {
-	compareTo, ok := compareToItem.(*ID)
-	if !ok {
-		return false
-	}
-
-	if i.values[i.selectorHash] == nil {
-		refs := i.getRefsFunc(i.ID)
-		for _, ref := range refs.Refs {
-			i.values[ref.IndexHash] = ref.IndexedValue
-		}
-	}
-
-	if bytes.Compare(i.values[i.selectorHash], compareTo.values[i.selectorHash]) < 0 {
-		return true
-	}
-	return false
 }
 
 func (i *ID) treeItem() btree.Item {
@@ -433,6 +408,7 @@ func (r *ResponseQuery) Prev() (i int, id string, objAsByte []byte) {
 // Is called by r.Next r.Prev to get their next values
 func (r *ResponseQuery) next() (i int, id string, objAsByte []byte) {
 	if r.actualPosition >= len(r.List) || r.actualPosition < 0 {
+		r.actualPosition = 0
 		return -1, "", nil
 	}
 	return r.actualPosition, r.List[r.actualPosition].ID.String(), r.List[r.actualPosition].ContentAsBytes
@@ -462,6 +438,7 @@ func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int,
 // One get one element and put it into the pointer
 func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
 	if r.actualPosition >= len(r.List) {
+		r.actualPosition = 0
 		return "", vars.ErrTheResponseIsOver
 	}
 
@@ -476,13 +453,3 @@ func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
 func (r *ResponseQuery) ResetPosition() {
 	r.actualPosition = 0
 }
-
-// // All returns all values into a slice of pointer
-// func (r *ResponseQuery) All(destination interface{}) error {
-// 	for i, objectAsBytes := range r.ObjectsAsBytes {
-// 		err := json.Unmarshal(objectAsBytes, destination[i])
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// }

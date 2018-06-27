@@ -15,14 +15,14 @@ type (
 	Index struct {
 		Name         string
 		Selector     []string
-		selectorHash uint64
+		SelectorHash uint64
 		Type         vars.IndexType
 
-		Conf *Conf
+		conf *Conf
 
-		getIDsFunc      func(ctx context.Context, indexedValue []byte) (*IDs, error)
-		getRangeIDsFunc func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
-		getTx           func(update bool) (*bolt.Tx, error)
+		// getIDsFunc      func(ctx context.Context, indexedValue []byte) (*IDs, error)
+		// getRangeIDsFunc func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
+		getTx func(update bool) (*bolt.Tx, error)
 	}
 
 	// Refs defines an struct to manage the references of a given object
@@ -47,7 +47,7 @@ func NewIndex(name string, selector []string, t vars.IndexType) *Index {
 	ret := new(Index)
 	ret.Name = name
 	ret.Selector = selector
-	ret.selectorHash = vars.BuildSelectorHash(selector)
+	ret.SelectorHash = vars.BuildSelectorHash(selector)
 	ret.Type = t
 
 	return ret
@@ -74,7 +74,7 @@ func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
 // DoesFilterApplyToIndex only check if the filter belongs to the index
 func (i *Index) DoesFilterApplyToIndex(filter *Filter) (ok bool) {
 	// Check the selector
-	if filter.selectorHash != i.selectorHash {
+	if filter.selectorHash != i.SelectorHash {
 		return false
 	}
 
@@ -127,14 +127,14 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 	// If equal just this leave will be send
 	case Equal:
 		for _, value := range filter.values {
-			tmpIDs, getErr := i.getIDsFunc(ctx, value.Bytes())
+			tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
 			if getErr != nil {
 				log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
 				return
 			}
 
 			for _, tmpID := range tmpIDs.IDs {
-				tmpID.values[i.selectorHash] = value.Bytes()
+				tmpID.values[i.SelectorHash] = value.Bytes()
 
 			}
 
@@ -147,7 +147,7 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 			greater = false
 		}
 
-		tmpIDs, getIdsErr := i.getRangeIDsFunc(ctx, filter.values[0].Bytes(), filter.equal, greater)
+		tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.equal, greater)
 		if getIdsErr != nil {
 			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
 			return

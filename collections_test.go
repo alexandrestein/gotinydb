@@ -8,20 +8,65 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/alexandrestein/gotinydb/vars"
 )
+
+func queryFillUp(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) {
+	testPath := <-getTestPathChan
+
+	db, openDBErr := Open(ctx, testPath)
+	if openDBErr != nil {
+		t.Fatal(openDBErr)
+		return nil, nil
+	}
+
+	c, userDBErr := db.Use("testCol")
+	if userDBErr != nil {
+		t.Fatal(userDBErr)
+		return nil, nil
+	}
+
+	if err := setIndexes(c); err != nil {
+		t.Fatal(err)
+		return nil, nil
+	}
+
+	db.SetConfig(&Conf{DefaultTransactionTimeOut * 100, DefaultQueryTimeOut * 100, DefaultInternalQueryLimit})
+
+	// Get deferent versions of dataset
+	users := unmarshalDataSet(dataset)
+
+	// doneChan := make(chan error, 0)
+	for i := 0; i < len(users); i++ {
+		err := c.Put(users[i].ID, users[i])
+		if err != nil {
+			t.Fatal(err)
+			return nil, nil
+		}
+		// Inserts and updates user 2 times
+		// go updateUser(c, users1[i], users2[i], users[i], doneChan)
+	}
+	// for i := 0; i < len(users); i++ {
+	// 	err := <-doneChan
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 		return nil, nil
+	// 	}
+	// }
+	return db, users
+}
 
 func TestCollection_Query(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(ctx, testPath)
-	if openDBErr != nil {
-		t.Error(openDBErr)
+	db, users := queryFillUp(ctx, t, dataSet1)
+	if db == nil {
 		return
 	}
 	defer db.Close()
+	defer os.RemoveAll(db.Path)
 
 	c, userDBErr := db.Use("testCol")
 	if userDBErr != nil {
@@ -29,24 +74,15 @@ func TestCollection_Query(t *testing.T) {
 		return
 	}
 
-	if err := setIndexes(c); err != nil {
-		t.Error(err)
-		return
-	}
-
-	db.SetConfig(&Conf{DefaultTransactionTimeOut * 100, DefaultQueryTimeOut * 100, DefaultInternalQueryLimit})
-
-	// Get deferent versions of dataset
-	users1 := unmarshalDataSet(dataSet1)
 	users2 := unmarshalDataSet(dataSet2)
 	users3 := unmarshalDataSet(dataSet3)
 
 	doneChan := make(chan error, 0)
-	for i := 0; i < len(users1); i++ {
+	for i := 0; i < len(users); i++ {
 		// Inserts and updates user 2 times
-		go updateUser(c, users1[i], users2[i], users3[i], doneChan)
+		go updateUser(c, users[i], users2[i], users3[i], doneChan)
 	}
-	for i := 0; i < len(users1); i++ {
+	for i := 0; i < len(users); i++ {
 		err := <-doneChan
 		if err != nil {
 			t.Error(err)
@@ -110,25 +146,6 @@ func TestCollection_Query(t *testing.T) {
 
 			ret := make([]*User, gotResponse.Len())
 
-			// i := 0
-			// if n, err := gotResponse.All(func(id string, objAsBytes []byte) error {
-			// 	tmpUser := new(User)
-			// 	err := json.Unmarshal(objAsBytes, tmpUser)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	ret[i] = tmpUser
-
-			// 	i++
-			// 	return nil
-			// }); err != nil {
-			// 	t.Errorf("error during range action: %s", err.Error())
-			// 	return
-			// } else if n != gotResponse.Len() {
-			// 	t.Errorf("the response is not long %d as expected %d", n, gotResponse.Len())
-			// 	return
-			// }
-
 			for i, _, v := gotResponse.First(); i >= 0; i, _, v = gotResponse.Next() {
 				user := new(User)
 				err := json.Unmarshal(v, user)
@@ -139,30 +156,6 @@ func TestCollection_Query(t *testing.T) {
 
 				ret[i] = user
 			}
-
-			// for i, _, v := gotResponse.Last(); i >= 0; i, _, v = gotResponse.Prev() {
-			// 	user := new(User)
-			// 	err := json.Unmarshal(v, user)
-			// 	if err != nil {
-			// 		t.Error(err)
-			// 		return
-			// 	}
-			// 	ret[i] = user
-			// }
-
-			// for i := 0; true; i++ {
-			// 	user := new(User)
-			// 	_, err := gotResponse.One(user)
-			// 	if err != nil {
-			// 		if err == vars.ErrTheResponseIsOver {
-			// 			break
-			// 		}
-			// 		t.Error(err)
-			// 		return
-			// 	}
-
-			// 	ret[i] = user
-			// }
 
 			if !reflect.DeepEqual(ret, tt.wantResponse) {
 				had := ""
@@ -177,21 +170,110 @@ func TestCollection_Query(t *testing.T) {
 				}
 				t.Errorf("Had %s\nwant %s\n", had, wanted)
 			}
+
+			if ok := testQueryResponseReaders(t, gotResponse, ret); !ok {
+				return
+			}
 		})
 	}
 }
 
-// func TestCollection_Loop_Query(t *testing.T) {
-// 	if testing.Short() {
-// 		t.Skip("skipping test in short mode.")
-// 	}
+func testQueryResponseReaders(t *testing.T, response *ResponseQuery, checkRet []*User) bool {
+	ret := make([]*User, response.Len())
+	// Use the All function to get the result into object
+	i := 0
+	if n, err := response.All(func(id string, objAsBytes []byte) error {
+		tmpUser := new(User)
+		err := json.Unmarshal(objAsBytes, tmpUser)
+		if err != nil {
+			return err
+		}
+		ret[i] = tmpUser
 
-// 	for i := 0; i < 100; i++ {
-// 		if !t.Run(
-// 			fmt.Sprintf("%d", i),
-// 			TestCollection_Query,
-// 		) {
-// 			return
-// 		}
-// 	}
-// }
+		i++
+		return nil
+	}); err != nil {
+		t.Errorf("error during range action: %s", err.Error())
+		return false
+	} else if n != response.Len() {
+		t.Errorf("the response is not long %d as expected %d", n, response.Len())
+		return false
+	}
+	if !checkExtractResultEqualToWantedResult(t, ret, checkRet) {
+		return false
+	}
+
+	// List all result from the first to the last with the next function
+	for i, _, v := response.First(); i >= 0; i, _, v = response.Next() {
+		user := new(User)
+		err := json.Unmarshal(v, user)
+		if err != nil {
+			t.Error(err)
+			return false
+		}
+
+		ret[i] = user
+	}
+	if !checkExtractResultEqualToWantedResult(t, ret, checkRet) {
+		return false
+	}
+
+	// List all result from the last to the fist with the prev function
+	for i, _, v := response.Last(); i >= 0; i, _, v = response.Prev() {
+		user := new(User)
+		err := json.Unmarshal(v, user)
+		if err != nil {
+			t.Error(err)
+			return false
+		}
+		ret[i] = user
+	}
+	if !checkExtractResultEqualToWantedResult(t, ret, checkRet) {
+		return false
+	}
+
+	// Use the function One to get the users one after the other
+	for i := 0; true; i++ {
+		user := new(User)
+		_, err := response.One(user)
+		if err != nil {
+			if err == vars.ErrTheResponseIsOver {
+				break
+			}
+			t.Error(err)
+			return false
+		}
+
+		ret[i] = user
+	}
+	if !checkExtractResultEqualToWantedResult(t, ret, checkRet) {
+		return false
+	}
+
+	return true
+}
+
+func checkExtractResultEqualToWantedResult(t *testing.T, givenRet, checkRet []*User) bool {
+	if !reflect.DeepEqual(givenRet, checkRet) {
+		t.Errorf("The response is not the same as the one send by the checker")
+		return false
+	}
+	return true
+}
+
+func TestCollection_Delete(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db, _ := queryFillUp(ctx, t, dataSet1)
+	if db == nil {
+		return
+	}
+	defer db.Close()
+	defer os.RemoveAll(db.Path)
+
+	if err := db.DeleteCollection("testCol"); err != nil {
+		t.Error(err)
+		return
+	}
+}

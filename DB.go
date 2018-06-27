@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/dgraph-io/badger"
@@ -62,6 +63,9 @@ func Open(ctx context.Context, path string) (*DB, error) {
 func (d *DB) Use(colName string) (*Collection, error) {
 	for _, col := range d.Collections {
 		if col.Name == colName {
+			if err := col.loadIndex(); err != nil {
+				return nil, err
+			}
 			return col, nil
 		}
 	}
@@ -71,6 +75,9 @@ func (d *DB) Use(colName string) (*Collection, error) {
 		return nil, loadErr
 	}
 
+	if err := c.loadIndex(); err != nil {
+		return nil, err
+	}
 	d.Collections = append(d.Collections, c)
 
 	return c, nil
@@ -83,7 +90,7 @@ func (d *DB) SetConfig(conf *Conf) error {
 	for _, col := range d.Collections {
 		col.Conf = conf
 		for _, index := range col.Indexes {
-			index.Conf = conf
+			index.conf = conf
 		}
 	}
 	return nil
@@ -116,4 +123,53 @@ func (d *DB) Close() error {
 
 	d = nil
 	return nil
+}
+
+// DeleteCollection delete the given collection
+func (d *DB) DeleteCollection(collectionName string) error {
+	var c *Collection
+	for i, col := range d.Collections {
+		if col.Name == collectionName {
+			// Save the collection pointer for future cleanup
+			c = col
+			// Delete the collection form the list of collection pointers
+			copy(d.Collections[i:], d.Collections[i+1:])
+			d.Collections[len(d.Collections)-1] = nil
+			d.Collections = d.Collections[:len(d.Collections)-1]
+			break
+		}
+	}
+
+	// Close index DB
+	if err := c.DB.Close(); err != nil {
+		return err
+	}
+	// Remove the index DB files
+	if err := os.RemoveAll(d.Path + "/collections/" + c.ID); err != nil {
+		return err
+	}
+
+	// Remove stored values 1000 by 1000
+	for {
+		ids, err := c.getAllStoreIDs(1000)
+		if err != nil {
+			return err
+		}
+		if len(ids) == 0 {
+			return nil
+		}
+
+		err = d.ValueStore.Update(func(txn *badger.Txn) error {
+			for _, id := range ids {
+				err := txn.Delete(id)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
 }

@@ -43,6 +43,10 @@ func (d *DB) loadCollections() error {
 			return err
 		}
 
+		if err := col.loadIndex(); err != nil {
+			return err
+		}
+
 		d.Collections = append(d.Collections, col)
 	}
 

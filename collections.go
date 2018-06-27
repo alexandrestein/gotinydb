@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -168,8 +167,14 @@ func (c *Collection) Delete(id string) error {
 
 // SetIndex enable the collection to index field or sub field
 func (c *Collection) SetIndex(i *Index) error {
-	i.Conf = c.Conf
+	i.conf = c.Conf
+	i.getTx = c.DB.Begin
+
 	c.Indexes = append(c.Indexes, i)
+	if err := c.setIndexesIntoConfigBucket(i); err != nil {
+		return err
+	}
+
 	if err := c.DB.Update(func(tx *bolt.Tx) error {
 		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
 		if createErr != nil {
@@ -179,123 +184,16 @@ func (c *Collection) SetIndex(i *Index) error {
 	}); err != nil {
 		return err
 	}
+	return nil
+}
 
-	i.getIDsFunc = func(ctx context.Context, indexedValue []byte) (ids *IDs, err error) {
-		if err := c.DB.View(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
-			asBytes := bucket.Get(indexedValue)
-			ids, err = NewIDs(ctx, i.selectorHash, indexedValue, asBytes)
-			return err
-		}); err != nil {
-			return nil, err
-		}
-		return ids, nil
+func (c *Collection) loadIndex() error {
+	indexes := c.getIndexesFromConfigBucket()
+	for _, index := range indexes {
+		index.conf = c.Conf
+		index.getTx = c.DB.Begin
 	}
-
-	i.getRangeIDsFunc = func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (allIDs *IDs, err error) {
-		if err := c.DB.View(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
-			// Initiate the cursor (iterator)
-			iter := bucket.Cursor()
-			// Go to the requested position and get the values of it
-			firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
-			firstIDsValue, unmarshalIDsErr := NewIDs(ctx, i.selectorHash, indexedValue, firstIDsAsByte)
-			if unmarshalIDsErr != nil {
-				return unmarshalIDsErr
-			}
-
-			allIDs, _ = NewIDs(ctx, i.selectorHash, indexedValue, nil)
-
-			// if the asked value is found
-			if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
-				allIDs.AddIDs(firstIDsValue)
-			}
-
-			var nextFunc func() (key []byte, value []byte)
-			if increasing {
-				nextFunc = iter.Next
-			} else {
-				nextFunc = iter.Prev
-			}
-
-			for {
-				indexedValue, idsAsByte := nextFunc()
-				if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
-					break
-				}
-				ids, unmarshalIDsErr := NewIDs(ctx, i.selectorHash, indexedValue, idsAsByte)
-				if unmarshalIDsErr != nil {
-					return unmarshalIDsErr
-				}
-				allIDs.AddIDs(ids)
-
-				// Clean if to big
-				if len(allIDs.IDs) > i.Conf.InternalQueryLimit {
-					allIDs.IDs = allIDs.IDs[:i.Conf.InternalQueryLimit]
-					break
-				}
-			}
-
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-		return allIDs, nil
-	}
-
-	// i.setIDFunc = func(ctx context.Context, storeErr, indexErr chan error, indexedValue []byte, idAsString string) {
-	// 	if err := c.DB.Update(func(tx *bolt.Tx) error {
-	// 		indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
-	// 		refsBucket := tx.Bucket([]byte("refs"))
-
-	// 		idsAsBytes := indexBucket.Get(indexedValue)
-	// 		ids, parseIDsErr := NewIDs(idsAsBytes)
-	// 		if parseIDsErr != nil {
-	// 			return parseIDsErr
-	// 		}
-
-	// 		id := NewID(idAsString)
-	// 		ids.AddID(id)
-	// 		idsAsBytes = ids.MustMarshal()
-
-	// 		if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
-	// 			return err
-	// 		}
-
-	// 		refsAsBytes := refsBucket.Get(vars.BuildBytesID(id.String()))
-	// 		refs := NewRefs()
-	// 		if refsAsBytes == nil && len(refsAsBytes) > 0 {
-	// 			if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-	// 				return err
-	// 			}
-	// 		}
-
-	// 		refs.ObjectID = id.String()
-	// 		refs.ObjectHashID = vars.BuildID(id.String())
-	// 		refs.SetIndexedValue(i.Name, indexedValue)
-
-	// 		putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
-	// 		if putErr != nil {
-	// 			return nil
-	// 		}
-
-	// 		indexErr <- nil
-
-	// 		select {
-	// 		case _, ok := <-storeErr:
-	// 			if !ok {
-	// 				return nil
-	// 			}
-	// 			return fmt.Errorf("issue on the store")
-	// 		case <-ctx.Done():
-	// 			return ctx.Err()
-	// 		}
-
-	// 	}); err != nil {
-	// 		indexErr <- err
-	// 		return
-	// 	}
-	// }
+	c.Indexes = indexes
 
 	return nil
 }
@@ -313,7 +211,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 
 	// If no index stop the query
 	if len(c.Indexes) <= 0 {
-		return
+		return nil, fmt.Errorf("no index in the collection")
 	}
 
 	if q.internalLimit > c.Conf.InternalQueryLimit {
@@ -430,13 +328,6 @@ queriesDone:
 
 func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 	return c.DB.Update(func(tx *bolt.Tx) error {
-		// refsBucket := tx.Bucket([]byte("refs"))
-
-		// refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
-		// refs := NewRefsFromDB(refsAsBytes)
-		// if refs == nil {
-		// 	return fmt.Errorf("references mal formed: %s", string(refsAsBytes))
-		// }
 		refs, getRefsErr := c.getRefs(tx, id)
 		if getRefsErr != nil {
 			return getRefsErr
@@ -467,4 +358,40 @@ func (c *Collection) getRefs(tx *bolt.Tx, id string) (*Refs, error) {
 		return nil, fmt.Errorf("references mal formed: %s", string(refsAsBytes))
 	}
 	return refs, nil
+}
+
+// GetAllStoreIDs returns all ids if it does not exceed the limit.
+// This will not returned the ID used to set the value inside the collection
+// It returns the id used to set the value inside the store
+func (c *Collection) getAllStoreIDs(limit int) ([][]byte, error) {
+	ids := make([][]byte, limit)
+
+	err := c.Store.View(func(txn *badger.Txn) error {
+		iter := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer iter.Close()
+
+		prefix := []byte(c.ID[:4] + "_")
+		iter.Seek(prefix)
+
+		count := 0
+		for iter.Rewind(); iter.Valid(); iter.Next() {
+			item := iter.Item()
+			if !iter.ValidForPrefix(prefix) || count >= limit-1 {
+				ids = ids[:count]
+				return nil
+			}
+
+			ids[count] = item.Key()
+
+			count++
+		}
+
+		ids = ids[:count]
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return ids, nil
 }

@@ -117,12 +117,14 @@ with the Get function.
 
 * [Badger](https://github.com/dgraph-io/badger) - Is the main storage engine
 * [Bolt](https://github.com/boltdb/bolt) - Is the index engine
+* [Btree](https://github.com/google/btree) - Is the in memory tree used to save sub queries elements
 * [Structs](https://github.com/fatih/structs) - Used to cut objects in part for indexing
 
-## To Do
+## Todo before v1.0.0
 
+* List every element from one collection
 * Background indexing
-* Collection and Index deletion
+* Collection and Index removing
 * Add some tests
 
 ## Contributing
@@ -135,9 +137,9 @@ We use [dep](https://github.com/golang/dep) or [vgo](https://github.com/golang/v
 
 ## Versioning
 
-The package is under heavy developement for now and is just for testing and developement at this point.
-Ones the design will be finalised the version will start at `1.0.0`.
-For futur the versions, see the [tags on this repository](https://github.com/alexandrestein/gotinydb/tags).
+The package is under heavy development for now and is just for testing and development at this point.
+Ones the design will be finalized the version will start at `v1.0.0`.
+For future the versions, see the [tags on this repository](https://github.com/alexandrestein/gotinydb/tags).
 
 ## Authors
 
@@ -151,5 +153,6 @@ This project is licensed under the "Apache License, Version 2.0" - see the [LICE
 
 ## Acknowledgments
 
-* I was looking for pure `golang` database for reasonable (not to big) data size. I checked [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match which was not what I was looking for.
-* B-Tree is a good way to have ordered elements and is extremely scalable.
+* I was looking for pure `golang` database for reasonable (not to big) data set. I saw [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match which was not what I was looking for.
+* B-Tree is a good way to have ordered elements and is extremely scalable. It is particularly great for heavy random reads. Used for indexing and queries ([Bolt](https://github.com/boltdb/bolt) for persistent indexation and [Btree](https://github.com/google/btree) for in memory queries).
+* LSM-Tree is much more efficient for height write loads. This is used to store data ([Badger](https://github.com/dgraph-io/badger)).

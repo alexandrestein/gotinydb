@@ -145,62 +145,6 @@ func unmarshalDataSet(dataSet []byte) []*User {
 	return users
 }
 
-// func TestConcurrentOnOneCollection(t *testing.T) {
-// 	if testing.Short() {
-// 		t.Skip("skipping test in short mode.")
-// 	}
-
-// 	testPath := <-getTestPathChan
-// 	defer os.RemoveAll(testPath)
-// 	db, openDBErr := Open(testPath)
-// 	if openDBErr != nil {
-// 		t.Error(openDBErr)
-// 		return
-// 	}
-// 	defer db.Close()
-
-// 	c, userDBErr := db.Use("testCol")
-// 	if userDBErr != nil {
-// 		t.Error(userDBErr)
-// 		return
-// 	}
-
-// 	if err := setIndexes(c); err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
-
-// 	doneChan := make(chan error, 0)
-
-// 	users1 := unmarshalDataSet(dataSet1)
-// 	users2 := unmarshalDataSet(dataSet2)
-// 	users3 := unmarshalDataSet(dataSet3)
-// 	for i, user := range users1 {
-// 		go updateUser(c, user, users2[i], users3[i], doneChan)
-// 	}
-
-// 	for i := 0; i < len(users1)-1; i++ {
-// 		err := <-doneChan
-// 		if err != nil {
-// 			t.Error(err)
-// 			return
-// 		}
-// 	}
-
-// 	for i := 0; i < 5; i++ {
-// 		// for i, _ := range users1 {
-// 		// go checkIndexes(c, users1[i], users2[i], users3[i], doneChan)
-// 	}
-
-// 	for i := 0; i < len(users1)-1; i++ {
-// 		err := <-doneChan
-// 		if err != nil {
-// 			t.Error(err)
-// 			return
-// 		}
-// 	}
-// }
-
 func updateUser(c *Collection, v1, v2, v3 *User, done chan error) error {
 	if err := c.Put(v1.ID, v1); err != nil {
 		done <- err

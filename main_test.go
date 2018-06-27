@@ -35,16 +35,53 @@ func TestOpenAndClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(ctx, testPath)
-	if openDBErr != nil {
-		t.Error(openDBErr)
+	db, _ := queryFillUp(ctx, t, dataSet1)
+	if db == nil {
 		return
 	}
+	defer db.Close()
+	defer os.RemoveAll(db.Path)
+
+	testPath := db.Path
 
 	if err := db.Close(); err != nil {
 		t.Error(err)
+		return
+	}
+
+	var err error
+	db, err = Open(ctx, testPath)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	c, userDBErr := db.Use("testCol")
+	if userDBErr != nil {
+		t.Error(err)
+		return
+	}
+
+	response, queryErr := c.Query(NewQuery().Get(NewFilter(Equal).SetSelector([]string{"Email"}).CompareTo("jonas-90@tlaloc.com")))
+	if queryErr != nil {
+		t.Error(queryErr)
+		return
+	}
+
+	user := new(User)
+	id, respErr := response.One(user)
+	if respErr != nil {
+		t.Error(respErr)
+		return
+	}
+
+	if id != "0" {
+		t.Errorf("%s is not the right ID. Expected %s", id, "0")
+		return
+	}
+
+	if !reflect.DeepEqual(user, unmarshalDataSet(dataSet1)[0]) {
+		t.Errorf("%v is not the right value. Expected %v", user, unmarshalDataSet(dataSet1)[0])
 		return
 	}
 }
