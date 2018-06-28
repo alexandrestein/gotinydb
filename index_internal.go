@@ -7,7 +7,7 @@ import (
 	"reflect"
 )
 
-func (i *Index) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids *IDs, err error) {
+func (i *Index) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids *idsType, err error) {
 	tx, getTxErr := i.getTx(false)
 	if getTxErr != nil {
 		return nil, getTxErr
@@ -16,14 +16,14 @@ func (i *Index) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids
 	bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 	asBytes := bucket.Get(indexedValue)
 
-	ids, err = NewIDs(ctx, i.SelectorHash, indexedValue, asBytes)
+	ids, err = newIDs(ctx, i.SelectorHash, indexedValue, asBytes)
 	if err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
-func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit []byte, keepEqual, increasing bool) (allIDs *IDs, err error) {
+func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit []byte, keepEqual, increasing bool) (allIDs *idsType, err error) {
 	tx, getTxErr := i.getTx(false)
 	if getTxErr != nil {
 		return nil, getTxErr
@@ -34,12 +34,12 @@ func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit 
 	iter := bucket.Cursor()
 	// Go to the requested position and get the values of it
 	firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
-	firstIDsValue, unmarshalIDsErr := NewIDs(ctx, i.SelectorHash, indexedValue, firstIDsAsByte)
+	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.SelectorHash, indexedValue, firstIDsAsByte)
 	if unmarshalIDsErr != nil {
 		return nil, unmarshalIDsErr
 	}
 
-	allIDs, _ = NewIDs(ctx, i.SelectorHash, indexedValue, nil)
+	allIDs, _ = newIDs(ctx, i.SelectorHash, indexedValue, nil)
 
 	// if the asked value is found
 	if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
@@ -58,7 +58,7 @@ func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit 
 		if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 			break
 		}
-		ids, unmarshalIDsErr := NewIDs(ctx, i.SelectorHash, indexedValue, idsAsByte)
+		ids, unmarshalIDsErr := newIDs(ctx, i.SelectorHash, indexedValue, idsAsByte)
 		if unmarshalIDsErr != nil {
 			return nil, unmarshalIDsErr
 		}
@@ -86,7 +86,7 @@ func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit 
 	return allIDs, nil
 }
 
-func (i *Index) queryEqual(ctx context.Context, ids *IDs, filter *Filter) {
+func (i *Index) queryEqual(ctx context.Context, ids *idsType, filter *Filter) {
 	for _, value := range filter.values {
 		tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
 		if getErr != nil {
@@ -103,7 +103,7 @@ func (i *Index) queryEqual(ctx context.Context, ids *IDs, filter *Filter) {
 	}
 }
 
-func (i *Index) queryGreaterLess(ctx context.Context, ids *IDs, filter *Filter) {
+func (i *Index) queryGreaterLess(ctx context.Context, ids *idsType, filter *Filter) {
 	greater := true
 	if filter.GetType() == Less {
 		greater = false
@@ -118,7 +118,7 @@ func (i *Index) queryGreaterLess(ctx context.Context, ids *IDs, filter *Filter) 
 	ids.AddIDs(tmpIDs)
 }
 
-func (i *Index) queryBetween(ctx context.Context, ids *IDs, filter *Filter) {
+func (i *Index) queryBetween(ctx context.Context, ids *idsType, filter *Filter) {
 	// Needs two values to make between
 	if len(filter.values) < 2 {
 		return

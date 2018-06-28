@@ -32,8 +32,8 @@ type (
 		timeout       time.Duration
 	}
 
-	// ID is a type to order IDs during query to be compatible with the tree query
-	ID struct {
+	// idType is a type to order IDs during query to be compatible with the tree query
+	idType struct {
 		ID          string
 		occurrences int
 		ch          chan bool
@@ -47,15 +47,15 @@ type (
 		getRefsFunc  func(id string) *refs
 	}
 
-	// IDs defines a list of ID. The struct is needed to build a pointer to be
+	// idsType defines a list of ID. The struct is needed to build a pointer to be
 	// passed to deferent functions
-	IDs struct {
-		IDs []*ID
+	idsType struct {
+		IDs []*idType
 	}
 
 	idsForOrderTree struct {
 		value     []byte
-		ids       []*ID
+		ids       []*idType
 		indexHash uint64
 	}
 
@@ -71,7 +71,7 @@ type (
 
 	// ResponseQueryElem defines the response as a pointer
 	ResponseQueryElem struct {
-		ID             *ID
+		ID             *idType
 		ContentAsBytes []byte
 	}
 )
@@ -79,12 +79,12 @@ type (
 func newIDsForOrderTree(orderValue []byte, indexHash uint64) *idsForOrderTree {
 	i := new(idsForOrderTree)
 	i.value = orderValue
-	i.ids = []*ID{}
+	i.ids = []*idType{}
 	i.indexHash = indexHash
 	return i
 }
 
-func (i *idsForOrderTree) addID(id *ID) {
+func (i *idsForOrderTree) addID(id *idType) {
 	i.ids = append(i.ids, id)
 }
 
@@ -159,7 +159,7 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 			return false
 		}
 
-		nextAsID, ok := next.(*ID)
+		nextAsID, ok := next.(*idType)
 		if !ok {
 			return false
 		}
@@ -191,8 +191,8 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 	}, ret
 }
 
-func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *IDs) {
-	ret := new(IDs)
+func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *idsType) {
+	ret := new(idsType)
 
 	return func(next btree.Item) bool {
 		if len(ret.IDs) >= maxResponse {
@@ -215,9 +215,9 @@ func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *IDs
 	}, ret
 }
 
-// NewID returns a new ID with zero occurrence
-func NewID(ctx context.Context, id string) *ID {
-	ret := new(ID)
+// newID returns a new ID with zero occurrence
+func newID(ctx context.Context, id string) *idType {
+	ret := new(idType)
 	ret.ID = id
 	ret.occurrences = 0
 	ret.ch = make(chan bool, 0)
@@ -228,7 +228,7 @@ func NewID(ctx context.Context, id string) *ID {
 	return ret
 }
 
-func (i *ID) incrementLoop(ctx context.Context) {
+func (i *idType) incrementLoop(ctx context.Context) {
 	for {
 		select {
 		case trueIncrement, ok := <-i.ch:
@@ -247,12 +247,12 @@ func (i *ID) incrementLoop(ctx context.Context) {
 }
 
 // Increment add +1 to the occurrence counter
-func (i *ID) Increment() {
+func (i *idType) Increment() {
 	i.ch <- true
 }
 
 // Occurrences take care that the channel is empty and all occurrences have been saved
-func (i *ID) Occurrences(target int) bool {
+func (i *idType) Occurrences(target int) bool {
 	if i.ch == nil {
 		return false
 	}
@@ -266,8 +266,8 @@ func (i *ID) Occurrences(target int) bool {
 
 // Less implements the btree.Item interface. It can be an indexation
 // on the ID or on the value
-func (i *ID) Less(compareToItem btree.Item) bool {
-	compareTo, ok := compareToItem.(*ID)
+func (i *idType) Less(compareToItem btree.Item) bool {
+	compareTo, ok := compareToItem.(*idType)
 	if !ok {
 		return false
 	}
@@ -275,20 +275,20 @@ func (i *ID) Less(compareToItem btree.Item) bool {
 	return (i.ID < compareTo.ID)
 }
 
-func (i *ID) treeItem() btree.Item {
+func (i *idType) treeItem() btree.Item {
 	return btree.Item(i)
 }
 
-func (i *ID) String() string {
+func (i *idType) String() string {
 	if i == nil {
 		return ""
 	}
 	return i.ID
 }
 
-// NewIDs build a new Ids pointer from a slice of bytes
-func NewIDs(ctx context.Context, selectorHash uint64, referredValue []byte, idsAsBytes []byte) (*IDs, error) {
-	ret := new(IDs)
+// newIDs build a new Ids pointer from a slice of bytes
+func newIDs(ctx context.Context, selectorHash uint64, referredValue []byte, idsAsBytes []byte) (*idsType, error) {
+	ret := new(idsType)
 
 	if idsAsBytes == nil || len(idsAsBytes) == 0 {
 		return ret, nil
@@ -303,7 +303,7 @@ func NewIDs(ctx context.Context, selectorHash uint64, referredValue []byte, idsA
 
 	// Init the channel used to count the number of occurrences of a given ID.
 	for _, id := range ids {
-		newID := NewID(ctx, id)
+		newID := newID(ctx, id)
 		if selectorHash != 0 && referredValue != nil {
 			newID.values[selectorHash] = referredValue
 		}
@@ -314,7 +314,7 @@ func NewIDs(ctx context.Context, selectorHash uint64, referredValue []byte, idsA
 }
 
 // RmID removes the given ID from the list
-func (i *IDs) RmID(idToRm string) {
+func (i *idsType) RmID(idToRm string) {
 	for j, id := range i.IDs {
 		if id.String() == idToRm {
 			copy(i.IDs[j:], i.IDs[j+1:])
@@ -325,7 +325,7 @@ func (i *IDs) RmID(idToRm string) {
 }
 
 // AddIDs insert multiple ids as IDs pointer into the list
-func (i *IDs) AddIDs(idsToAdd *IDs) {
+func (i *idsType) AddIDs(idsToAdd *idsType) {
 	if len(idsToAdd.IDs) == 0 {
 		return
 	}
@@ -333,28 +333,28 @@ func (i *IDs) AddIDs(idsToAdd *IDs) {
 }
 
 // AddID insert the given ID pointer into the list
-func (i *IDs) AddID(idToAdd *ID) {
+func (i *idsType) AddID(idToAdd *idType) {
 	if i.IDs == nil {
-		i.IDs = []*ID{}
+		i.IDs = []*idType{}
 	}
 	i.IDs = append(i.IDs, idToAdd)
 }
 
 // Marshal convert the given IDs pointer as a slice of bytes or returns an error if any
-func (i *IDs) Marshal() ([]byte, error) {
+func (i *idsType) Marshal() ([]byte, error) {
 	// idsAsString := i.Strings()
 	// return json.Marshal(&idsAsString)
 	return json.Marshal(i.Strings())
 }
 
 // MustMarshal convert the given IDs pointer as a slice of bytes or nil if any error
-func (i *IDs) MustMarshal() []byte {
+func (i *idsType) MustMarshal() []byte {
 	ret, _ := i.Marshal()
 	return ret
 }
 
 // Strings returns all ID as a slice of string
-func (i *IDs) Strings() []string {
+func (i *idsType) Strings() []string {
 	ret := make([]string, len(i.IDs))
 	for j, id := range i.IDs {
 		ret[j] = id.ID

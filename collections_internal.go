@@ -209,13 +209,13 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 				indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
 
 				idsAsBytes := indexBucket.Get(indexedValue)
-				ids, parseIDsErr := NewIDs(ctx, 0, nil, idsAsBytes)
+				ids, parseIDsErr := newIDs(ctx, 0, nil, idsAsBytes)
 				if parseIDsErr != nil {
 					errChan <- parseIDsErr
 					return parseIDsErr
 				}
 
-				id := NewID(ctx, writeTransaction.id)
+				id := newID(ctx, writeTransaction.id)
 				ids.AddID(id)
 				idsAsBytes = ids.MustMarshal()
 
@@ -283,7 +283,7 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString stri
 		for _, index := range c.Indexes {
 			if index.Name == ref.IndexName {
 				// If reference present in this index the reference is cleaned
-				ids, newIDErr := NewIDs(ctx, 0, nil, indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
+				ids, newIDErr := newIDs(ctx, 0, nil, indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
 				if newIDErr != nil {
 					return newIDErr
 				}
@@ -303,7 +303,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 	tree := btree.New(10)
 
 	// Initialize the channel which will confirm that all queries are done
-	finishedChan := make(chan *IDs, 16)
+	finishedChan := make(chan *idsType, 16)
 	defer close(finishedChan)
 
 	// This count the number of running index query for this actual collection query
@@ -340,7 +340,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 						continue
 					}
 					// if already increment the counter
-					fromTree.(*ID).Increment()
+					fromTree.(*idType).Increment()
 				}
 			}
 			// Save the fact that one more query has been respond

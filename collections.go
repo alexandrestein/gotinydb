@@ -240,7 +240,7 @@ func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 
 		for _, ref := range refs.Refs {
 			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
-			ids, err := NewIDs(ctx, 0, nil, indexBucket.Get(ref.IndexedValue))
+			ids, err := newIDs(ctx, 0, nil, indexBucket.Get(ref.IndexedValue))
 			if err != nil {
 				return err
 			}

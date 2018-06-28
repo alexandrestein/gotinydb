@@ -19,8 +19,6 @@ type (
 
 		conf *Conf
 
-		// getIDsFunc      func(ctx context.Context, indexedValue []byte) (*IDs, error)
-		// getRangeIDsFunc func(ctx context.Context, indexedValue []byte, keepEqual, increasing bool) (*IDs, error)
 		getTx func(update bool) (*bolt.Tx, error)
 	}
 
@@ -107,7 +105,7 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 }
 
 // Query do the given filter and ad it to the tree
-func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *IDs) {
+func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
 	done := false
 	defer func() {
 		// Make sure to reply as done
@@ -117,7 +115,7 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 		}
 	}()
 
-	ids, _ := NewIDs(ctx, filter.selectorHash, nil, nil)
+	ids, _ := newIDs(ctx, filter.selectorHash, nil, nil)
 
 	switch filter.GetType() {
 	// If equal just this leave will be send
