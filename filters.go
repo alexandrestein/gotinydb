@@ -12,12 +12,12 @@ type (
 		selector     []string
 		selectorHash uint64
 		operator     FilterOperator
-		values       []*FilterValue
+		values       []*filterValue
 		equal        bool
 	}
 
-	// FilterValue defines the value we need to compare to
-	FilterValue struct {
+	// filterValue defines the value we need to compare to
+	filterValue struct {
 		Value interface{}
 		Type  vars.IndexType
 	}
@@ -30,8 +30,8 @@ func NewFilter(t FilterOperator) *Filter {
 	}
 }
 
-// NewFilterValue build a new filter value to be used inside the filters
-func NewFilterValue(value interface{}) (*FilterValue, error) {
+// newfilterValue build a new filter value to be used inside the filters
+func newfilterValue(value interface{}) (*filterValue, error) {
 	var t vars.IndexType
 	switch value.(type) {
 	case string:
@@ -44,23 +44,17 @@ func NewFilterValue(value interface{}) (*FilterValue, error) {
 		return nil, vars.ErrWrongType
 	}
 
-	filterValue := new(FilterValue)
+	filterValue := new(filterValue)
 	filterValue.Type = t
 	filterValue.Value = value
 
 	return filterValue, nil
 }
 
-// // MustNewFilterValue same as above but call is certain the type is OK
-// func MustNewFilterValue(value interface{}) *FilterValue {
-// 	v, _ := NewFilterValue(value)
-// 	return v
-// }
-
 // CompareTo defines the value you want to compare to
 func (f *Filter) CompareTo(val interface{}) *Filter {
 	// Build the value if possible
-	filterValue, parseErr := NewFilterValue(val)
+	filterValuePointer, parseErr := newfilterValue(val)
 	// If any error the value is not added
 	if parseErr != nil {
 		return f
@@ -69,17 +63,17 @@ func (f *Filter) CompareTo(val interface{}) *Filter {
 	// If the slice is nil or if the filter is not a between filter
 	// the filter list has only one element
 	if f.values == nil || f.operator != Between {
-		f.values = []*FilterValue{filterValue}
+		f.values = []*filterValue{filterValuePointer}
 		return f
 	}
 
 	// Limit the numbers of 2 filters
 	if len(f.values) >= 2 {
-		f.values[1] = filterValue
+		f.values[1] = filterValuePointer
 	}
 
 	// Add the second value if it's between filter
-	f.values = append(f.values, filterValue)
+	f.values = append(f.values, filterValuePointer)
 	return f
 }
 
@@ -102,7 +96,7 @@ func (f *Filter) SetSelector(s ...string) *Filter {
 }
 
 // Bytes returns the value as a slice of bytes
-func (f *FilterValue) Bytes() []byte {
+func (f *filterValue) Bytes() []byte {
 	var bytes []byte
 	switch f.Type {
 	case vars.StringIndex:
