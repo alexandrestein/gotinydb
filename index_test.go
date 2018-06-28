@@ -96,7 +96,7 @@ func setIndexes(c *Collection) error {
 	}
 
 	for _, indexParams := range indexes {
-		index := NewIndex(indexParams.name, indexParams.selector, indexParams.t)
+		index := NewIndex(indexParams.name, indexParams.t, indexParams.selector...)
 		if err := c.SetIndex(index); err != nil {
 			return err
 		}

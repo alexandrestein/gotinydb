@@ -40,7 +40,7 @@ type (
 )
 
 // NewIndex build a new Index pointer
-func NewIndex(name string, selector []string, t vars.IndexType) *Index {
+func NewIndex(name string, t vars.IndexType, selector ...string) *Index {
 	ret := new(Index)
 	ret.Name = name
 	ret.Selector = selector
