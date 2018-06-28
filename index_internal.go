@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"bytes"
 	"context"
+	"log"
 	"reflect"
 )
 
@@ -83,4 +84,50 @@ func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit 
 		}
 	}
 	return allIDs, nil
+}
+
+func (i *Index) queryEqual(ctx context.Context, ids *IDs, filter *Filter) {
+	for _, value := range filter.values {
+		tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
+		if getErr != nil {
+			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
+			return
+		}
+
+		for _, tmpID := range tmpIDs.IDs {
+			tmpID.values[i.SelectorHash] = value.Bytes()
+
+		}
+
+		ids.AddIDs(tmpIDs)
+	}
+}
+
+func (i *Index) queryGreaterLess(ctx context.Context, ids *IDs, filter *Filter) {
+	greater := true
+	if filter.GetType() == Less {
+		greater = false
+	}
+
+	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), nil, filter.equal, greater)
+	if getIdsErr != nil {
+		log.Printf("Index.runQuery Greater, Less: %s\n", getIdsErr.Error())
+		return
+	}
+
+	ids.AddIDs(tmpIDs)
+}
+
+func (i *Index) queryBetween(ctx context.Context, ids *IDs, filter *Filter) {
+	// Needs two values to make between
+	if len(filter.values) < 2 {
+		return
+	}
+	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.values[1].Bytes(), filter.equal, true)
+	if getIdsErr != nil {
+		log.Printf("Index.runQuery Between: %s\n", getIdsErr.Error())
+		return
+	}
+
+	ids.AddIDs(tmpIDs)
 }

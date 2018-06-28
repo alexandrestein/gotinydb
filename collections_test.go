@@ -157,55 +157,107 @@ func TestCollection_Query(t *testing.T) {
 				return
 			}
 
-			if gotResponse.Len() != len(tt.wantResponse) {
-				had := ""
-				for _, responseQuery := range gotResponse.List {
-					had = fmt.Sprintf("%s\n%s", had, string(responseQuery.ContentAsBytes))
-				}
-				wanted := ""
-				for _, wantedValue := range tt.wantResponse {
-					wantedValueAsBytes, _ := json.Marshal(wantedValue)
-					wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
-				}
-				t.Errorf("returned %d objects but the expected %d\nHad%s\nwant%s\n", gotResponse.Len(), len(tt.wantResponse), had, wanted)
+			if !doQueryTest(t, gotResponse, tt.wantResponse) {
 				return
 			}
 
-			ret := make([]*User, gotResponse.Len())
+			// if gotResponse.Len() != len(tt.wantResponse) {
+			// 	had := ""
+			// 	for _, responseQuery := range gotResponse.List {
+			// 		had = fmt.Sprintf("%s\n%s", had, string(responseQuery.ContentAsBytes))
+			// 	}
+			// 	wanted := ""
+			// 	for _, wantedValue := range tt.wantResponse {
+			// 		wantedValueAsBytes, _ := json.Marshal(wantedValue)
+			// 		wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
+			// 	}
+			// 	t.Errorf("returned %d objects but the expected %d\nHad%s\nwant%s\n", gotResponse.Len(), len(tt.wantResponse), had, wanted)
+			// 	return
+			// }
 
-			for i, _, v := gotResponse.First(); i >= 0; i, _, v = gotResponse.Next() {
-				user := new(User)
-				err := json.Unmarshal(v, user)
-				if err != nil {
-					t.Error(err)
-					return
-				}
+			// ret := make([]*User, gotResponse.Len())
 
-				ret[i] = user
-			}
+			// for i, _, v := gotResponse.First(); i >= 0; i, _, v = gotResponse.Next() {
+			// 	user := new(User)
+			// 	err := json.Unmarshal(v, user)
+			// 	if err != nil {
+			// 		t.Error(err)
+			// 		return
+			// 	}
 
-			if !reflect.DeepEqual(ret, tt.wantResponse) {
-				had := ""
-				for _, user := range ret {
-					userAsJSON, _ := json.Marshal(user)
-					had = fmt.Sprintf("%s\n%s", had, string(userAsJSON))
-				}
-				wanted := ""
-				for _, wantedValue := range tt.wantResponse {
-					wantedValueAsBytes, _ := json.Marshal(wantedValue)
-					wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
-				}
-				t.Errorf("Had %s\nwant %s\n", had, wanted)
-			}
+			// 	ret[i] = user
+			// }
 
-			if ok := testQueryResponseReaders(t, gotResponse, ret); !ok {
-				return
-			}
+			// if !reflect.DeepEqual(ret, tt.wantResponse) {
+			// 	had := ""
+			// 	for _, user := range ret {
+			// 		userAsJSON, _ := json.Marshal(user)
+			// 		had = fmt.Sprintf("%s\n%s", had, string(userAsJSON))
+			// 	}
+			// 	wanted := ""
+			// 	for _, wantedValue := range tt.wantResponse {
+			// 		wantedValueAsBytes, _ := json.Marshal(wantedValue)
+			// 		wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
+			// 	}
+			// 	t.Errorf("Had %s\nwant %s\n", had, wanted)
+			// }
+
+			// if ok := testQueryResponseReaders(t, gotResponse, ret); !ok {
+			// 	return
+			// }
 		})
 	}
 
 	// Wait after the timeout for closing the DB
 	time.Sleep(time.Second)
+}
+
+func doQueryTest(t *testing.T, resp *ResponseQuery, expected []*User) bool {
+	if resp.Len() != len(expected) {
+		had := ""
+		for _, responseQuery := range resp.List {
+			had = fmt.Sprintf("%s\n%s", had, string(responseQuery.ContentAsBytes))
+		}
+		wanted := ""
+		for _, wantedValue := range expected {
+			wantedValueAsBytes, _ := json.Marshal(wantedValue)
+			wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
+		}
+		t.Errorf("returned %d objects but the expected %d\nHad%s\nwant%s\n", resp.Len(), len(expected), had, wanted)
+		return false
+	}
+
+	ret := make([]*User, resp.Len())
+
+	for i, _, v := resp.First(); i >= 0; i, _, v = resp.Next() {
+		user := new(User)
+		err := json.Unmarshal(v, user)
+		if err != nil {
+			t.Error(err)
+			return false
+		}
+
+		ret[i] = user
+	}
+
+	if !reflect.DeepEqual(ret, expected) {
+		had := ""
+		for _, user := range ret {
+			userAsJSON, _ := json.Marshal(user)
+			had = fmt.Sprintf("%s\n%s", had, string(userAsJSON))
+		}
+		wanted := ""
+		for _, wantedValue := range expected {
+			wantedValueAsBytes, _ := json.Marshal(wantedValue)
+			wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
+		}
+		t.Errorf("Had %s\nwant %s\n", had, wanted)
+	}
+
+	if ok := testQueryResponseReaders(t, resp, ret); !ok {
+		return false
+	}
+	return true
 }
 
 func testQueryResponseReaders(t *testing.T, response *ResponseQuery, checkRet []*User) bool {

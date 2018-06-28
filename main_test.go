@@ -138,6 +138,16 @@ func testPutGetAndDeleteCollection(t *testing.T, userID string, user interface{}
 
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
+
+	cancel()
+
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+
+	if !testPutGetAndDeleteCollectionFillupTestAndClose(ctx, testPath, t, userID, user, bin) {
+		return
+	}
+
 	db, openDBErr := Open(ctx, testPath)
 	if openDBErr != nil {
 		t.Error(openDBErr)
@@ -146,57 +156,6 @@ func testPutGetAndDeleteCollection(t *testing.T, userID string, user interface{}
 	defer db.Close()
 
 	c, userErr := db.Use("testCol")
-	if userErr != nil {
-		t.Error(userErr)
-		return
-	}
-
-	if err := c.Put(userID, user); err != nil {
-		t.Error(err)
-		return
-	}
-
-	if !bin {
-		retrievedTestUser := struct {
-			Login, Pass string
-		}{}
-		if _, getErr := c.Get(userID, &retrievedTestUser); getErr != nil {
-			t.Error(getErr)
-			return
-		}
-		if !reflect.DeepEqual(user, retrievedTestUser) {
-			t.Error("given object and retrieve on are not equal")
-			return
-		}
-	} else {
-		retrieveContent, getErr := c.Get(userID, nil)
-		if getErr != nil {
-			t.Error(getErr)
-			return
-		}
-		if !reflect.DeepEqual(retrieveContent, user) {
-			t.Error("given object and retrieve on are not equal")
-			return
-		}
-	}
-
-	if err := db.Close(); err != nil {
-		t.Error(err)
-		return
-	}
-	cancel()
-
-	ctx, cancel = context.WithCancel(context.Background())
-	defer cancel()
-
-	db, openDBErr = Open(ctx, testPath)
-	if openDBErr != nil {
-		t.Error(openDBErr)
-		return
-	}
-	defer db.Close()
-
-	c, userErr = db.Use("testCol")
 	if userErr != nil {
 		t.Error(userErr)
 		return
@@ -235,4 +194,55 @@ func testPutGetAndDeleteCollection(t *testing.T, userID string, user interface{}
 		t.Errorf("No error but the ID has been deleted")
 		return
 	}
+}
+
+func testPutGetAndDeleteCollectionFillupTestAndClose(ctx context.Context, testPath string, t *testing.T, userID string, user interface{}, bin bool) bool {
+	db, openDBErr := Open(ctx, testPath)
+	if openDBErr != nil {
+		t.Error(openDBErr)
+		return false
+	}
+	defer db.Close()
+
+	c, userErr := db.Use("testCol")
+	if userErr != nil {
+		t.Error(userErr)
+		return false
+	}
+
+	if err := c.Put(userID, user); err != nil {
+		t.Error(err)
+		return false
+	}
+
+	if !bin {
+		retrievedTestUser := struct {
+			Login, Pass string
+		}{}
+		if _, getErr := c.Get(userID, &retrievedTestUser); getErr != nil {
+			t.Error(getErr)
+			return false
+		}
+		if !reflect.DeepEqual(user, retrievedTestUser) {
+			t.Error("given object and retrieve on are not equal")
+			return false
+		}
+	} else {
+		retrieveContent, getErr := c.Get(userID, nil)
+		if getErr != nil {
+			t.Error(getErr)
+			return false
+		}
+		if !reflect.DeepEqual(retrieveContent, user) {
+			t.Error("given object and retrieve on are not equal")
+			return false
+		}
+	}
+
+	if err := db.Close(); err != nil {
+		t.Error(err)
+		return false
+	}
+
+	return true
 }

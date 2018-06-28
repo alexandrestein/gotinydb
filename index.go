@@ -3,7 +3,6 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
-	"log"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -112,7 +111,7 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 	done := false
 	defer func() {
 		// Make sure to reply as done
-		if !done {
+		if !done && ctx.Err() == nil {
 			finishedChan <- nil
 			return
 		}
@@ -123,54 +122,63 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 	switch filter.GetType() {
 	// If equal just this leave will be send
 	case Equal:
-		for _, value := range filter.values {
-			tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
-			if getErr != nil {
-				log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
-				return
-			}
+		i.queryEqual(ctx, ids, filter)
+		// for _, value := range filter.values {
+		// 	tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
+		// 	if getErr != nil {
+		// 		log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
+		// 		return
+		// 	}
 
-			for _, tmpID := range tmpIDs.IDs {
-				tmpID.values[i.SelectorHash] = value.Bytes()
+		// 	for _, tmpID := range tmpIDs.IDs {
+		// 		tmpID.values[i.SelectorHash] = value.Bytes()
 
-			}
+		// 	}
 
-			ids.AddIDs(tmpIDs)
-		}
+		// 	ids.AddIDs(tmpIDs)
+		// }
 
 	case Greater, Less:
-		greater := true
-		if filter.GetType() == Less {
-			greater = false
-		}
+		i.queryGreaterLess(ctx, ids, filter)
+		// greater := true
+		// if filter.GetType() == Less {
+		// 	greater = false
+		// }
 
-		tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), nil, filter.equal, greater)
-		if getIdsErr != nil {
-			log.Printf("Index.runQuery Greater, Less: %s\n", getIdsErr.Error())
-			return
-		}
+		// tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), nil, filter.equal, greater)
+		// if getIdsErr != nil {
+		// 	log.Printf("Index.runQuery Greater, Less: %s\n", getIdsErr.Error())
+		// 	return
+		// }
 
-		ids.AddIDs(tmpIDs)
+		// ids.AddIDs(tmpIDs)
 
 	case Between:
-		// Needs two values to make between
-		if len(filter.values) < 2 {
-			return
-		}
-		tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.values[1].Bytes(), filter.equal, true)
-		if getIdsErr != nil {
-			log.Printf("Index.runQuery Between: %s\n", getIdsErr.Error())
-			return
-		}
+		i.queryBetween(ctx, ids, filter)
+		// // Needs two values to make between
+		// if len(filter.values) < 2 {
+		// 	return
+		// }
+		// tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.values[1].Bytes(), filter.equal, true)
+		// if getIdsErr != nil {
+		// 	log.Printf("Index.runQuery Between: %s\n", getIdsErr.Error())
+		// 	return
+		// }
 
-		ids.AddIDs(tmpIDs)
+		// ids.AddIDs(tmpIDs)
 	}
 
+	// Force to check first if a cancel signal has been send
+	// If not already canceled it wait for done or cancel
 	select {
-	case finishedChan <- ids:
 	case <-ctx.Done():
-		done = true
 		return
+	default:
+		select {
+		case finishedChan <- ids:
+		case <-ctx.Done():
+			return
+		}
 	}
 
 	done = true
