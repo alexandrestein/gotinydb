@@ -1,11 +1,11 @@
 package vars
 
 type (
-	// IndexType defines what kind of feeld the index is scanning
+	// IndexType defines what kind of field the index is scanning
 	IndexType int
 )
 
-// Those define the deffrent type of indexes
+// Those define the different type of indexes
 const (
 	StringIndex IndexType = iota
 	IntIndex

@@ -23,8 +23,9 @@ type (
 	Query struct {
 		filters []*Filter
 
-		order     uint64 // is the selector hash representation
-		ascendent bool   // defines the way of the order
+		orderSelector []string
+		order         uint64 // is the selector hash representation
+		ascendent     bool   // defines the way of the order
 
 		limit         int
 		internalLimit int
@@ -134,6 +135,7 @@ func (q *Query) SetTimeout(timeout time.Duration) *Query {
 
 // SetOrder defines the order of the response
 func (q *Query) SetOrder(selector []string, ascendent bool) *Query {
+	q.orderSelector = selector
 	q.order = vars.BuildSelectorHash(selector)
 	q.ascendent = ascendent
 	return q

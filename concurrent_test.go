@@ -8,11 +8,10 @@ type (
 	User struct {
 		ID        string
 		Email     string
-		Balance   int64
+		Balance   int
 		Address   *Address
-		Age       uint8
+		Age       uint
 		LastLogin time.Time
-		PublicKey []byte
 	}
 	Address struct {
 		City    string

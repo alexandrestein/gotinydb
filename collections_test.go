@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
+	"github.com/fatih/structs"
 )
 
 func queryFillUp(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) {
@@ -82,10 +83,9 @@ func TestCollection_Query(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		args         *Query
-		wantResponse []*User
-		wantErr      bool
+		name    string
+		args    *Query
+		wantErr bool
 	}{
 		{
 			"One Equal string filter limit 10",
@@ -93,15 +93,36 @@ func TestCollection_Query(t *testing.T) {
 				NewFilter(Equal).SetSelector([]string{"Email"}).
 					CompareTo("gödel-76@rudolph.com"),
 			),
-			[]*User{users3[0]},
 			false,
 		}, {
+			"Many Greater string filter limit 5",
+			NewQuery().Get(
+				NewFilter(Greater).SetSelector([]string{"Email"}).
+					CompareTo("f"),
+			).SetLimits(5, 0),
+			false,
+		}, {
+			"Many Less string filter limit 5",
+			NewQuery().Get(
+				NewFilter(Less).SetSelector([]string{"Email"}).
+					CompareTo("k"),
+			).SetLimits(5, 0),
+			false,
+		}, {
+			"Many Between string filter limit 5",
+			NewQuery().Get(
+				NewFilter(Between).SetSelector([]string{"Email"}).
+					CompareTo("m").CompareTo("u"),
+			).SetLimits(5, 0),
+			false,
+		},
+
+		{
 			"Many Equal integer filter limit 5 order by email",
 			NewQuery().SetOrder([]string{"Email"}, true).Get(
 				NewFilter(Equal).SetSelector([]string{"Age"}).
-					CompareTo(uint8(5)),
+					CompareTo(uint(5)),
 			).SetLimits(5, 0),
-			[]*User{users3[144], users3[35], users3[178], users3[214], users3[224]},
 			false,
 		}, {
 			"Greater integer filter limit 5 order by ZipCode",
@@ -109,7 +130,6 @@ func TestCollection_Query(t *testing.T) {
 				NewFilter(Greater).SetSelector([]string{"Address", "ZipCode"}).EqualWanted().
 					CompareTo(uint(50)),
 			).SetLimits(5, 0),
-			[]*User{users3[130], users3[154], users3[260], users3[264], users3[107]},
 			false,
 		}, {
 			"Less time filter limit 5 order by time",
@@ -117,7 +137,6 @@ func TestCollection_Query(t *testing.T) {
 				NewFilter(Less).SetSelector([]string{"LastLogin"}).
 					CompareTo(time.Now()),
 			).SetLimits(5, 0),
-			[]*User{users3[10], users3[129], users3[132], users3[108], users3[120]},
 			false,
 		}, {
 			"Between int filter limit 10 order by age",
@@ -125,7 +144,6 @@ func TestCollection_Query(t *testing.T) {
 				NewFilter(Between).SetSelector([]string{"Address", "ZipCode"}).
 					CompareTo(uint(65)).CompareTo(uint(68)),
 			).SetLimits(10, 0),
-			[]*User{users3[145], users3[203], users3[72], users3[61], users3[92], users3[281]},
 			false,
 		}, {
 			"Between int filter limit 10 order by email",
@@ -133,7 +151,6 @@ func TestCollection_Query(t *testing.T) {
 				NewFilter(Between).SetSelector([]string{"Address", "ZipCode"}).
 					CompareTo(uint(60)).CompareTo(uint(63)),
 			).SetLimits(10000, 0),
-			[]*User{users3[248], users3[183]},
 			false,
 		}, {
 			"Timed out",
@@ -141,7 +158,6 @@ func TestCollection_Query(t *testing.T) {
 				NewFilter(Between).SetSelector([]string{"Balance"}).EqualWanted().
 					CompareTo(-104466272306065862).CompareTo(997373309132031595),
 			).SetLimits(10, 10).SetTimeout(time.Nanosecond),
-			[]*User{},
 			true,
 		},
 	}
@@ -157,54 +173,9 @@ func TestCollection_Query(t *testing.T) {
 				return
 			}
 
-			if !doQueryTest(t, gotResponse, tt.wantResponse) {
+			if !doQueryTest(t, gotResponse, tt.args) {
 				return
 			}
-
-			// if gotResponse.Len() != len(tt.wantResponse) {
-			// 	had := ""
-			// 	for _, responseQuery := range gotResponse.List {
-			// 		had = fmt.Sprintf("%s\n%s", had, string(responseQuery.ContentAsBytes))
-			// 	}
-			// 	wanted := ""
-			// 	for _, wantedValue := range tt.wantResponse {
-			// 		wantedValueAsBytes, _ := json.Marshal(wantedValue)
-			// 		wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
-			// 	}
-			// 	t.Errorf("returned %d objects but the expected %d\nHad%s\nwant%s\n", gotResponse.Len(), len(tt.wantResponse), had, wanted)
-			// 	return
-			// }
-
-			// ret := make([]*User, gotResponse.Len())
-
-			// for i, _, v := gotResponse.First(); i >= 0; i, _, v = gotResponse.Next() {
-			// 	user := new(User)
-			// 	err := json.Unmarshal(v, user)
-			// 	if err != nil {
-			// 		t.Error(err)
-			// 		return
-			// 	}
-
-			// 	ret[i] = user
-			// }
-
-			// if !reflect.DeepEqual(ret, tt.wantResponse) {
-			// 	had := ""
-			// 	for _, user := range ret {
-			// 		userAsJSON, _ := json.Marshal(user)
-			// 		had = fmt.Sprintf("%s\n%s", had, string(userAsJSON))
-			// 	}
-			// 	wanted := ""
-			// 	for _, wantedValue := range tt.wantResponse {
-			// 		wantedValueAsBytes, _ := json.Marshal(wantedValue)
-			// 		wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
-			// 	}
-			// 	t.Errorf("Had %s\nwant %s\n", had, wanted)
-			// }
-
-			// if ok := testQueryResponseReaders(t, gotResponse, ret); !ok {
-			// 	return
-			// }
 		})
 	}
 
@@ -212,18 +183,13 @@ func TestCollection_Query(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
-func doQueryTest(t *testing.T, resp *ResponseQuery, expected []*User) bool {
-	if resp.Len() != len(expected) {
+func doQueryTest(t *testing.T, resp *ResponseQuery, q *Query) bool {
+	if resp.Len() > q.limit {
 		had := ""
 		for _, responseQuery := range resp.List {
 			had = fmt.Sprintf("%s\n%s", had, string(responseQuery.ContentAsBytes))
 		}
-		wanted := ""
-		for _, wantedValue := range expected {
-			wantedValueAsBytes, _ := json.Marshal(wantedValue)
-			wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
-		}
-		t.Errorf("returned %d objects but the expected %d\nHad%s\nwant%s\n", resp.Len(), len(expected), had, wanted)
+		t.Errorf("returned %d objects \nHad\n%s", resp.Len(), had)
 		return false
 	}
 
@@ -240,18 +206,197 @@ func doQueryTest(t *testing.T, resp *ResponseQuery, expected []*User) bool {
 		ret[i] = user
 	}
 
-	if !reflect.DeepEqual(ret, expected) {
-		had := ""
-		for _, user := range ret {
-			userAsJSON, _ := json.Marshal(user)
-			had = fmt.Sprintf("%s\n%s", had, string(userAsJSON))
+	var previousToOrder interface{}
+
+	for _, user := range ret {
+		userAsStruct := structs.New(user)
+		for _, filter := range q.filters {
+			var field *structs.Field
+			var ok bool
+			for i, fieldName := range filter.selector {
+				if i == 0 {
+					field, ok = userAsStruct.FieldOk(fieldName)
+				} else {
+					field, ok = field.FieldOk(fieldName)
+				}
+				if !ok {
+					t.Errorf("the filed %s should contain value", fieldName)
+					return false
+				}
+			}
+
+			valAsInterface := field.Value()
+			switch v := valAsInterface.(type) {
+			case string:
+				switch filter.operator {
+				case Equal:
+					if filter.values[0].Value.(string) != v {
+						t.Errorf("wrong equal value %s != %s", filter.values[0].Value.(string), v)
+						return false
+					}
+				case Greater:
+					if filter.values[0].Value.(string) >= v {
+						t.Errorf("wrong greater value %s > %s", filter.values[0].Value.(string), v)
+						return false
+					}
+				case Less:
+					if filter.values[0].Value.(string) <= v {
+						t.Errorf("wrong less value %s < %s", filter.values[0].Value.(string), v)
+						return false
+					}
+				case Between:
+					if filter.values[0].Value.(string) >= v || v >= filter.values[1].Value.(string) {
+						t.Errorf("wrong between value %s < %s < %s", filter.values[0].Value.(string), v, filter.values[1].Value.(string))
+						return false
+					}
+				}
+			case int:
+				switch filter.operator {
+				case Equal:
+					if filter.values[0].Value.(int) != v {
+						t.Errorf("wrong equal value %d != %d", filter.values[0].Value.(int), v)
+						return false
+					}
+				case Greater:
+					if filter.values[0].Value.(int) > v {
+						t.Errorf("wrong greater value %d > %d", filter.values[0].Value.(int), v)
+						return false
+					}
+				case Less:
+					if filter.values[0].Value.(int) < v {
+						t.Errorf("wrong less value %d < %d", filter.values[0].Value.(int), v)
+						return false
+					}
+				case Between:
+					if filter.values[0].Value.(int) > v || v > filter.values[1].Value.(int) {
+						t.Errorf("wrong between value %d < %d < %d", filter.values[0].Value.(int), v, filter.values[1].Value.(int))
+						return false
+					}
+				}
+			case uint:
+				switch filter.operator {
+				case Equal:
+					if filter.values[0].Value.(uint) != v {
+						t.Errorf("wrong equal value %d != %d", filter.values[0].Value.(uint), v)
+						return false
+					}
+				case Greater:
+					if filter.values[0].Value.(uint) > v {
+						t.Errorf("wrong greater value %d > %d", filter.values[0].Value.(uint), v)
+						return false
+					}
+				case Less:
+					if filter.values[0].Value.(uint) < v {
+						t.Errorf("wrong less value %d < %d", filter.values[0].Value.(uint), v)
+						return false
+					}
+				case Between:
+					if filter.values[0].Value.(uint) > v || v > filter.values[1].Value.(uint) {
+						t.Errorf("wrong between value %d < %d < %d", filter.values[0].Value.(uint), v, filter.values[1].Value.(uint))
+						return false
+					}
+				}
+			case time.Time:
+				switch filter.operator {
+				case Equal:
+					if !v.Equal(filter.values[0].Value.(time.Time)) {
+						t.Errorf("wrong equal value %s != %s", filter.values[0].Value.(time.Time).String(), v.String())
+						return false
+					}
+				case Greater:
+					if v.Before(filter.values[0].Value.(time.Time)) {
+						t.Errorf("wrong greater value %s > %s", filter.values[0].Value.(time.Time).String(), v.String())
+						return false
+					}
+				case Less:
+					if v.After(filter.values[0].Value.(time.Time)) {
+						t.Errorf("wrong less value %s < %s", filter.values[0].Value.(time.Time).String(), v.String())
+						return false
+					}
+				case Between:
+					if v.Before(filter.values[0].Value.(time.Time)) || v.After(filter.values[1].Value.(time.Time)) {
+						t.Errorf("wrong between value %s < %s < %s", filter.values[0].Value.(time.Time).String(), v.String(), filter.values[1].Value.(time.Time).String())
+						return false
+					}
+				}
+			default:
+				t.Errorf("type %T not handled", v)
+				return false
+			}
 		}
-		wanted := ""
-		for _, wantedValue := range expected {
-			wantedValueAsBytes, _ := json.Marshal(wantedValue)
-			wanted = fmt.Sprintf("%s\n%s", wanted, string(wantedValueAsBytes))
+
+		// Start checking the order
+
+		if len(q.orderSelector) == 0 {
+			return true
 		}
-		t.Errorf("Had %s\nwant %s\n", had, wanted)
+
+		var field *structs.Field
+		var ok bool
+		for i, fieldName := range q.orderSelector {
+			if i == 0 {
+				field, ok = userAsStruct.FieldOk(fieldName)
+			} else {
+				field, ok = field.FieldOk(fieldName)
+			}
+			if !ok {
+				t.Errorf("the filed %s should contain value", fieldName)
+				return false
+			}
+		}
+
+		valAsInterface := field.Value()
+		if previousToOrder == nil {
+			previousToOrder = valAsInterface
+			continue
+		}
+
+		switch v := valAsInterface.(type) {
+		case string:
+			if q.ascendent {
+				if previousToOrder.(string) > v {
+					t.Errorf("wrong order %s should be before %s", previousToOrder.(string), v)
+				}
+			} else {
+				if previousToOrder.(string) < v {
+					t.Errorf("wrong order %s should be before %s", v, previousToOrder.(string))
+				}
+			}
+		case int:
+			if q.ascendent {
+				if previousToOrder.(int) > v {
+					t.Errorf("wrong order %d should be before %d", previousToOrder.(int), v)
+				}
+			} else {
+				if previousToOrder.(int) < v {
+					t.Errorf("wrong order %d should be before %d", v, previousToOrder.(int))
+				}
+			}
+		case uint:
+			if q.ascendent {
+				if previousToOrder.(uint) > v {
+					t.Errorf("wrong order %d should be before %d", previousToOrder.(uint), v)
+				}
+			} else {
+				if previousToOrder.(uint) < v {
+					t.Errorf("wrong order %d should be before %d", v, previousToOrder.(uint))
+				}
+			}
+		case time.Time:
+			if q.ascendent {
+				if v.Before(previousToOrder.(time.Time)) {
+					t.Errorf("wrong order %s should be before %s", previousToOrder.(time.Time).String(), v.String())
+				}
+			} else {
+				if v.After(previousToOrder.(time.Time)) {
+					t.Errorf("wrong order %s should be before %s", v.String(), previousToOrder.(time.Time).String())
+				}
+			}
+		default:
+			t.Errorf("type %T not handled", v)
+			return false
+		}
+		previousToOrder = valAsInterface
 	}
 
 	if ok := testQueryResponseReaders(t, resp, ret); !ok {
