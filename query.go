@@ -64,13 +64,13 @@ type (
 
 	// ResponseQuery holds the results of a query
 	ResponseQuery struct {
-		List           []*ResponseQueryElem
+		List           []*responseQueryElem
 		actualPosition int
 		query          *Query
 	}
 
-	// ResponseQueryElem defines the response as a pointer
-	ResponseQueryElem struct {
+	// responseQueryElem defines the response as a pointer
+	responseQueryElem struct {
 		ID             *idType
 		ContentAsBytes []byte
 	}
@@ -362,10 +362,10 @@ func (i *idsType) Strings() []string {
 	return ret
 }
 
-// NewResponseQuery build a new ResponseQuery pointer with the given limit
-func NewResponseQuery(limit int) *ResponseQuery {
+// newResponseQuery build a new ResponseQuery pointer with the given limit
+func newResponseQuery(limit int) *ResponseQuery {
 	r := new(ResponseQuery)
-	r.List = make([]*ResponseQueryElem, limit)
+	r.List = make([]*responseQueryElem, limit)
 	return r
 }
 
@@ -374,7 +374,7 @@ func (r *ResponseQuery) Len() int {
 	return len(r.List)
 }
 
-// First is part of the mechanism to run the response in a range statement
+// First used with Next
 func (r *ResponseQuery) First() (i int, id string, objAsByte []byte) {
 	if len(r.List) <= 0 {
 		return -1, "", nil
@@ -384,13 +384,13 @@ func (r *ResponseQuery) First() (i int, id string, objAsByte []byte) {
 	return 0, r.List[0].ID.String(), r.List[0].ContentAsBytes
 }
 
-// Next can be used in a range loop statement like `for i, id, objAsByte := c.First(); k != nil; k, v = c.Next() {`
+// Next used with First
 func (r *ResponseQuery) Next() (i int, id string, objAsByte []byte) {
 	r.actualPosition++
 	return r.next()
 }
 
-// Last is part of the mechanism to run the response in a range statement
+// Last used with Prev
 func (r *ResponseQuery) Last() (i int, id string, objAsByte []byte) {
 	lastSlot := len(r.List) - 1
 	if lastSlot < 0 {
@@ -401,7 +401,7 @@ func (r *ResponseQuery) Last() (i int, id string, objAsByte []byte) {
 	return lastSlot, r.List[lastSlot].ID.String(), r.List[lastSlot].ContentAsBytes
 }
 
-// Prev can be used in a range loop statement like `for i, id, objAsByte := c.Last(); k != nil; k, v = c.Prev() {`
+// Prev used with Last
 func (r *ResponseQuery) Prev() (i int, id string, objAsByte []byte) {
 	r.actualPosition--
 	return r.next()
@@ -416,8 +416,7 @@ func (r *ResponseQuery) next() (i int, id string, objAsByte []byte) {
 	return r.actualPosition, r.List[r.actualPosition].ID.String(), r.List[r.actualPosition].ContentAsBytes
 }
 
-// All is a function to make easy to do some actions to the set of result.
-//
+// All takes a function as argument and permit to unmarshal or to manage recoredes inside the function
 func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int, err error) {
 	n = 0
 	if r == nil {
@@ -437,7 +436,8 @@ func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int,
 	return
 }
 
-// One get one element and put it into the pointer
+// One retrieve one element at the time and put it into the destination pointer.
+// Use it to get the objects one after the other.
 func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
 	if r.actualPosition >= len(r.List) {
 		r.actualPosition = 0
@@ -449,9 +449,4 @@ func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
 	r.actualPosition++
 
 	return id, err
-}
-
-// ResetPosition reset the position counter to zero
-func (r *ResponseQuery) ResetPosition() {
-	r.actualPosition = 0
 }

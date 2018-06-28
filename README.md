@@ -125,6 +125,7 @@ with the Get function.
 * List every element from one collection
 * Background indexing
 * Collection and Index removing
+* Full text search with [Bleve](http://www.blevesearch.com/)
 * Add some tests
 
 ## Contributing

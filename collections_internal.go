@@ -378,7 +378,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	}
 
 	// Build the response for the caller
-	response = NewResponseQuery(len(ret.IDs))
+	response = newResponseQuery(len(ret.IDs))
 	response.query = q
 	// Get every content of the query from the database
 	responsesAsBytes, err := c.get(ctx, ret.Strings()...)
@@ -392,7 +392,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 			break
 		}
 
-		response.List[i] = &ResponseQueryElem{
+		response.List[i] = &responseQueryElem{
 			ID:             ret.IDs[i],
 			ContentAsBytes: responsesAsBytes[i],
 		}
