@@ -338,7 +338,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 						tree.ReplaceOrInsert(id)
 						continue
 					}
-					// if allready increment the counter
+					// if already increment the counter
 					fromTree.(*ID).Increment()
 				}
 			}

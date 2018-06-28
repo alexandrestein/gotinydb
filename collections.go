@@ -84,15 +84,13 @@ func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneC
 }
 
 // Get retrieves the content of the given ID
-func (c *Collection) Get(id string, pointer interface{}) ([]byte, error) {
+func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte, _ error) {
 	if id == "" {
 		return nil, vars.ErrEmptyID
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.Conf.TransactionTimeOut)
 	defer cancel()
-
-	contentAsBytes := []byte{}
 
 	response, getErr := c.get(ctx, id)
 	if getErr != nil {

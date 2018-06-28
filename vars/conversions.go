@@ -47,9 +47,8 @@ func IntToBytes(input interface{}) ([]byte, error) {
 	return bs, nil
 }
 
-func convertIntToAbsoluteUint(input interface{}) uint64 {
+func convertIntToAbsoluteUint(input interface{}) (ret uint64) {
 	typedValue := int64(0)
-	ret := uint64(0)
 
 	switch input.(type) {
 	case int:

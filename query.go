@@ -110,7 +110,7 @@ func NewQuery() *Query {
 }
 
 // SetLimits defines the configurable limit of IDs.
-// The first paramiters is the limit of the result.
+// The first parameters is the limit of the result.
 // The second define the internal limit of the query.
 // It can be omitted, in this case the internal limit is 10 times the responses limit.
 // If you have many many results in the intermediate results this can helps

@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	// DB is the main element of the package and provide all access to sub commandes
+	// DB is the main element of the package and provide all access to sub commands
 	DB struct {
 		Path string
 		Conf *Conf

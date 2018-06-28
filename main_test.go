@@ -139,11 +139,6 @@ func testPutGetAndDeleteCollection(t *testing.T, userID string, user interface{}
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
 
-	cancel()
-
-	ctx, cancel = context.WithCancel(context.Background())
-	defer cancel()
-
 	if !testPutGetAndDeleteCollectionFillupTestAndClose(ctx, testPath, t, userID, user, bin) {
 		return
 	}

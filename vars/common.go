@@ -37,7 +37,7 @@ func BuildID(id string) string {
 	return base64.RawURLEncoding.EncodeToString(buildID(id))
 }
 
-// BuildBytesID convert the given ID to an hash as byte represention
+// BuildBytesID convert the given ID to an hash as byte definition
 func BuildBytesID(id string) []byte {
 	return []byte(BuildID(id))
 }
