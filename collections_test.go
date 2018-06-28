@@ -32,7 +32,7 @@ func queryFillUp(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*Use
 		return nil, nil
 	}
 
-	db.SetConfig(&Conf{DefaultTransactionTimeOut * 3, DefaultQueryTimeOut * 3, DefaultInternalQueryLimit})
+	db.SetConfig(&Conf{DefaultTransactionTimeOut * 15, DefaultQueryTimeOut * 15, DefaultInternalQueryLimit})
 
 	// Get deferent versions of dataset
 	users := unmarshalDataSet(dataset)
@@ -89,7 +89,7 @@ func TestCollection_Query(t *testing.T) {
 	}{
 		{
 			"One Equal string filter limit 10",
-			NewQuery().SetLimits(10, 0).Get(
+			NewQuery().SetTimeout(time.Hour).SetLimits(10, 0).Get(
 				NewFilter(Equal).SetSelector([]string{"Email"}).
 					CompareTo("gödel-76@rudolph.com"),
 			),
@@ -134,14 +134,6 @@ func TestCollection_Query(t *testing.T) {
 					CompareTo(uint(60)).CompareTo(uint(63)),
 			).SetLimits(10000, 0),
 			[]*User{users3[248], users3[183]},
-			false,
-		}, {
-			"All with greater bytes filter limit 10 order by bytes",
-			NewQuery().SetOrder([]string{"PublicKey"}, true).Get(
-				NewFilter(Between).SetSelector([]string{"PublicKey"}).
-					CompareTo([]byte{0}),
-			).SetLimits(10000, 0),
-			[]*User{},
 			false,
 		}, {
 			"Timed out",
@@ -211,6 +203,9 @@ func TestCollection_Query(t *testing.T) {
 			}
 		})
 	}
+
+	// Wait after the timeout for closing the DB
+	time.Sleep(time.Second)
 }
 
 func testQueryResponseReaders(t *testing.T, response *ResponseQuery, checkRet []*User) bool {

@@ -97,14 +97,6 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 		conversionFunc = vars.IntToBytes
 	case vars.TimeIndex:
 		conversionFunc = vars.TimeToBytes
-	case vars.BytesIndex:
-		contentToIndex, ok = value.([]byte)
-		if ok {
-			if contentToIndex == nil || len(contentToIndex) <= 0 {
-				return nil, false
-			}
-		}
-		return
 	default:
 		return nil, false
 	}
@@ -174,7 +166,13 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 		ids.AddIDs(tmpIDs)
 	}
 
-	finishedChan <- ids
+	select {
+	case finishedChan <- ids:
+	case <-ctx.Done():
+		done = true
+		return
+	}
+
 	done = true
 
 	return

@@ -199,7 +199,7 @@ func (c *Collection) loadIndex() error {
 }
 
 // Query run the given query to all the collection indexes
-func (c *Collection) Query(q *Query) (response *ResponseQuery, err error) {
+func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	if q == nil {
 		return
 	}
@@ -230,12 +230,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, err error) {
 		return nil, err
 	}
 
-	response, err = c.queryCleanAndOrder(ctx, q, tree)
-	if err != nil {
-		return nil, err
-	}
-
-	return
+	return c.queryCleanAndOrder(ctx, q, tree)
 }
 
 func (c *Collection) deleteIndexes(ctx context.Context, id string) error {

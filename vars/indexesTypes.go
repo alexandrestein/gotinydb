@@ -10,7 +10,6 @@ const (
 	StringIndex IndexType = iota
 	IntIndex
 	TimeIndex
-	BytesIndex
 )
 
 // TypeName return the name of the type as a string
@@ -22,8 +21,6 @@ func (it IndexType) TypeName() string {
 		return "IntIndex"
 	case TimeIndex:
 		return "TimeIndex"
-	case BytesIndex:
-		return "BytesIndex"
 	default:
 		return ""
 	}

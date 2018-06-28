@@ -23,10 +23,6 @@ func TestTypeName(t *testing.T) {
 		t.Error("returned name is not correct")
 		return
 	}
-	if BytesIndex.TypeName() != "BytesIndex" {
-		t.Error("returned name is not correct")
-		return
-	}
 
 	if IndexType(-1).TypeName() != "" {
 		t.Error("returned name is not correct")

@@ -45,10 +45,6 @@ func TestAction_ValueToCompareAsBytes(t *testing.T) {
 			time.Time{},
 			[]byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255},
 		}, {
-			"bytes",
-			[]byte("OK"),
-			[]byte{79, 75},
-		}, {
 			"nil",
 			nil,
 			[]byte{},

@@ -93,7 +93,6 @@ func setIndexes(c *Collection) error {
 		{"zip", []string{"Address", "ZipCode"}, vars.IntIndex},
 		{"age", []string{"Age"}, vars.IntIndex},
 		{"last login", []string{"LastLogin"}, vars.TimeIndex},
-		{"public key", []string{"PublicKey"}, vars.BytesIndex},
 	}
 
 	for _, indexParams := range indexes {

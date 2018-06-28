@@ -40,8 +40,6 @@ func NewFilterValue(value interface{}) (*FilterValue, error) {
 		t = vars.IntIndex
 	case time.Time:
 		t = vars.TimeIndex
-	case []byte:
-		t = vars.BytesIndex
 	default:
 		return nil, vars.ErrWrongType
 	}
@@ -121,8 +119,8 @@ func (f *FilterValue) Bytes() []byte {
 		bytes, _ = vars.IntToBytes(f.Value)
 	case vars.TimeIndex:
 		bytes, _ = vars.TimeToBytes(f.Value)
-	case vars.BytesIndex:
-		return f.Value.([]byte)
+	default:
+		return nil
 	}
 	return bytes
 }
