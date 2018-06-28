@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
@@ -349,6 +350,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 				return tree, nil
 			}
 		case <-ctx.Done():
+			time.Sleep(time.Millisecond * 100)
 			return nil, vars.ErrTimeOut
 		}
 	}
