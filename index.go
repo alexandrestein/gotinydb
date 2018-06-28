@@ -99,6 +99,11 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 		conversionFunc = vars.TimeToBytes
 	case vars.BytesIndex:
 		contentToIndex, ok = value.([]byte)
+		if ok {
+			if contentToIndex == nil || len(contentToIndex) <= 0 {
+				return nil, false
+			}
+		}
 		return
 	default:
 		return nil, false
@@ -149,16 +154,20 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 
 		tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), nil, filter.equal, greater)
 		if getIdsErr != nil {
-			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
+			log.Printf("Index.runQuery Greater, Less: %s\n", getIdsErr.Error())
 			return
 		}
 
 		ids.AddIDs(tmpIDs)
 
 	case Between:
+		// Needs two values to make between
+		if len(filter.values) < 2 {
+			return
+		}
 		tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.values[1].Bytes(), filter.equal, true)
 		if getIdsErr != nil {
-			log.Printf("Index.runQuery Greater: %s\n", getIdsErr.Error())
+			log.Printf("Index.runQuery Between: %s\n", getIdsErr.Error())
 			return
 		}
 

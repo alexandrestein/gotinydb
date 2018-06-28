@@ -12,11 +12,10 @@ import (
 
 // Those constants defines the different types of filter to perform at query
 const (
-	Equal    FilterOperator = "eq"
-	NotEqual FilterOperator = "ne"
-	Greater  FilterOperator = "gr"
-	Less     FilterOperator = "le"
-	Between  FilterOperator = "bw"
+	Equal   FilterOperator = "eq"
+	Greater FilterOperator = "gr"
+	Less    FilterOperator = "le"
+	Between FilterOperator = "bw"
 )
 
 type (
@@ -92,15 +91,6 @@ func (i *idsForOrderTree) Less(compareToItem btree.Item) bool {
 	compareTo, ok := compareToItem.(*idsForOrderTree)
 	if !ok {
 		return false
-	}
-
-	if len(i.value) == 0 && len(i.ids) > 0 {
-		refs := i.ids[0].getRefsFunc(i.ids[0].ID)
-		for _, ref := range refs.Refs {
-			if i.indexHash == ref.IndexHash {
-				i.value = ref.IndexedValue
-			}
-		}
 	}
 
 	if bytes.Compare(i.value, compareTo.value) < 0 {

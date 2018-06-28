@@ -32,7 +32,7 @@ func queryFillUp(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*Use
 		return nil, nil
 	}
 
-	db.SetConfig(&Conf{DefaultTransactionTimeOut * 100, DefaultQueryTimeOut * 100, DefaultInternalQueryLimit})
+	db.SetConfig(&Conf{DefaultTransactionTimeOut * 3, DefaultQueryTimeOut * 3, DefaultInternalQueryLimit})
 
 	// Get deferent versions of dataset
 	users := unmarshalDataSet(dataset)
@@ -129,12 +129,28 @@ func TestCollection_Query(t *testing.T) {
 			false,
 		}, {
 			"Between int filter limit 10 order by email",
+			NewQuery().SetOrder([]string{"Email"}, true).Get(
+				NewFilter(Between).SetSelector([]string{"Address", "ZipCode"}).
+					CompareTo(uint(60)).CompareTo(uint(63)),
+			).SetLimits(10000, 0),
+			[]*User{users3[248], users3[183]},
+			false,
+		}, {
+			"All with greater bytes filter limit 10 order by bytes",
+			NewQuery().SetOrder([]string{"PublicKey"}, true).Get(
+				NewFilter(Between).SetSelector([]string{"PublicKey"}).
+					CompareTo([]byte{0}),
+			).SetLimits(10000, 0),
+			[]*User{},
+			false,
+		}, {
+			"Timed out",
 			NewQuery().SetOrder([]string{"Balance"}, false).Get(
 				NewFilter(Between).SetSelector([]string{"Balance"}).EqualWanted().
 					CompareTo(-104466272306065862).CompareTo(997373309132031595),
-			).SetLimits(10000, 0),
-			[]*User{users3[148], users3[102], users3[137], users3[288], users3[246], users3[21], users3[129], users3[293], users3[187], users3[73], users3[178], users3[175], users3[169], users3[88], users3[7], users3[44], users3[260], users3[115], users3[257], users3[281], users3[49], users3[19], users3[104], users3[82], users3[224], users3[57], users3[233], users3[125], users3[220], users3[62], users3[231]},
-			false,
+			).SetLimits(10, 10).SetTimeout(time.Nanosecond),
+			[]*User{},
+			true,
 		},
 	}
 
@@ -143,6 +159,9 @@ func TestCollection_Query(t *testing.T) {
 			gotResponse, err := c.Query(tt.args)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Collection.Query() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
 				return
 			}
 

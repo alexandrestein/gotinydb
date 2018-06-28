@@ -53,7 +53,8 @@ func (c *Collection) Put(id string, content interface{}) error {
 	// Run the insertion
 	c.writeTransactionChan <- tr
 	// And wait for the end of the insertion
-	return <-tr.responseChan
+	s := <-tr.responseChan
+	return s
 }
 
 func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
@@ -198,7 +199,7 @@ func (c *Collection) loadIndex() error {
 }
 
 // Query run the given query to all the collection indexes
-func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
+func (c *Collection) Query(q *Query) (response *ResponseQuery, err error) {
 	if q == nil {
 		return
 	}
@@ -229,7 +230,12 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 		return nil, err
 	}
 
-	return c.queryCleanAndOrder(ctx, q, tree)
+	response, err = c.queryCleanAndOrder(ctx, q, tree)
+	if err != nil {
+		return nil, err
+	}
+
+	return
 }
 
 func (c *Collection) deleteIndexes(ctx context.Context, id string) error {

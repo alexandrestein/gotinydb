@@ -12,6 +12,7 @@ type (
 		Address   *Address
 		Age       uint8
 		LastLogin time.Time
+		PublicKey []byte
 	}
 	Address struct {
 		City    string
