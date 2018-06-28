@@ -173,14 +173,14 @@ func (c *Collection) SetIndex(i *Index) error {
 		return errSetingIndexIntoConfig
 	}
 
-	if err := c.DB.Update(func(tx *bolt.Tx) error {
+	if updateErr := c.DB.Update(func(tx *bolt.Tx) error {
 		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
 		if createErr != nil {
 			return createErr
 		}
 		return nil
-	}); err != nil {
-		return err
+	}); updateErr != nil {
+		return updateErr
 	}
 	return nil
 }

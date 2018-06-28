@@ -18,7 +18,8 @@ type (
 		ValueStore  *badger.DB
 		Collections []*Collection
 
-		ctx context.Context
+		ctx     context.Context
+		closing bool
 	}
 
 	// Conf defines the deferent configuration elements of the database
@@ -55,6 +56,8 @@ func Open(ctx context.Context, path string) (*DB, error) {
 	if loadErr := d.loadCollections(); loadErr != nil {
 		return nil, loadErr
 	}
+
+	go d.waitForClose()
 
 	return d, nil
 }
@@ -98,6 +101,11 @@ func (d *DB) SetConfig(conf *Conf) error {
 
 // Close close the underneath collections and main store
 func (d *DB) Close() error {
+	if d.closing {
+		return fmt.Errorf("already ongoing")
+	}
+	d.closing = true
+
 	errors := ""
 	for i, col := range d.Collections {
 		if err := col.DB.Close(); err != nil {
