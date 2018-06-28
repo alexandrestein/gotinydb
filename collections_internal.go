@@ -205,7 +205,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 		}
 
 		for _, index := range c.Indexes {
-			if indexedValue, apply := index.Apply(writeTransaction.contentInterface); apply {
+			if indexedValue, apply := index.apply(writeTransaction.contentInterface); apply {
 				indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
 
 				idsAsBytes := indexBucket.Get(indexedValue)
@@ -313,8 +313,8 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 	// will take care of the given filter
 	for _, index := range c.Indexes {
 		for _, filter := range q.filters {
-			if index.DoesFilterApplyToIndex(filter) {
-				go index.Query(ctx, filter, finishedChan)
+			if index.doesFilterApplyToIndex(filter) {
+				go index.query(ctx, filter, finishedChan)
 				nbToDo++
 			}
 		}

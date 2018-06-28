@@ -50,9 +50,9 @@ func NewIndex(name string, t vars.IndexType, selector ...string) *Index {
 	return ret
 }
 
-// Apply take the full object to add in the collection and check if is must be
+// apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
-func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
+func (i *Index) apply(object interface{}) (contentToIndex []byte, ok bool) {
 	structObj := structs.New(object)
 	var field *structs.Field
 	for i, fieldName := range i.Selector {
@@ -68,8 +68,8 @@ func (i *Index) Apply(object interface{}) (contentToIndex []byte, ok bool) {
 	return i.testType(field.Value())
 }
 
-// DoesFilterApplyToIndex only check if the filter belongs to the index
-func (i *Index) DoesFilterApplyToIndex(filter *Filter) (ok bool) {
+// doesFilterApplyToIndex only check if the filter belongs to the index
+func (i *Index) doesFilterApplyToIndex(filter *Filter) (ok bool) {
 	// Check the selector
 	if filter.selectorHash != i.SelectorHash {
 		return false
@@ -104,8 +104,8 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 	return contentToIndex, true
 }
 
-// Query do the given filter and ad it to the tree
-func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
+// query do the given filter and ad it to the tree
+func (i *Index) query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
 	done := false
 	defer func() {
 		// Make sure to reply as done
