@@ -83,14 +83,6 @@ func (f *Filter) CompareTo(val interface{}) *Filter {
 	return f
 }
 
-// ValueToCompareAsBytes returns the given value as bytes to make it easy to compare
-func (f *Filter) ValueToCompareAsBytes(n int) []byte {
-	if n >= len(f.values) {
-		return []byte{}
-	}
-	return f.values[n].Bytes()
-}
-
 // GetType returns the type of the filter given at the initialization
 func (f *Filter) GetType() FilterOperator {
 	return f.operator
