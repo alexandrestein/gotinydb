@@ -103,7 +103,7 @@ func (f *Filter) EqualWanted() *Filter {
 }
 
 // SetSelector defines the configurable limit of IDs.
-func (f *Filter) SetSelector(s []string) *Filter {
+func (f *Filter) SetSelector(s ...string) *Filter {
 	f.selector = s
 	f.selectorHash = vars.BuildSelectorHash(s)
 	return f

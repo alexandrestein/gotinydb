@@ -62,7 +62,7 @@ func TestOpenAndClose(t *testing.T) {
 		return
 	}
 
-	response, queryErr := c.Query(NewQuery().Get(NewFilter(Equal).SetSelector([]string{"Email"}).CompareTo("jonas-90@tlaloc.com")))
+	response, queryErr := c.Query(NewQuery().Get(NewFilter(Equal).SetSelector("Email").CompareTo("jonas-90@tlaloc.com")))
 	if queryErr != nil {
 		t.Error(queryErr)
 		return

@@ -87,75 +87,114 @@ func TestCollection_Query(t *testing.T) {
 		args    *Query
 		wantErr bool
 	}{
+		// string index "Email" no oreder
 		{
-			"One Equal string filter limit 10",
+			"Email Equal no order gödel-76",
 			NewQuery().SetTimeout(time.Hour).SetLimits(10, 0).Get(
-				NewFilter(Equal).SetSelector([]string{"Email"}).
+				NewFilter(Equal).SetSelector("Email").
 					CompareTo("gödel-76@rudolph.com"),
 			),
 			false,
 		}, {
-			"Many Greater string filter limit 5",
+			"Email Greater no order f",
 			NewQuery().Get(
-				NewFilter(Greater).SetSelector([]string{"Email"}).
+				NewFilter(Greater).SetSelector("Email").
 					CompareTo("f"),
 			).SetLimits(5, 0),
 			false,
 		}, {
-			"Many Less string filter limit 5",
+			"Email Less no order k",
 			NewQuery().Get(
-				NewFilter(Less).SetSelector([]string{"Email"}).
+				NewFilter(Less).SetSelector("Email").
 					CompareTo("k"),
 			).SetLimits(5, 0),
 			false,
 		}, {
-			"Many Between string filter limit 5",
+			"Email Between no order m to u",
 			NewQuery().Get(
-				NewFilter(Between).SetSelector([]string{"Email"}).
+				NewFilter(Between).SetSelector("Email").
+					CompareTo("m").CompareTo("u"),
+			).SetLimits(5, 0),
+			false,
+		},
+		// string index "Email" with oreder
+		{
+			"Email Greater ordered by Email descendent equal wanted f",
+			NewQuery().SetOrder(false, "Email").Get(
+				NewFilter(Greater).SetSelector("Email").EqualWanted().
+					CompareTo("f"),
+			).SetLimits(5, 0),
+			false,
+		}, {
+			"Email Less ordered by Age ascendent k",
+			NewQuery().SetOrder(true, "Age").Get(
+				NewFilter(Less).SetSelector("Email").
+					CompareTo("k"),
+			).SetLimits(5, 0),
+			false,
+		}, {
+			"Email Between ordered by Age descendent equal wanted m to u",
+			NewQuery().SetOrder(false, "Age").Get(
+				NewFilter(Between).SetSelector("Email").EqualWanted().
 					CompareTo("m").CompareTo("u"),
 			).SetLimits(5, 0),
 			false,
 		},
 
+		// many filters
+		{
+			"Age 19 and a < Email < j balance and last login after 6 month ego more than 0 order by email",
+			NewQuery().SetOrder(true, "Email").Get(
+				NewFilter(Equal).SetSelector("Age").
+					CompareTo(uint(19))).Get(
+				NewFilter(Between).SetSelector("Email").
+					CompareTo("a").CompareTo("j")).Get(
+				NewFilter(Greater).SetSelector("Balance").
+					CompareTo(0)).Get(
+				NewFilter(Greater).SetSelector("LastLogin").
+					CompareTo(time.Now().Add(-time.Hour * 24 * 30 * 6))),
+			false,
+		},
+
 		{
 			"Many Equal integer filter limit 5 order by email",
-			NewQuery().SetOrder([]string{"Email"}, true).Get(
-				NewFilter(Equal).SetSelector([]string{"Age"}).
+			NewQuery().SetOrder(true, "Email").Get(
+				NewFilter(Equal).SetSelector("Age").
 					CompareTo(uint(5)),
 			).SetLimits(5, 0),
 			false,
 		}, {
 			"Greater integer filter limit 5 order by ZipCode",
-			NewQuery().SetOrder([]string{"Address", "ZipCode"}, true).Get(
-				NewFilter(Greater).SetSelector([]string{"Address", "ZipCode"}).EqualWanted().
+			NewQuery().SetOrder(true, "Address", "ZipCode").Get(
+				NewFilter(Greater).SetSelector("Address", "ZipCode").EqualWanted().
 					CompareTo(uint(50)),
 			).SetLimits(5, 0),
 			false,
 		}, {
 			"Less time filter limit 5 order by time",
-			NewQuery().SetOrder([]string{"LastLogin"}, false).Get(
-				NewFilter(Less).SetSelector([]string{"LastLogin"}).
+			NewQuery().SetOrder(false, "LastLogin").Get(
+				NewFilter(Less).SetSelector("LastLogin").
 					CompareTo(time.Now()),
 			).SetLimits(5, 0),
 			false,
 		}, {
 			"Between int filter limit 10 order by age",
-			NewQuery().SetOrder([]string{"Age"}, true).Get(
-				NewFilter(Between).SetSelector([]string{"Address", "ZipCode"}).
+			NewQuery().SetOrder(true, "Age").Get(
+				NewFilter(Between).SetSelector("Address", "ZipCode").
 					CompareTo(uint(65)).CompareTo(uint(68)),
 			).SetLimits(10, 0),
 			false,
 		}, {
 			"Between int filter limit 10 order by email",
-			NewQuery().SetOrder([]string{"Email"}, true).Get(
-				NewFilter(Between).SetSelector([]string{"Address", "ZipCode"}).
+			NewQuery().SetOrder(true, "Email").Get(
+				NewFilter(Between).SetSelector("Address", "ZipCode").
 					CompareTo(uint(60)).CompareTo(uint(63)),
 			).SetLimits(10000, 0),
 			false,
 		}, {
 			"Timed out",
-			NewQuery().SetOrder([]string{"Balance"}, false).Get(
-				NewFilter(Between).SetSelector([]string{"Balance"}).EqualWanted().
+			NewQuery().SetOrder(false, "Balance").Get(
+				NewFilter(Between).SetSelector("Balance").EqualWanted().
 					CompareTo(-104466272306065862).CompareTo(997373309132031595),
 			).SetLimits(10, 10).SetTimeout(time.Nanosecond),
 			true,
@@ -173,8 +212,10 @@ func TestCollection_Query(t *testing.T) {
 				return
 			}
 
-			if !doQueryTest(t, gotResponse, tt.args) {
-				return
+			doQueryTest(t, gotResponse, tt.args)
+
+			if testing.Verbose() {
+				fmt.Println("")
 			}
 		})
 	}
@@ -196,6 +237,9 @@ func doQueryTest(t *testing.T, resp *ResponseQuery, q *Query) bool {
 	ret := make([]*User, resp.Len())
 
 	for i, _, v := resp.First(); i >= 0; i, _, v = resp.Next() {
+		if testing.Verbose() {
+			fmt.Printf("%d -> %s\n", i, string(v))
+		}
 		user := new(User)
 		err := json.Unmarshal(v, user)
 		if err != nil {
