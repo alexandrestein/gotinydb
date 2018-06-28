@@ -44,7 +44,7 @@ type (
 		// This is for the ordering
 		less         func(btree.Item) bool
 		selectorHash uint64
-		getRefsFunc  func(id string) *Refs
+		getRefsFunc  func(id string) *refs
 	}
 
 	// IDs defines a list of ID. The struct is needed to build a pointer to be
@@ -151,7 +151,7 @@ func (q *Query) Get(f *Filter) *Query {
 	return q
 }
 
-func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64, getRefsFunc func(id string) *Refs) (func(next btree.Item) (over bool), *btree.BTree) {
+func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64, getRefsFunc func(id string) *refs) (func(next btree.Item) (over bool), *btree.BTree) {
 	ret := btree.New(5)
 
 	return func(next btree.Item) bool {

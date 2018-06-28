@@ -24,17 +24,17 @@ type (
 		getTx func(update bool) (*bolt.Tx, error)
 	}
 
-	// Refs defines an struct to manage the references of a given object
+	// refs defines an struct to manage the references of a given object
 	// in all the indexes it belongs to
-	Refs struct {
+	refs struct {
 		ObjectID     string
 		ObjectHashID string
 
-		Refs []*Ref
+		Refs []*ref
 	}
 
 	// Ref defines the relations between a object with some index with indexed value
-	Ref struct {
+	ref struct {
 		IndexName    string
 		IndexHash    uint64
 		IndexedValue []byte
@@ -186,29 +186,29 @@ func (i *Index) Query(ctx context.Context, filter *Filter, finishedChan chan *ID
 	return
 }
 
-// NewRefs builds a new empty Refs pointer
-func NewRefs() *Refs {
-	refs := new(Refs)
-	refs.Refs = []*Ref{}
+// newRefs builds a new empty Refs pointer
+func newRefs() *refs {
+	refs := new(refs)
+	refs.Refs = []*ref{}
 	return refs
 }
 
-// NewRefsFromDB builds a Refs pointer based on the saved value in database
-func NewRefsFromDB(input []byte) *Refs {
-	refs := new(Refs)
+// newRefsFromDB builds a Refs pointer based on the saved value in database
+func newRefsFromDB(input []byte) *refs {
+	refs := new(refs)
 	json.Unmarshal(input, refs)
 	return refs
 }
 
 // IDasBytes returns the ID of the coresponding object as a slice of bytes
-func (r *Refs) IDasBytes() []byte {
+func (r *refs) IDasBytes() []byte {
 	return []byte(r.ObjectHashID)
 }
 
-// SetIndexedValue add to the list of references this one.
+// setIndexedValue add to the list of references this one.
 // The indexName define the index it belongs to and indexedVal defines what value
 // is indexed.
-func (r *Refs) SetIndexedValue(indexName string, indexHash uint64, indexedVal []byte) {
+func (r *refs) setIndexedValue(indexName string, indexHash uint64, indexedVal []byte) {
 	for _, ref := range r.Refs {
 		if ref.IndexName == indexName {
 			ref.IndexedValue = indexedVal
@@ -216,15 +216,15 @@ func (r *Refs) SetIndexedValue(indexName string, indexHash uint64, indexedVal []
 		}
 	}
 
-	ref := new(Ref)
+	ref := new(ref)
 	ref.IndexName = indexName
 	ref.IndexHash = indexHash
 	ref.IndexedValue = indexedVal
 	r.Refs = append(r.Refs, ref)
 }
 
-// AsBytes marshals the given Refs pointer into a slice of bytes fo saving
-func (r *Refs) AsBytes() []byte {
+// asBytes marshals the given Refs pointer into a slice of bytes fo saving
+func (r *refs) asBytes() []byte {
 	ret, _ := json.Marshal(r)
 	return ret
 }

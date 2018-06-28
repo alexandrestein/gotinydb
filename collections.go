@@ -254,11 +254,11 @@ func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
 	})
 }
 
-func (c *Collection) getRefs(tx *bolt.Tx, id string) (*Refs, error) {
+func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
 	refsBucket := tx.Bucket([]byte("refs"))
 
 	refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
-	refs := NewRefsFromDB(refsAsBytes)
+	refs := newRefsFromDB(refsAsBytes)
 	if refs == nil {
 		return nil, fmt.Errorf("references mal formed: %s", string(refsAsBytes))
 	}

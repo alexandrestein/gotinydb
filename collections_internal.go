@@ -189,7 +189,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 
 		refsBucket := tx.Bucket([]byte("refs"))
 		refsAsBytes := refsBucket.Get(vars.BuildBytesID(writeTransaction.id))
-		refs := NewRefs()
+		refs := newRefs()
 		if refsAsBytes != nil && len(refsAsBytes) > 0 {
 			if err := json.Unmarshal(refsAsBytes, refs); err != nil {
 				errChan <- err
@@ -224,11 +224,11 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 					return err
 				}
 
-				refs.SetIndexedValue(index.Name, index.SelectorHash, indexedValue)
+				refs.setIndexedValue(index.Name, index.SelectorHash, indexedValue)
 			}
 		}
 
-		putErr := refsBucket.Put(refs.IDasBytes(), refs.AsBytes())
+		putErr := refsBucket.Put(refs.IDasBytes(), refs.asBytes())
 		if putErr != nil {
 			errChan <- err
 			return err
@@ -271,7 +271,7 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString stri
 
 	// Get the references of the given ID
 	refsAsBytes := refsBucket.Get(vars.BuildBytesID(idAsString))
-	refs := NewRefs()
+	refs := newRefs()
 	if refsAsBytes != nil && len(refsAsBytes) > 0 {
 		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
 			return err
@@ -357,7 +357,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 }
 
 func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btree.BTree) (response *ResponseQuery, _ error) {
-	getRefFunc := func(id string) (refs *Refs) {
+	getRefFunc := func(id string) (refs *refs) {
 		c.DB.View(func(tx *bolt.Tx) error {
 			refs, _ = c.getRefs(tx, id)
 			return nil
