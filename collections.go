@@ -169,8 +169,8 @@ func (c *Collection) SetIndex(i *Index) error {
 	i.getTx = c.DB.Begin
 
 	c.Indexes = append(c.Indexes, i)
-	if err := c.setIndexesIntoConfigBucket(i); err != nil {
-		return err
+	if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
+		return errSetingIndexIntoConfig
 	}
 
 	if err := c.DB.Update(func(tx *bolt.Tx) error {

@@ -40,11 +40,11 @@ func (c *Collection) init(name string) error {
 		if confBucket == nil {
 			return fmt.Errorf("bucket does not exist")
 		}
-		if err := confBucket.Put([]byte("name"), []byte(name)); err != nil {
-			return err
+		if nameErr := confBucket.Put([]byte("name"), []byte(name)); nameErr != nil {
+			return nameErr
 		}
-		if err := confBucket.Put([]byte("id"), []byte(c.ID)); err != nil {
-			return err
+		if idErr := confBucket.Put([]byte("id"), []byte(c.ID)); idErr != nil {
+			return idErr
 		}
 		return nil
 	})
