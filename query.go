@@ -141,8 +141,8 @@ func (q *Query) SetOrder(ascendent bool, selector ...string) *Query {
 	return q
 }
 
-// Get defines the action to perform to get IDs
-func (q *Query) Get(f *Filter) *Query {
+// SetFilter defines the action to perform to get IDs
+func (q *Query) SetFilter(f *Filter) *Query {
 	if q.filters == nil {
 		q.filters = []*Filter{}
 
