@@ -14,6 +14,21 @@ var (
 	getTestPathChan chan string
 )
 
+type (
+	User struct {
+		ID        string
+		Email     string
+		Balance   int
+		Address   *Address
+		Age       uint
+		LastLogin time.Time
+	}
+	Address struct {
+		City    string
+		ZipCode uint
+	}
+)
+
 func init() {
 	getTestPathChan = make(chan string)
 	buf, _ := time.Now().MarshalBinary()
