@@ -40,9 +40,9 @@ func TestOpenAndClose(t *testing.T) {
 		return
 	}
 	defer db.Close()
-	defer os.RemoveAll(db.Path)
+	defer os.RemoveAll(db.path)
 
-	testPath := db.Path
+	testPath := db.path
 
 	if err := db.Close(); err != nil {
 		t.Error(err)

@@ -12,11 +12,11 @@ import (
 type (
 	// DB is the main element of the package and provide all access to sub commands
 	DB struct {
-		Path string
-		Conf *Conf
+		path string
+		conf *Conf
 
-		ValueStore  *badger.DB
-		Collections []*Collection
+		valueStore  *badger.DB
+		collections []*Collection
 
 		ctx     context.Context
 		closing bool
@@ -40,10 +40,10 @@ var (
 // Open simply opens a new or existing database
 func Open(ctx context.Context, path string) (*DB, error) {
 	d := new(DB)
-	d.Path = path
+	d.path = path
 	d.ctx = ctx
 
-	d.Conf = &Conf{DefaultTransactionTimeOut, DefaultQueryTimeOut, DefaultInternalQueryLimit}
+	d.conf = &Conf{DefaultTransactionTimeOut, DefaultQueryTimeOut, DefaultInternalQueryLimit}
 
 	if err := d.buildPath(); err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func Open(ctx context.Context, path string) (*DB, error) {
 
 // Use build or get a Collection pointer
 func (d *DB) Use(colName string) (*Collection, error) {
-	for _, col := range d.Collections {
+	for _, col := range d.collections {
 		if col.name == colName {
 			if err := col.loadIndex(); err != nil {
 				return nil, err
@@ -81,16 +81,16 @@ func (d *DB) Use(colName string) (*Collection, error) {
 	if err := c.loadIndex(); err != nil {
 		return nil, err
 	}
-	d.Collections = append(d.Collections, c)
+	d.collections = append(d.collections, c)
 
 	return c, nil
 }
 
 // SetConfig update the database configurations
 func (d *DB) SetConfig(conf *Conf) error {
-	d.Conf = conf
+	d.conf = conf
 
-	for _, col := range d.Collections {
+	for _, col := range d.collections {
 		col.conf = conf
 		for _, index := range col.indexes {
 			index.conf = conf
@@ -107,15 +107,15 @@ func (d *DB) Close() error {
 	d.closing = true
 
 	errors := ""
-	for i, col := range d.Collections {
+	for i, col := range d.collections {
 		if err := col.db.Close(); err != nil {
 			errors = fmt.Sprintf("%s%s\n", errors, err.Error())
 		}
-		d.Collections[i] = nil
+		d.collections[i] = nil
 	}
 
-	if d.ValueStore != nil {
-		err := d.ValueStore.Close()
+	if d.valueStore != nil {
+		err := d.valueStore.Close()
 		if err != nil {
 			errors = fmt.Sprintf("%s%s\n", errors, err.Error())
 		}
@@ -125,9 +125,9 @@ func (d *DB) Close() error {
 		return fmt.Errorf(errors)
 	}
 
-	d.Path = ""
-	d.ValueStore = nil
-	d.Collections = nil
+	d.path = ""
+	d.valueStore = nil
+	d.collections = nil
 
 	d = nil
 	return nil
@@ -136,14 +136,14 @@ func (d *DB) Close() error {
 // DeleteCollection delete the given collection
 func (d *DB) DeleteCollection(collectionName string) error {
 	var c *Collection
-	for i, col := range d.Collections {
+	for i, col := range d.collections {
 		if col.name == collectionName {
 			// Save the collection pointer for future cleanup
 			c = col
 			// Delete the collection form the list of collection pointers
-			copy(d.Collections[i:], d.Collections[i+1:])
-			d.Collections[len(d.Collections)-1] = nil
-			d.Collections = d.Collections[:len(d.Collections)-1]
+			copy(d.collections[i:], d.collections[i+1:])
+			d.collections[len(d.collections)-1] = nil
+			d.collections = d.collections[:len(d.collections)-1]
 			break
 		}
 	}
@@ -153,7 +153,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 		return err
 	}
 	// Remove the index DB files
-	if err := os.RemoveAll(d.Path + "/collections/" + c.id); err != nil {
+	if err := os.RemoveAll(d.path + "/collections/" + c.id); err != nil {
 		return err
 	}
 
@@ -167,7 +167,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 			return nil
 		}
 
-		err = d.ValueStore.Update(func(txn *badger.Txn) error {
+		err = d.valueStore.Update(func(txn *badger.Txn) error {
 			for _, id := range ids {
 				err := txn.Delete(id)
 				if err != nil {

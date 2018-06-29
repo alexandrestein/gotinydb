@@ -11,19 +11,19 @@ import (
 )
 
 func (d *DB) buildPath() error {
-	return os.MkdirAll(d.Path+"/collections", vars.FilePermission)
+	return os.MkdirAll(d.path+"/collections", vars.FilePermission)
 }
 
 func (d *DB) initBadger() error {
 	opts := badger.DefaultOptions
-	opts.Dir = d.Path + "/store"
-	opts.ValueDir = d.Path + "/store"
+	opts.Dir = d.path + "/store"
+	opts.ValueDir = d.path + "/store"
 	db, err := badger.Open(opts)
 	if err != nil {
 		return err
 	}
 
-	d.ValueStore = db
+	d.valueStore = db
 	return nil
 }
 
@@ -47,7 +47,7 @@ func (d *DB) loadCollections() error {
 			return err
 		}
 
-		d.Collections = append(d.Collections, col)
+		d.collections = append(d.collections, col)
 	}
 
 	return nil
@@ -55,11 +55,11 @@ func (d *DB) loadCollections() error {
 
 func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c := new(Collection)
-	c.store = d.ValueStore
+	c.store = d.valueStore
 	c.id = colID
 	c.name = colName
 
-	c.conf = d.Conf
+	c.conf = d.conf
 
 	c.initWriteTransactionChan(d.ctx)
 
@@ -73,7 +73,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c.name = colName
 	c.ctx = d.ctx
 
-	db, openDBErr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
+	db, openDBErr := bolt.Open(d.path+"/collections/"+colID, vars.FilePermission, nil)
 	if openDBErr != nil {
 		return nil, openDBErr
 	}
@@ -103,7 +103,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 }
 
 func (d *DB) getCollectionsIDs() ([]string, error) {
-	files, err := ioutil.ReadDir(d.Path + "/collections")
+	files, err := ioutil.ReadDir(d.path + "/collections")
 	if err != nil {
 		return nil, err
 	}

@@ -58,7 +58,7 @@ func TestCollection_Query(t *testing.T) {
 		return
 	}
 	defer db.Close()
-	defer os.RemoveAll(db.Path)
+	defer os.RemoveAll(db.path)
 
 	c, userDBErr := db.Use("testCol")
 	if userDBErr != nil {
@@ -541,7 +541,7 @@ func TestCollection_Delete(t *testing.T) {
 		return
 	}
 	defer db.Close()
-	defer os.RemoveAll(db.Path)
+	defer os.RemoveAll(db.path)
 
 	if err := db.DeleteCollection("testCol"); err != nil {
 		t.Error(err)
