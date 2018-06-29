@@ -392,7 +392,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 			break
 		}
 
-		response.List[i] = &responseQueryElem{
+		response.list[i] = &responseQueryElem{
 			ID:             ret.IDs[i],
 			ContentAsBytes: responsesAsBytes[i],
 		}

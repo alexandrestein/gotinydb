@@ -18,6 +18,7 @@ type (
 var (
 	responseQuery *ResponseQuery
 	result        = []*Type{}
+	collection    *Collection
 )
 
 func Example() {
@@ -167,4 +168,18 @@ func ExampleResponseQuery_One() {
 		result[i] = tmpObj
 	}
 	// Slice is filled up your code goes here
+}
+
+func ExampleNewQuery() {
+	// Build a new query
+	q := NewQuery().SetFilter(
+		NewFilter(Equal).SetSelector("Email").CompareTo("jonas-90@tlaloc.com"),
+	)
+
+	// Initialize an struct to get the value using One method
+	recordReceiver := struct{ Email string }{}
+	response, _ := collection.Query(q)
+
+	// recordReceiver should be filled up with the recorded data
+	response.One(recordReceiver)
 }

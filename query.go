@@ -64,7 +64,7 @@ type (
 
 	// ResponseQuery holds the results of a query
 	ResponseQuery struct {
-		List           []*responseQueryElem
+		list           []*responseQueryElem
 		actualPosition int
 		query          *Query
 	}
@@ -365,23 +365,23 @@ func (i *idsType) Strings() []string {
 // newResponseQuery build a new ResponseQuery pointer with the given limit
 func newResponseQuery(limit int) *ResponseQuery {
 	r := new(ResponseQuery)
-	r.List = make([]*responseQueryElem, limit)
+	r.list = make([]*responseQueryElem, limit)
 	return r
 }
 
 // Len returns the length of the given response
 func (r *ResponseQuery) Len() int {
-	return len(r.List)
+	return len(r.list)
 }
 
 // First used with Next
 func (r *ResponseQuery) First() (i int, id string, objAsByte []byte) {
-	if len(r.List) <= 0 {
+	if len(r.list) <= 0 {
 		return -1, "", nil
 	}
 
 	r.actualPosition = 0
-	return 0, r.List[0].ID.String(), r.List[0].ContentAsBytes
+	return 0, r.list[0].ID.String(), r.list[0].ContentAsBytes
 }
 
 // Next used with First
@@ -392,13 +392,13 @@ func (r *ResponseQuery) Next() (i int, id string, objAsByte []byte) {
 
 // Last used with Prev
 func (r *ResponseQuery) Last() (i int, id string, objAsByte []byte) {
-	lastSlot := len(r.List) - 1
+	lastSlot := len(r.list) - 1
 	if lastSlot < 0 {
 		return -1, "", nil
 	}
 
 	r.actualPosition = lastSlot
-	return lastSlot, r.List[lastSlot].ID.String(), r.List[lastSlot].ContentAsBytes
+	return lastSlot, r.list[lastSlot].ID.String(), r.list[lastSlot].ContentAsBytes
 }
 
 // Prev used with Last
@@ -409,11 +409,11 @@ func (r *ResponseQuery) Prev() (i int, id string, objAsByte []byte) {
 
 // Is called by r.Next r.Prev to get their next values
 func (r *ResponseQuery) next() (i int, id string, objAsByte []byte) {
-	if r.actualPosition >= len(r.List) || r.actualPosition < 0 {
+	if r.actualPosition >= len(r.list) || r.actualPosition < 0 {
 		r.actualPosition = 0
 		return -1, "", nil
 	}
-	return r.actualPosition, r.List[r.actualPosition].ID.String(), r.List[r.actualPosition].ContentAsBytes
+	return r.actualPosition, r.list[r.actualPosition].ID.String(), r.list[r.actualPosition].ContentAsBytes
 }
 
 // All takes a function as argument and permit to unmarshal or to manage recoredes inside the function
@@ -423,8 +423,8 @@ func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int,
 		return 0, vars.ErrNotFound
 	}
 
-	for _, elem := range r.List {
-		if n >= len(r.List) {
+	for _, elem := range r.list {
+		if n >= len(r.list) {
 			break
 		}
 		err = fn(elem.ID.String(), elem.ContentAsBytes)
@@ -439,13 +439,13 @@ func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int,
 // One retrieve one element at the time and put it into the destination pointer.
 // Use it to get the objects one after the other.
 func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
-	if r.actualPosition >= len(r.List) {
+	if r.actualPosition >= len(r.list) {
 		r.actualPosition = 0
 		return "", vars.ErrTheResponseIsOver
 	}
 
-	id = r.List[r.actualPosition].ID.String()
-	err = json.Unmarshal(r.List[r.actualPosition].ContentAsBytes, destination)
+	id = r.list[r.actualPosition].ID.String()
+	err = json.Unmarshal(r.list[r.actualPosition].ContentAsBytes, destination)
 	r.actualPosition++
 
 	return id, err

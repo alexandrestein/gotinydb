@@ -227,7 +227,7 @@ func TestCollection_Query(t *testing.T) {
 func doQueryTest(t *testing.T, resp *ResponseQuery, q *Query) bool {
 	if resp.Len() > q.limit {
 		had := ""
-		for _, responseQuery := range resp.List {
+		for _, responseQuery := range resp.list {
 			had = fmt.Sprintf("%s\n%s", had, string(responseQuery.ContentAsBytes))
 		}
 		t.Errorf("returned %d objects \nHad\n%s", resp.Len(), had)
