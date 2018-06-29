@@ -15,6 +15,10 @@ var (
 	result        = []*Type{}
 )
 
+func Example()  {
+	
+}
+
 func ExampleResponseQuery_All() {
 	i := 0
 	if _, err := responseQuery.All(func(id string, objAsBytes []byte) error {
@@ -29,7 +33,7 @@ func ExampleResponseQuery_All() {
 		i++
 		return nil
 	}); err != nil {
-		// Do something
+		// Handler error
 	}
 }
 
@@ -39,12 +43,12 @@ func ExampleResponseQuery_Next() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
 		if err != nil {
-			// Do something
+			// Handler error
 		}
 
 		result[i] = tmpObj
 	}
-	// List is fulled up
+	// Slice is filled up your code goes here
 }
 func ExampleResponseQuery_First() {
 	// List all result from the first to the last with the next function
@@ -52,12 +56,12 @@ func ExampleResponseQuery_First() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
 		if err != nil {
-			// Do something
+			// Handler error
 		}
 
 		result[i] = tmpObj
 	}
-	// List is fulled up
+	// Slice is filled up your code goes here
 }
 
 func ExampleResponseQuery_Prev() {
@@ -66,12 +70,12 @@ func ExampleResponseQuery_Prev() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
 		if err != nil {
-			// Do something
+			// Handler error
 		}
 
 		result[i] = tmpObj
 	}
-	// List is fulled up
+	// Slice is filled up your code goes here
 }
 func ExampleResponseQuery_Last() {
 	// List all result from the last to the last with the prev function
@@ -79,12 +83,12 @@ func ExampleResponseQuery_Last() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
 		if err != nil {
-			// Do something
+			// Handler error
 		}
 
 		result[i] = tmpObj
 	}
-	// List is fulled up
+	// Slice is filled up your code goes here
 }
 
 func ExampleResponseQuery_One() {
@@ -95,9 +99,9 @@ func ExampleResponseQuery_One() {
 			if err == vars.ErrTheResponseIsOver {
 				break
 			}
-			// Do something
+			// Handler error
 		}
 		result[i] = tmpObj
 	}
-	// List is fulled up
+	// Slice is filled up your code goes here
 }

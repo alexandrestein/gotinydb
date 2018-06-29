@@ -25,14 +25,19 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 * [Btree](https://github.com/google/btree) - Is the in memory tree used to save sub queries elements
 * [Structs](https://github.com/fatih/structs) - Used to cut objects in part for indexing
 
-## Todo before v1.0.0
+## Todo before
+
+### v1.0.0
 
 * List every element from one collection
 * Background indexing
 * Collection and Index removing
+* Add some tests with sample building, make a data set and test directly from it
+
+### v1.1.0
+
 * Make some benchmark
 * Full text search with [Bleve](http://www.blevesearch.com/)
-* Add some tests
 
 ## Contributing
 
