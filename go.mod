@@ -11,6 +11,6 @@ require (
 	github.com/minio/highwayhash v0.0.0-20180501080913-85fc8a2dacad
 	github.com/petar/GoLLRB v0.0.0-20130427215148-53be0d36a84c
 	github.com/pkg/errors v0.8.0
-	golang.org/x/net v0.0.0-20180530234432-1e491301e022
-	golang.org/x/sys v0.0.0-20180606202747-9527bec2660b
+	golang.org/x/net v0.0.0-20180629035331-4cb1c02c05b0
+	golang.org/x/sys v0.0.0-20180627142611-7138fd3d9dc8
 )

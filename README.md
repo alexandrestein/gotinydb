@@ -42,7 +42,7 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 
 ## Contributing
 
-Any contribution will be appreciated.
+Any contribution will be appreciate.
 Feedbacks and suggestions are at this point very very important to me.
 
 ## Vendoring
