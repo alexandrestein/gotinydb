@@ -1,7 +1,12 @@
 package gotinydb
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/vars"
 )
@@ -15,8 +20,69 @@ var (
 	result        = []*Type{}
 )
 
-func Example()  {
-	
+func Example() {
+	// getTestPathChan is an test channel to get test path to TMP directory
+	dbTestPath := <-getTestPathChan
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db, openDBErr := Open(ctx, dbTestPath)
+	if openDBErr != nil {
+		log.Fatal(openDBErr)
+		return
+	}
+	defer db.Close()
+	// Clean database directory after the test
+	defer os.RemoveAll(dbTestPath)
+
+	// Open a collection
+	c, useDBErr := db.Use("testCol")
+	if useDBErr != nil {
+		log.Println(useDBErr)
+		return
+	}
+
+	// Setup indexexes
+	c.SetIndex(NewIndex("email", vars.StringIndex, "Email"))
+	c.SetIndex(NewIndex("projects counter", vars.StringIndex, "NbProject"))
+	c.SetIndex(NewIndex("last login", vars.StringIndex, "LastLogin"))
+
+	// Example struct
+	record := struct {
+		Email     string
+		NbProject int
+		LastLogin time.Time
+	}{
+		"jonas-90@tlaloc.com",
+		316,
+		time.Time{},
+	}
+	// Save it in DB
+	if err := c.Put("id", record); err != nil {
+		log.Println(err)
+		return
+	}
+
+	// Query the collection to get the struct based on the Email field
+	response, queryErr := c.Query(NewQuery().SetFilter(NewFilter(Equal).SetSelector("Email").CompareTo("jonas-90@tlaloc.com")))
+	if queryErr != nil {
+		log.Println(queryErr)
+		return
+	}
+
+	// Convert the reccored into a struct using JSON internally
+	retrievedRecord := new(User)
+	id, respErr := response.One(retrievedRecord)
+	if respErr != nil {
+		log.Println(respErr)
+		return
+	}
+
+	// Display the result
+	fmt.Println(id, retrievedRecord)
+
+	// Output: id &{ jonas-90@tlaloc.com 0 <nil> 0 0001-01-01 00:00:00 +0000 UTC}
 }
 
 func ExampleResponseQuery_All() {
@@ -38,7 +104,6 @@ func ExampleResponseQuery_All() {
 }
 
 func ExampleResponseQuery_Next() {
-	// List all result from the first to the last with the next function
 	for i, _, v := responseQuery.First(); i >= 0; i, _, v = responseQuery.Next() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
@@ -51,7 +116,6 @@ func ExampleResponseQuery_Next() {
 	// Slice is filled up your code goes here
 }
 func ExampleResponseQuery_First() {
-	// List all result from the first to the last with the next function
 	for i, _, v := responseQuery.First(); i >= 0; i, _, v = responseQuery.Next() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
@@ -65,7 +129,6 @@ func ExampleResponseQuery_First() {
 }
 
 func ExampleResponseQuery_Prev() {
-	// List all result from the last to the last with the prev function
 	for i, _, v := responseQuery.Last(); i >= 0; i, _, v = responseQuery.Prev() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
