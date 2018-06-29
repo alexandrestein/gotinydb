@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-// StringToBytes converter from a string to bytes slice.
+// stringToBytes converter from a string to bytes slice.
 // If an error is returned it's has the form of ErrWrongType
-func StringToBytes(input interface{}) ([]byte, error) {
+func stringToBytes(input interface{}) ([]byte, error) {
 	typedInput, ok := input.(string)
 	if !ok {
 		return nil, ErrWrongType
@@ -20,9 +20,9 @@ func StringToBytes(input interface{}) ([]byte, error) {
 	return []byte(lowerCaseString), nil
 }
 
-// IntToBytes converter from a int or uint of any size (int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64)
+// intToBytes converter from a int or uint of any size (int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64)
 // to bytes slice. If an error is returned it's has the form of ErrWrongType
-func IntToBytes(input interface{}) ([]byte, error) {
+func intToBytes(input interface{}) ([]byte, error) {
 	typedValue := uint64(0)
 	switch input.(type) {
 	case int, int8, int16, int32, int64:
@@ -68,9 +68,9 @@ func convertIntToAbsoluteUint(input interface{}) (ret uint64) {
 	return ret
 }
 
-// TimeToBytes converter from a time struct to bytes slice.
+// timeToBytes converter from a time struct to bytes slice.
 // If an error is returned it's has the form of ErrWrongType
-func TimeToBytes(input interface{}) ([]byte, error) {
+func timeToBytes(input interface{}) ([]byte, error) {
 	typedInput, ok := input.(time.Time)
 	if !ok {
 		return nil, ErrWrongType

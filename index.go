@@ -57,11 +57,11 @@ func (i *indexType) testType(value interface{}) (contentToIndex []byte, ok bool)
 	var conversionFunc func(interface{}) ([]byte, error)
 	switch i.Type {
 	case StringIndex:
-		conversionFunc = StringToBytes
+		conversionFunc = stringToBytes
 	case IntIndex:
-		conversionFunc = IntToBytes
+		conversionFunc = intToBytes
 	case TimeIndex:
-		conversionFunc = TimeToBytes
+		conversionFunc = timeToBytes
 	default:
 		return nil, false
 	}

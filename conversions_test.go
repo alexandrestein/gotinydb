@@ -9,64 +9,64 @@ import (
 )
 
 func TestStringConversion(t *testing.T) {
-	if _, err := StringToBytes("string to convert"); err != nil {
+	if _, err := stringToBytes("string to convert"); err != nil {
 		t.Error(err)
 		return
 	}
 
-	if _, err := StringToBytes(time.Now()); err == nil {
+	if _, err := stringToBytes(time.Now()); err == nil {
 		t.Error(err)
 		return
 	}
 }
 
 func TestIntConversion(t *testing.T) {
-	if _, err := IntToBytes(31497863415); err != nil {
+	if _, err := intToBytes(31497863415); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(int8(-117)); err != nil {
+	if _, err := intToBytes(int8(-117)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(int16(3847)); err != nil {
+	if _, err := intToBytes(int16(3847)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(int32(-7842245)); err != nil {
+	if _, err := intToBytes(int32(-7842245)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(int64(22416315751)); err != nil {
+	if _, err := intToBytes(int64(22416315751)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(uint(31497863415)); err != nil {
+	if _, err := intToBytes(uint(31497863415)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(uint8(117)); err != nil {
+	if _, err := intToBytes(uint8(117)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(uint16(3847)); err != nil {
+	if _, err := intToBytes(uint16(3847)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(uint32(7842245)); err != nil {
+	if _, err := intToBytes(uint32(7842245)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := IntToBytes(uint64(22416315751)); err != nil {
+	if _, err := intToBytes(uint64(22416315751)); err != nil {
 		t.Error(err)
 		return
 	}
 }
 
 func TestIntOrdering(t *testing.T) {
-	neg, _ := IntToBytes(-1)
-	null, _ := IntToBytes(0)
-	pos, _ := IntToBytes(1)
+	neg, _ := intToBytes(-1)
+	null, _ := intToBytes(0)
+	pos, _ := intToBytes(1)
 
 	if !reflect.DeepEqual(neg, []byte{127, 255, 255, 255, 255, 255, 255, 255}) {
 		t.Errorf("negative values is not what is expected: \n%v\n%v", neg, []byte{127, 255, 255, 255, 255, 255, 255, 255})
@@ -84,9 +84,9 @@ func TestIntOrdering(t *testing.T) {
 		t.Error("negative values are not smaller than positive", neg, pos)
 	}
 
-	neg, _ = IntToBytes(int64(math.MinInt64))
-	null, _ = IntToBytes(int64(0))
-	pos, _ = IntToBytes(int64(math.MaxInt64))
+	neg, _ = intToBytes(int64(math.MinInt64))
+	null, _ = intToBytes(int64(0))
+	pos, _ = intToBytes(int64(math.MaxInt64))
 
 	if !reflect.DeepEqual(neg, []byte{0, 0, 0, 0, 0, 0, 0, 0}) {
 		t.Errorf("negative values is not what is expected: \n%v\n%v", neg, []byte{0, 0, 0, 0, 0, 0, 0, 0})
@@ -104,19 +104,19 @@ func TestIntOrdering(t *testing.T) {
 		t.Error("negative values are not smaller than positive", neg, pos)
 	}
 
-	if _, err := IntToBytes(time.Now()); err == nil {
+	if _, err := intToBytes(time.Now()); err == nil {
 		t.Error(err)
 		return
 	}
 }
 
 func TestTimeConversion(t *testing.T) {
-	if _, err := TimeToBytes(time.Now()); err != nil {
+	if _, err := timeToBytes(time.Now()); err != nil {
 		t.Error(err)
 		return
 	}
 
-	if _, err := TimeToBytes("is it time?"); err == nil {
+	if _, err := timeToBytes("is it time?"); err == nil {
 		t.Error(err)
 		return
 	}

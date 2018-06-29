@@ -81,11 +81,11 @@ func (f *filterValue) Bytes() []byte {
 	var bytes []byte
 	switch f.Type {
 	case StringIndex:
-		bytes, _ = StringToBytes(f.Value)
+		bytes, _ = stringToBytes(f.Value)
 	case IntIndex:
-		bytes, _ = IntToBytes(f.Value)
+		bytes, _ = intToBytes(f.Value)
 	case TimeIndex:
-		bytes, _ = TimeToBytes(f.Value)
+		bytes, _ = timeToBytes(f.Value)
 	default:
 		return nil
 	}
