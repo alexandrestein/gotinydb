@@ -45,9 +45,9 @@ func Example() {
 	}
 
 	// Setup indexexes
-	c.SetIndex(NewIndex("email", vars.StringIndex, "Email"))
-	c.SetIndex(NewIndex("projects counter", vars.StringIndex, "NbProject"))
-	c.SetIndex(NewIndex("last login", vars.StringIndex, "LastLogin"))
+	c.SetIndex("email", vars.StringIndex, "Email")
+	c.SetIndex("projects counter", vars.StringIndex, "NbProject")
+	c.SetIndex("last login", vars.StringIndex, "LastLogin")
 
 	// Example struct
 	record := struct {

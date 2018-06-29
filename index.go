@@ -11,7 +11,7 @@ import (
 
 type (
 	// Index defines the struct to manage indexation
-	Index struct {
+	indexType struct {
 		Name         string
 		Selector     []string
 		SelectorHash uint64
@@ -39,9 +39,9 @@ type (
 	}
 )
 
-// NewIndex build a new Index pointer
-func NewIndex(name string, t vars.IndexType, selector ...string) *Index {
-	ret := new(Index)
+// newIndex build a new Index pointer
+func newIndex(name string, t vars.IndexType, selector ...string) *indexType {
+	ret := new(indexType)
 	ret.Name = name
 	ret.Selector = selector
 	ret.SelectorHash = vars.BuildSelectorHash(selector)
@@ -52,7 +52,7 @@ func NewIndex(name string, t vars.IndexType, selector ...string) *Index {
 
 // apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
-func (i *Index) apply(object interface{}) (contentToIndex []byte, ok bool) {
+func (i *indexType) apply(object interface{}) (contentToIndex []byte, ok bool) {
 	structObj := structs.New(object)
 	var field *structs.Field
 	for i, fieldName := range i.Selector {
@@ -69,7 +69,7 @@ func (i *Index) apply(object interface{}) (contentToIndex []byte, ok bool) {
 }
 
 // doesFilterApplyToIndex only check if the filter belongs to the index
-func (i *Index) doesFilterApplyToIndex(filter *Filter) (ok bool) {
+func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
 	// Check the selector
 	if filter.selectorHash != i.SelectorHash {
 		return false
@@ -85,7 +85,7 @@ func (i *Index) doesFilterApplyToIndex(filter *Filter) (ok bool) {
 	return false
 }
 
-func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
+func (i *indexType) testType(value interface{}) (contentToIndex []byte, ok bool) {
 	var conversionFunc func(interface{}) ([]byte, error)
 	switch i.Type {
 	case vars.StringIndex:
@@ -105,7 +105,7 @@ func (i *Index) testType(value interface{}) (contentToIndex []byte, ok bool) {
 }
 
 // query do the given filter and ad it to the tree
-func (i *Index) query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
+func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
 	done := false
 	defer func() {
 		// Make sure to reply as done

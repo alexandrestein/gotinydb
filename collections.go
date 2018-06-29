@@ -14,7 +14,7 @@ type (
 	// Collection defines the storage object
 	Collection struct {
 		name, id string
-		indexes  []*Index
+		indexes  []*indexType
 
 		conf *Conf
 
@@ -164,7 +164,8 @@ func (c *Collection) Delete(id string) error {
 }
 
 // SetIndex enable the collection to index field or sub field
-func (c *Collection) SetIndex(i *Index) error {
+func (c *Collection) SetIndex(name string, t vars.IndexType, selector ...string) error {
+	i := newIndex(name, t, selector...)
 	i.conf = c.conf
 	i.getTx = c.db.Begin
 

@@ -7,7 +7,7 @@ import (
 	"reflect"
 )
 
-func (i *Index) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids *idsType, err error) {
+func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids *idsType, err error) {
 	tx, getTxErr := i.getTx(false)
 	if getTxErr != nil {
 		return nil, getTxErr
@@ -23,7 +23,7 @@ func (i *Index) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids
 	return ids, nil
 }
 
-func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit []byte, keepEqual, increasing bool) (allIDs *idsType, err error) {
+func (i *indexType) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit []byte, keepEqual, increasing bool) (allIDs *idsType, err error) {
 	tx, getTxErr := i.getTx(false)
 	if getTxErr != nil {
 		return nil, getTxErr
@@ -86,7 +86,7 @@ func (i *Index) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit 
 	return allIDs, nil
 }
 
-func (i *Index) queryEqual(ctx context.Context, ids *idsType, filter *Filter) {
+func (i *indexType) queryEqual(ctx context.Context, ids *idsType, filter *Filter) {
 	for _, value := range filter.values {
 		tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
 		if getErr != nil {
@@ -103,7 +103,7 @@ func (i *Index) queryEqual(ctx context.Context, ids *idsType, filter *Filter) {
 	}
 }
 
-func (i *Index) queryGreaterLess(ctx context.Context, ids *idsType, filter *Filter) {
+func (i *indexType) queryGreaterLess(ctx context.Context, ids *idsType, filter *Filter) {
 	greater := true
 	if filter.GetType() == Less {
 		greater = false
@@ -118,7 +118,7 @@ func (i *Index) queryGreaterLess(ctx context.Context, ids *idsType, filter *Filt
 	ids.AddIDs(tmpIDs)
 }
 
-func (i *Index) queryBetween(ctx context.Context, ids *idsType, filter *Filter) {
+func (i *indexType) queryBetween(ctx context.Context, ids *idsType, filter *Filter) {
 	// Needs two values to make between
 	if len(filter.values) < 2 {
 		return

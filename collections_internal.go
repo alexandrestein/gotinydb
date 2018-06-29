@@ -51,8 +51,8 @@ func (c *Collection) init(name string) error {
 	})
 }
 
-func (c *Collection) getIndexesFromConfigBucket() []*Index {
-	indexes := []*Index{}
+func (c *Collection) getIndexesFromConfigBucket() []*indexType {
+	indexes := []*indexType{}
 	c.db.View(func(tx *bolt.Tx) error {
 		indexesAsBytes := tx.Bucket([]byte("config")).Get([]byte("indexesList"))
 		json.Unmarshal(indexesAsBytes, &indexes)
@@ -62,11 +62,11 @@ func (c *Collection) getIndexesFromConfigBucket() []*Index {
 	return indexes
 }
 
-func (c *Collection) setIndexesIntoConfigBucket(index *Index) error {
+func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		confBucket := tx.Bucket([]byte("config"))
 		indexesAsBytes := confBucket.Get([]byte("indexesList"))
-		indexes := []*Index{}
+		indexes := []*indexType{}
 		json.Unmarshal(indexesAsBytes, &indexes)
 
 		found := false
@@ -89,7 +89,7 @@ func (c *Collection) delIndexesIntoConfigBucket(indexName string) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		confBucket := tx.Bucket([]byte("config"))
 		indexesAsBytes := confBucket.Get([]byte("indexesList"))
-		indexes := []*Index{}
+		indexes := []*indexType{}
 		err := json.Unmarshal(indexesAsBytes, &indexes)
 		if err != nil {
 			return err
