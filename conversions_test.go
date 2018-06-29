@@ -1,4 +1,4 @@
-package vars
+package gotinydb
 
 import (
 	"bytes"

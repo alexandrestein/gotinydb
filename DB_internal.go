@@ -5,13 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
 )
 
 func (d *DB) buildPath() error {
-	return os.MkdirAll(d.path+"/collections", vars.FilePermission)
+	return os.MkdirAll(d.path+"/collections", FilePermission)
 }
 
 func (d *DB) initBadger() error {
@@ -66,14 +65,14 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	if colID == "" && colName == "" {
 		return nil, fmt.Errorf("name and ID can't be empty")
 	} else if colID == "" {
-		colID = vars.BuildID(colName)
+		colID = buildID(colName)
 	}
 
 	c.id = colID
 	c.name = colName
 	c.ctx = d.ctx
 
-	db, openDBErr := bolt.Open(d.path+"/collections/"+colID, vars.FilePermission, nil)
+	db, openDBErr := bolt.Open(d.path+"/collections/"+colID, FilePermission, nil)
 	if openDBErr != nil {
 		return nil, openDBErr
 	}
@@ -82,7 +81,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	// Try to load the collection information
 	if err := c.loadInfos(); err != nil {
 		// If not exists try to build it
-		if err == vars.ErrNotFound {
+		if err == ErrNotFound {
 			if colName == "" {
 				return nil, fmt.Errorf("init collection but have empty name")
 			}

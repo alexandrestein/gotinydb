@@ -6,16 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/google/btree"
-)
-
-// Those constants defines the different types of filter to perform at query
-const (
-	Equal   FilterOperator = "eq"
-	Greater FilterOperator = "gr"
-	Less    FilterOperator = "le"
-	Between FilterOperator = "bw"
 )
 
 type (
@@ -136,7 +127,7 @@ func (q *Query) SetTimeout(timeout time.Duration) *Query {
 // SetOrder defines the order of the response
 func (q *Query) SetOrder(ascendent bool, selector ...string) *Query {
 	q.orderSelector = selector
-	q.order = vars.BuildSelectorHash(selector)
+	q.order = buildSelectorHash(selector)
 	q.ascendent = ascendent
 	return q
 }
@@ -420,7 +411,7 @@ func (r *ResponseQuery) next() (i int, id string, objAsByte []byte) {
 func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int, err error) {
 	n = 0
 	if r == nil {
-		return 0, vars.ErrNotFound
+		return 0, ErrNotFound
 	}
 
 	for _, elem := range r.list {
@@ -441,7 +432,7 @@ func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int,
 func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
 	if r.actualPosition >= len(r.list) {
 		r.actualPosition = 0
-		return "", vars.ErrTheResponseIsOver
+		return "", ErrTheResponseIsOver
 	}
 
 	id = r.list[r.actualPosition].ID.String()

@@ -7,8 +7,6 @@ import (
 	"log"
 	"os"
 	"time"
-
-	"github.com/alexandrestein/gotinydb/vars"
 )
 
 type (
@@ -45,9 +43,9 @@ func Example() {
 	}
 
 	// Setup indexexes
-	c.SetIndex("email", vars.StringIndex, "Email")
-	c.SetIndex("projects counter", vars.StringIndex, "NbProject")
-	c.SetIndex("last login", vars.StringIndex, "LastLogin")
+	c.SetIndex("email", StringIndex, "Email")
+	c.SetIndex("projects counter", StringIndex, "NbProject")
+	c.SetIndex("last login", StringIndex, "LastLogin")
 
 	// Example struct
 	record := struct {
@@ -160,7 +158,7 @@ func ExampleResponseQuery_One() {
 		tmpObj := new(Type)
 		_, err := responseQuery.One(tmpObj)
 		if err != nil {
-			if err == vars.ErrTheResponseIsOver {
+			if err == ErrTheResponseIsOver {
 				break
 			}
 			// Handler error

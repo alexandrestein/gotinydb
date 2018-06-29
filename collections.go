@@ -5,26 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
-)
-
-type (
-	// Collection defines the storage object
-	Collection struct {
-		name, id string
-		indexes  []*indexType
-
-		conf *Conf
-
-		db    *bolt.DB
-		store *badger.DB
-
-		writeTransactionChan chan *writeTransaction
-
-		ctx context.Context
-	}
 )
 
 // Put add the given content to database with the given ID
@@ -57,36 +39,10 @@ func (c *Collection) Put(id string, content interface{}) error {
 	return s
 }
 
-func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
-	defer func() { doneChan <- true }()
-	ret := c.store.Update(func(txn *badger.Txn) error {
-		setErr := txn.Set(c.buildStoreID(writeTransaction.id), writeTransaction.contentAsBytes)
-		if setErr != nil {
-			err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
-			errChan <- err
-			return err
-		}
-
-		errChan <- nil
-
-		select {
-		case ok := <-doneChan:
-			if ok {
-				txn.Commit(nil)
-				return nil
-			}
-			return fmt.Errorf("error from outsid of the store")
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	})
-	return ret
-}
-
 // Get retrieves the content of the given ID
 func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte, _ error) {
 	if id == "" {
-		return nil, vars.ErrEmptyID
+		return nil, ErrEmptyID
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.conf.TransactionTimeOut)
@@ -114,44 +70,13 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 	return contentAsBytes, nil
 }
 
-func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
-	ret := make([][]byte, len(ids))
-	if err := c.store.View(func(txn *badger.Txn) error {
-		for i, id := range ids {
-			idAsBytes := c.buildStoreID(id)
-			item, getError := txn.Get(idAsBytes)
-			if getError != nil {
-				if getError == badger.ErrKeyNotFound {
-					return vars.ErrNotFound
-				}
-				return getError
-			}
-
-			if item.IsDeletedOrExpired() {
-				return vars.ErrNotFound
-			}
-
-			contentAsBytes, getValErr := item.Value()
-			if getValErr != nil {
-				return getValErr
-			}
-			ret[i] = contentAsBytes
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return ret, nil
-}
-
 // Delete removes the corresponding object if the given ID
 func (c *Collection) Delete(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.conf.TransactionTimeOut)
 	defer cancel()
 
 	if id == "" {
-		return vars.ErrEmptyID
+		return ErrEmptyID
 	}
 
 	if rmStoreErr := c.store.Update(func(txn *badger.Txn) error {
@@ -164,7 +89,7 @@ func (c *Collection) Delete(id string) error {
 }
 
 // SetIndex enable the collection to index field or sub field
-func (c *Collection) SetIndex(name string, t vars.IndexType, selector ...string) error {
+func (c *Collection) SetIndex(name string, t IndexType, selector ...string) error {
 	i := newIndex(name, t, selector...)
 	i.conf = c.conf
 	i.getTx = c.db.Begin
@@ -183,17 +108,6 @@ func (c *Collection) SetIndex(name string, t vars.IndexType, selector ...string)
 	}); updateErr != nil {
 		return updateErr
 	}
-	return nil
-}
-
-func (c *Collection) loadIndex() error {
-	indexes := c.getIndexesFromConfigBucket()
-	for _, index := range indexes {
-		index.conf = c.conf
-		index.getTx = c.db.Begin
-	}
-	c.indexes = indexes
-
 	return nil
 }
 
@@ -230,74 +144,4 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	}
 
 	return c.queryCleanAndOrder(ctx, q, tree)
-}
-
-func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		refs, getRefsErr := c.getRefs(tx, id)
-		if getRefsErr != nil {
-			return getRefsErr
-		}
-
-		for _, ref := range refs.Refs {
-			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
-			ids, err := newIDs(ctx, 0, nil, indexBucket.Get(ref.IndexedValue))
-			if err != nil {
-				return err
-			}
-
-			ids.RmID(id)
-
-			indexBucket.Put(ref.IndexedValue, ids.MustMarshal())
-		}
-
-		return nil
-	})
-}
-
-func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
-	refsBucket := tx.Bucket([]byte("refs"))
-
-	refsAsBytes := refsBucket.Get(vars.BuildBytesID(id))
-	refs := newRefsFromDB(refsAsBytes)
-	if refs == nil {
-		return nil, fmt.Errorf("references mal formed: %s", string(refsAsBytes))
-	}
-	return refs, nil
-}
-
-// GetAllStoreIDs returns all ids if it does not exceed the limit.
-// This will not returned the ID used to set the value inside the collection
-// It returns the id used to set the value inside the store
-func (c *Collection) getAllStoreIDs(limit int) ([][]byte, error) {
-	ids := make([][]byte, limit)
-
-	err := c.store.View(func(txn *badger.Txn) error {
-		iter := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer iter.Close()
-
-		prefix := []byte(c.id[:4] + "_")
-		iter.Seek(prefix)
-
-		count := 0
-		for iter.Rewind(); iter.Valid(); iter.Next() {
-			item := iter.Item()
-			if !iter.ValidForPrefix(prefix) || count >= limit-1 {
-				ids = ids[:count]
-				return nil
-			}
-
-			ids[count] = item.Key()
-
-			count++
-		}
-
-		ids = ids[:count]
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return ids, nil
 }

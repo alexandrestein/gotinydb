@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/alexandrestein/gotinydb/vars"
 )
 
 func TestConcurrentCollections(t *testing.T) {
@@ -85,14 +83,14 @@ func setIndexes(c *Collection) error {
 	indexes := []struct {
 		name     string
 		selector []string
-		t        vars.IndexType
+		t        IndexType
 	}{
-		{"email", []string{"Email"}, vars.StringIndex},
-		{"balance", []string{"Balance"}, vars.IntIndex},
-		{"city", []string{"Address", "City"}, vars.StringIndex},
-		{"zip", []string{"Address", "ZipCode"}, vars.IntIndex},
-		{"age", []string{"Age"}, vars.IntIndex},
-		{"last login", []string{"LastLogin"}, vars.TimeIndex},
+		{"email", []string{"Email"}, StringIndex},
+		{"balance", []string{"Balance"}, IntIndex},
+		{"city", []string{"Address", "City"}, StringIndex},
+		{"zip", []string{"Address", "ZipCode"}, IntIndex},
+		{"age", []string{"Age"}, IntIndex},
+		{"last login", []string{"LastLogin"}, TimeIndex},
 	}
 
 	for _, indexParams := range indexes {

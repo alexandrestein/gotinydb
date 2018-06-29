@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/boltdb/bolt"
+	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
 )
 
@@ -16,7 +16,7 @@ func (c *Collection) loadInfos() error {
 
 		bucket := tx.Bucket([]byte("config"))
 		if bucket == nil {
-			return vars.ErrNotFound
+			return ErrNotFound
 		}
 
 		name := string(bucket.Get([]byte("name")))
@@ -175,7 +175,7 @@ waitNext:
 
 func (c *Collection) buildStoreID(id string) []byte {
 	compositeID := fmt.Sprintf("%s_%s", c.name, id)
-	objectID := vars.BuildID(compositeID)
+	objectID := buildID(compositeID)
 	return []byte(fmt.Sprintf("%s_%s", c.id[:4], objectID))
 }
 
@@ -188,7 +188,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 		}
 
 		refsBucket := tx.Bucket([]byte("refs"))
-		refsAsBytes := refsBucket.Get(vars.BuildBytesID(writeTransaction.id))
+		refsAsBytes := refsBucket.Get(buildBytesID(writeTransaction.id))
 		refs := newRefs()
 		if refsAsBytes != nil && len(refsAsBytes) > 0 {
 			if err := json.Unmarshal(refsAsBytes, refs); err != nil {
@@ -201,7 +201,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 			refs.ObjectID = writeTransaction.id
 		}
 		if refs.ObjectHashID == "" {
-			refs.ObjectHashID = vars.BuildID(writeTransaction.id)
+			refs.ObjectHashID = buildID(writeTransaction.id)
 		}
 
 		for _, index := range c.indexes {
@@ -270,7 +270,7 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString stri
 	refsBucket := tx.Bucket([]byte("refs"))
 
 	// Get the references of the given ID
-	refsAsBytes := refsBucket.Get(vars.BuildBytesID(idAsString))
+	refsAsBytes := refsBucket.Get(buildBytesID(idAsString))
 	refs := newRefs()
 	if refsAsBytes != nil && len(refsAsBytes) > 0 {
 		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
@@ -351,7 +351,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 			}
 		case <-ctx.Done():
 			time.Sleep(time.Millisecond * 100)
-			return nil, vars.ErrTimeOut
+			return nil, ErrTimeOut
 		}
 	}
 }
@@ -398,4 +398,150 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 		}
 	}
 	return
+}
+
+func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
+	defer func() { doneChan <- true }()
+	ret := c.store.Update(func(txn *badger.Txn) error {
+		setErr := txn.Set(c.buildStoreID(writeTransaction.id), writeTransaction.contentAsBytes)
+		if setErr != nil {
+			err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
+			errChan <- err
+			return err
+		}
+
+		errChan <- nil
+
+		select {
+		case ok := <-doneChan:
+			if ok {
+				txn.Commit(nil)
+				return nil
+			}
+			return fmt.Errorf("error from outsid of the store")
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
+	return ret
+}
+
+func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
+	ret := make([][]byte, len(ids))
+	if err := c.store.View(func(txn *badger.Txn) error {
+		for i, id := range ids {
+			idAsBytes := c.buildStoreID(id)
+			item, getError := txn.Get(idAsBytes)
+			if getError != nil {
+				if getError == badger.ErrKeyNotFound {
+					return ErrNotFound
+				}
+				return getError
+			}
+
+			if item.IsDeletedOrExpired() {
+				return ErrNotFound
+			}
+
+			contentAsBytes, getValErr := item.Value()
+			if getValErr != nil {
+				return getValErr
+			}
+			ret[i] = contentAsBytes
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
+func (c *Collection) loadIndex() error {
+	indexes := c.getIndexesFromConfigBucket()
+	for _, index := range indexes {
+		index.conf = c.conf
+		index.getTx = c.db.Begin
+	}
+	c.indexes = indexes
+
+	return nil
+}
+
+func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
+		refs, getRefsErr := c.getRefs(tx, id)
+		if getRefsErr != nil {
+			return getRefsErr
+		}
+
+		for _, ref := range refs.Refs {
+			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
+			ids, err := newIDs(ctx, 0, nil, indexBucket.Get(ref.IndexedValue))
+			if err != nil {
+				return err
+			}
+
+			ids.RmID(id)
+
+			indexBucket.Put(ref.IndexedValue, ids.MustMarshal())
+		}
+
+		return nil
+	})
+}
+
+func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
+	refsBucket := tx.Bucket([]byte("refs"))
+
+	refsAsBytes := refsBucket.Get(buildBytesID(id))
+	refs := newRefsFromDB(refsAsBytes)
+	if refs == nil {
+		return nil, fmt.Errorf("references mal formed: %s", string(refsAsBytes))
+	}
+	return refs, nil
+}
+
+// GetAllStoreIDs returns all ids if it does not exceed the limit.
+// This will not returned the ID used to set the value inside the collection
+// It returns the id used to set the value inside the store
+func (c *Collection) getAllStoreIDs(limit int) ([][]byte, error) {
+	ids := make([][]byte, limit)
+
+	err := c.store.View(func(txn *badger.Txn) error {
+		iter := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer iter.Close()
+
+		prefix := []byte(c.id[:4] + "_")
+		iter.Seek(prefix)
+
+		count := 0
+		for iter.Rewind(); iter.Valid(); iter.Next() {
+			item := iter.Item()
+			if !iter.ValidForPrefix(prefix) || count >= limit-1 {
+				ids = ids[:count]
+				return nil
+			}
+
+			ids[count] = item.Key()
+
+			count++
+		}
+
+		ids = ids[:count]
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return ids, nil
+}
+
+func newTransaction(id string) *writeTransaction {
+	tr := new(writeTransaction)
+	tr.id = id
+	tr.responseChan = make(chan error, 0)
+
+	return tr
 }

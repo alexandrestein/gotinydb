@@ -4,47 +4,15 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/alexandrestein/gotinydb/vars"
-	"github.com/boltdb/bolt"
 	"github.com/fatih/structs"
 )
 
-type (
-	// Index defines the struct to manage indexation
-	indexType struct {
-		Name         string
-		Selector     []string
-		SelectorHash uint64
-		Type         vars.IndexType
-
-		conf *Conf
-
-		getTx func(update bool) (*bolt.Tx, error)
-	}
-
-	// refs defines an struct to manage the references of a given object
-	// in all the indexes it belongs to
-	refs struct {
-		ObjectID     string
-		ObjectHashID string
-
-		Refs []*ref
-	}
-
-	// Ref defines the relations between a object with some index with indexed value
-	ref struct {
-		IndexName    string
-		IndexHash    uint64
-		IndexedValue []byte
-	}
-)
-
 // newIndex build a new Index pointer
-func newIndex(name string, t vars.IndexType, selector ...string) *indexType {
+func newIndex(name string, t IndexType, selector ...string) *indexType {
 	ret := new(indexType)
 	ret.Name = name
 	ret.Selector = selector
-	ret.SelectorHash = vars.BuildSelectorHash(selector)
+	ret.SelectorHash = buildSelectorHash(selector)
 	ret.Type = t
 
 	return ret
@@ -88,12 +56,12 @@ func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
 func (i *indexType) testType(value interface{}) (contentToIndex []byte, ok bool) {
 	var conversionFunc func(interface{}) ([]byte, error)
 	switch i.Type {
-	case vars.StringIndex:
-		conversionFunc = vars.StringToBytes
-	case vars.IntIndex:
-		conversionFunc = vars.IntToBytes
-	case vars.TimeIndex:
-		conversionFunc = vars.TimeToBytes
+	case StringIndex:
+		conversionFunc = StringToBytes
+	case IntIndex:
+		conversionFunc = IntToBytes
+	case TimeIndex:
+		conversionFunc = TimeToBytes
 	default:
 		return nil, false
 	}
@@ -121,49 +89,10 @@ func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan
 	// If equal just this leave will be send
 	case Equal:
 		i.queryEqual(ctx, ids, filter)
-		// for _, value := range filter.values {
-		// 	tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
-		// 	if getErr != nil {
-		// 		log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
-		// 		return
-		// 	}
-
-		// 	for _, tmpID := range tmpIDs.IDs {
-		// 		tmpID.values[i.SelectorHash] = value.Bytes()
-
-		// 	}
-
-		// 	ids.AddIDs(tmpIDs)
-		// }
-
 	case Greater, Less:
 		i.queryGreaterLess(ctx, ids, filter)
-		// greater := true
-		// if filter.GetType() == Less {
-		// 	greater = false
-		// }
-
-		// tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), nil, filter.equal, greater)
-		// if getIdsErr != nil {
-		// 	log.Printf("Index.runQuery Greater, Less: %s\n", getIdsErr.Error())
-		// 	return
-		// }
-
-		// ids.AddIDs(tmpIDs)
-
 	case Between:
 		i.queryBetween(ctx, ids, filter)
-		// // Needs two values to make between
-		// if len(filter.values) < 2 {
-		// 	return
-		// }
-		// tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.values[1].Bytes(), filter.equal, true)
-		// if getIdsErr != nil {
-		// 	log.Printf("Index.runQuery Between: %s\n", getIdsErr.Error())
-		// 	return
-		// }
-
-		// ids.AddIDs(tmpIDs)
 	}
 
 	// Force to check first if a cancel signal has been send

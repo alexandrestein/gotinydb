@@ -2,25 +2,6 @@ package gotinydb
 
 import (
 	"time"
-
-	"github.com/alexandrestein/gotinydb/vars"
-)
-
-type (
-	// Filter defines the way the query will be performed
-	Filter struct {
-		selector     []string
-		selectorHash uint64
-		operator     FilterOperator
-		values       []*filterValue
-		equal        bool
-	}
-
-	// filterValue defines the value we need to compare to
-	filterValue struct {
-		Value interface{}
-		Type  vars.IndexType
-	}
 )
 
 // NewFilter returns a new Action pointer with the given FilterOperator
@@ -32,16 +13,16 @@ func NewFilter(t FilterOperator) *Filter {
 
 // newfilterValue build a new filter value to be used inside the filters
 func newfilterValue(value interface{}) (*filterValue, error) {
-	var t vars.IndexType
+	var t IndexType
 	switch value.(type) {
 	case string:
-		t = vars.StringIndex
+		t = StringIndex
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		t = vars.IntIndex
+		t = IntIndex
 	case time.Time:
-		t = vars.TimeIndex
+		t = TimeIndex
 	default:
-		return nil, vars.ErrWrongType
+		return nil, ErrWrongType
 	}
 
 	filterValue := new(filterValue)
@@ -91,7 +72,7 @@ func (f *Filter) EqualWanted() *Filter {
 // SetSelector defines the configurable limit of IDs.
 func (f *Filter) SetSelector(s ...string) *Filter {
 	f.selector = s
-	f.selectorHash = vars.BuildSelectorHash(s)
+	f.selectorHash = buildSelectorHash(s)
 	return f
 }
 
@@ -99,12 +80,12 @@ func (f *Filter) SetSelector(s ...string) *Filter {
 func (f *filterValue) Bytes() []byte {
 	var bytes []byte
 	switch f.Type {
-	case vars.StringIndex:
-		bytes, _ = vars.StringToBytes(f.Value)
-	case vars.IntIndex:
-		bytes, _ = vars.IntToBytes(f.Value)
-	case vars.TimeIndex:
-		bytes, _ = vars.TimeToBytes(f.Value)
+	case StringIndex:
+		bytes, _ = StringToBytes(f.Value)
+	case IntIndex:
+		bytes, _ = IntToBytes(f.Value)
+	case TimeIndex:
+		bytes, _ = TimeToBytes(f.Value)
 	default:
 		return nil
 	}

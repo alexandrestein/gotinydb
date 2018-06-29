@@ -1,11 +1,11 @@
-package vars
+package gotinydb
 
 import (
 	"testing"
 )
 
 func TestBuildID(t *testing.T) {
-	if id := BuildBytesID("testString"); string(id) != "VwrWkLzMGcso0q8enMrDWQ" {
+	if id := buildBytesID("testString"); string(id) != "VwrWkLzMGcso0q8enMrDWQ" {
 		t.Error("returned ID, is not correct", id)
 	}
 }
@@ -43,7 +43,7 @@ func TestBuildSelectorHash(t *testing.T) {
 	}
 
 	for i := range selectors {
-		if ret := BuildSelectorHash(selectors[i]); ret != expectedResults[i] {
+		if ret := buildSelectorHash(selectors[i]); ret != expectedResults[i] {
 			t.Errorf("wrong result expected %d but had %d", expectedResults[i], ret)
 		}
 	}

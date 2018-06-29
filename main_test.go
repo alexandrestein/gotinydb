@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/alexandrestein/gotinydb/vars"
 )
 
 var (
@@ -184,8 +182,7 @@ func testPutGetAndDeleteCollection(t *testing.T, userID string, user interface{}
 		t.Error(delErr)
 		return
 	}
-
-	if _, getErr := c.Get(userID, nil); getErr != vars.ErrNotFound {
+	if _, getErr := c.Get(userID, nil); getErr != ErrNotFound {
 		t.Errorf("No error but the ID has been deleted")
 		return
 	}

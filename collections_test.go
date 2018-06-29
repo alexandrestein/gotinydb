@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexandrestein/gotinydb/vars"
 	"github.com/fatih/structs"
 )
 
@@ -508,7 +507,7 @@ func testQueryResponseReaders(t *testing.T, response *ResponseQuery, checkRet []
 		user := new(User)
 		_, err := response.One(user)
 		if err != nil {
-			if err == vars.ErrTheResponseIsOver {
+			if err == ErrTheResponseIsOver {
 				break
 			}
 			t.Error(err)

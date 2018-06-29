@@ -4,37 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/dgraph-io/badger"
-)
-
-type (
-	// DB is the main element of the package and provide all access to sub commands
-	DB struct {
-		path string
-		conf *Conf
-
-		valueStore  *badger.DB
-		collections []*Collection
-
-		ctx     context.Context
-		closing bool
-	}
-
-	// Conf defines the deferent configuration elements of the database
-	Conf struct {
-		TransactionTimeOut, QueryTimeOut time.Duration
-		InternalQueryLimit               int
-	}
-)
-
-// Defines the default values of the database configuration
-var (
-	DefaultTransactionTimeOut = time.Second
-	DefaultQueryTimeOut       = time.Second * 5
-	DefaultQueryLimit         = 100
-	DefaultInternalQueryLimit = 1000
 )
 
 // Open simply opens a new or existing database
