@@ -12,7 +12,7 @@ import (
 )
 
 func (c *Collection) loadInfos() error {
-	return c.DB.View(func(tx *bolt.Tx) error {
+	return c.db.View(func(tx *bolt.Tx) error {
 
 		bucket := tx.Bucket([]byte("config"))
 		if bucket == nil {
@@ -21,15 +21,15 @@ func (c *Collection) loadInfos() error {
 
 		name := string(bucket.Get([]byte("name")))
 		id := string(bucket.Get([]byte("id")))
-		c.Name = name
-		c.ID = string(id)
+		c.name = name
+		c.id = string(id)
 
 		return nil
 	})
 }
 
 func (c *Collection) init(name string) error {
-	return c.DB.Update(func(tx *bolt.Tx) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
 		bucketsToCreate := []string{"config", "indexes", "refs"}
 		for _, bucketName := range bucketsToCreate {
 			if _, err := tx.CreateBucketIfNotExists([]byte(bucketName)); err != nil {
@@ -44,7 +44,7 @@ func (c *Collection) init(name string) error {
 		if nameErr := confBucket.Put([]byte("name"), []byte(name)); nameErr != nil {
 			return nameErr
 		}
-		if idErr := confBucket.Put([]byte("id"), []byte(c.ID)); idErr != nil {
+		if idErr := confBucket.Put([]byte("id"), []byte(c.id)); idErr != nil {
 			return idErr
 		}
 		return nil
@@ -53,7 +53,7 @@ func (c *Collection) init(name string) error {
 
 func (c *Collection) getIndexesFromConfigBucket() []*Index {
 	indexes := []*Index{}
-	c.DB.View(func(tx *bolt.Tx) error {
+	c.db.View(func(tx *bolt.Tx) error {
 		indexesAsBytes := tx.Bucket([]byte("config")).Get([]byte("indexesList"))
 		json.Unmarshal(indexesAsBytes, &indexes)
 
@@ -63,7 +63,7 @@ func (c *Collection) getIndexesFromConfigBucket() []*Index {
 }
 
 func (c *Collection) setIndexesIntoConfigBucket(index *Index) error {
-	return c.DB.Update(func(tx *bolt.Tx) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
 		confBucket := tx.Bucket([]byte("config"))
 		indexesAsBytes := confBucket.Get([]byte("indexesList"))
 		indexes := []*Index{}
@@ -86,7 +86,7 @@ func (c *Collection) setIndexesIntoConfigBucket(index *Index) error {
 	})
 }
 func (c *Collection) delIndexesIntoConfigBucket(indexName string) error {
-	return c.DB.Update(func(tx *bolt.Tx) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
 		confBucket := tx.Bucket([]byte("config"))
 		indexesAsBytes := confBucket.Get([]byte("indexesList"))
 		indexes := []*Index{}
@@ -174,14 +174,14 @@ waitNext:
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
-	compositeID := fmt.Sprintf("%s_%s", c.Name, id)
+	compositeID := fmt.Sprintf("%s_%s", c.name, id)
 	objectID := vars.BuildID(compositeID)
-	return []byte(fmt.Sprintf("%s_%s", c.ID[:4], objectID))
+	return []byte(fmt.Sprintf("%s_%s", c.id[:4], objectID))
 }
 
 func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	defer func() { doneChan <- true }()
-	return c.DB.Update(func(tx *bolt.Tx) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
 			return err
@@ -204,7 +204,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 			refs.ObjectHashID = vars.BuildID(writeTransaction.id)
 		}
 
-		for _, index := range c.Indexes {
+		for _, index := range c.indexes {
 			if indexedValue, apply := index.apply(writeTransaction.contentInterface); apply {
 				indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
 
@@ -240,7 +240,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 
 func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	defer func() { doneChan <- true }()
-	return c.DB.Update(func(tx *bolt.Tx) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
 			errChan <- err
@@ -280,7 +280,7 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString stri
 
 	// Clean every reference of the object In all indexes if present
 	for _, ref := range refs.Refs {
-		for _, index := range c.Indexes {
+		for _, index := range c.indexes {
 			if index.Name == ref.IndexName {
 				// If reference present in this index the reference is cleaned
 				ids, newIDErr := newIDs(ctx, 0, nil, indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
@@ -311,7 +311,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 
 	// Goes through all index of the collection to define which index
 	// will take care of the given filter
-	for _, index := range c.Indexes {
+	for _, index := range c.indexes {
 		for _, filter := range q.filters {
 			if index.doesFilterApplyToIndex(filter) {
 				go index.query(ctx, filter, finishedChan)
@@ -358,7 +358,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 
 func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btree.BTree) (response *ResponseQuery, _ error) {
 	getRefFunc := func(id string) (refs *refs) {
-		c.DB.View(func(tx *bolt.Tx) error {
+		c.db.View(func(tx *bolt.Tx) error {
 			refs, _ = c.getRefs(tx, id)
 			return nil
 		})

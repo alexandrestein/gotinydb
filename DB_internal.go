@@ -55,11 +55,11 @@ func (d *DB) loadCollections() error {
 
 func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c := new(Collection)
-	c.Store = d.ValueStore
-	c.ID = colID
-	c.Name = colName
+	c.store = d.ValueStore
+	c.id = colID
+	c.name = colName
 
-	c.Conf = d.Conf
+	c.conf = d.Conf
 
 	c.initWriteTransactionChan(d.ctx)
 
@@ -69,15 +69,15 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 		colID = vars.BuildID(colName)
 	}
 
-	c.ID = colID
-	c.Name = colName
+	c.id = colID
+	c.name = colName
 	c.ctx = d.ctx
 
 	db, openDBErr := bolt.Open(d.Path+"/collections/"+colID, vars.FilePermission, nil)
 	if openDBErr != nil {
 		return nil, openDBErr
 	}
-	c.DB = db
+	c.db = db
 
 	// Try to load the collection information
 	if err := c.loadInfos(); err != nil {

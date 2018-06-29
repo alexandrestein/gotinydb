@@ -106,11 +106,11 @@ func TestCreateCollection(t *testing.T) {
 	}
 
 	// Test that the name and the ID of the collection are right
-	if c.Name != "testCol" {
-		t.Errorf("collection has a bad name %q", c.Name)
+	if c.name != "testCol" {
+		t.Errorf("collection has a bad name %q", c.name)
 	}
-	if c.ID != "SHe0eHhrznWyys88B1zPsg" {
-		t.Errorf("collection has a bad ID %q", c.ID)
+	if c.id != "SHe0eHhrznWyys88B1zPsg" {
+		t.Errorf("collection has a bad ID %q", c.id)
 	}
 
 	if err := c.Put("testID", nil); err != nil {

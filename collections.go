@@ -13,13 +13,13 @@ import (
 type (
 	// Collection defines the storage object
 	Collection struct {
-		Name, ID string
-		Indexes  []*Index
+		name, id string
+		indexes  []*Index
 
-		Conf *Conf
+		conf *Conf
 
-		DB    *bolt.DB
-		Store *badger.DB
+		db    *bolt.DB
+		store *badger.DB
 
 		writeTransactionChan chan *writeTransaction
 
@@ -29,7 +29,7 @@ type (
 
 // Put add the given content to database with the given ID
 func (c *Collection) Put(id string, content interface{}) error {
-	ctx, cancel := context.WithTimeout(c.ctx, c.Conf.TransactionTimeOut)
+	ctx, cancel := context.WithTimeout(c.ctx, c.conf.TransactionTimeOut)
 	defer cancel()
 
 	tr := newTransaction(id)
@@ -59,7 +59,7 @@ func (c *Collection) Put(id string, content interface{}) error {
 
 func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	defer func() { doneChan <- true }()
-	ret := c.Store.Update(func(txn *badger.Txn) error {
+	ret := c.store.Update(func(txn *badger.Txn) error {
 		setErr := txn.Set(c.buildStoreID(writeTransaction.id), writeTransaction.contentAsBytes)
 		if setErr != nil {
 			err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
@@ -89,7 +89,7 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 		return nil, vars.ErrEmptyID
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), c.Conf.TransactionTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), c.conf.TransactionTimeOut)
 	defer cancel()
 
 	response, getErr := c.get(ctx, id)
@@ -116,7 +116,7 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 
 func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 	ret := make([][]byte, len(ids))
-	if err := c.Store.View(func(txn *badger.Txn) error {
+	if err := c.store.View(func(txn *badger.Txn) error {
 		for i, id := range ids {
 			idAsBytes := c.buildStoreID(id)
 			item, getError := txn.Get(idAsBytes)
@@ -147,14 +147,14 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 
 // Delete removes the corresponding object if the given ID
 func (c *Collection) Delete(id string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), c.Conf.TransactionTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), c.conf.TransactionTimeOut)
 	defer cancel()
 
 	if id == "" {
 		return vars.ErrEmptyID
 	}
 
-	if rmStoreErr := c.Store.Update(func(txn *badger.Txn) error {
+	if rmStoreErr := c.store.Update(func(txn *badger.Txn) error {
 		return txn.Delete(c.buildStoreID(id))
 	}); rmStoreErr != nil {
 		return rmStoreErr
@@ -165,15 +165,15 @@ func (c *Collection) Delete(id string) error {
 
 // SetIndex enable the collection to index field or sub field
 func (c *Collection) SetIndex(i *Index) error {
-	i.conf = c.Conf
-	i.getTx = c.DB.Begin
+	i.conf = c.conf
+	i.getTx = c.db.Begin
 
-	c.Indexes = append(c.Indexes, i)
+	c.indexes = append(c.indexes, i)
 	if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
 		return errSetingIndexIntoConfig
 	}
 
-	if updateErr := c.DB.Update(func(tx *bolt.Tx) error {
+	if updateErr := c.db.Update(func(tx *bolt.Tx) error {
 		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
 		if createErr != nil {
 			return createErr
@@ -188,10 +188,10 @@ func (c *Collection) SetIndex(i *Index) error {
 func (c *Collection) loadIndex() error {
 	indexes := c.getIndexesFromConfigBucket()
 	for _, index := range indexes {
-		index.conf = c.Conf
-		index.getTx = c.DB.Begin
+		index.conf = c.conf
+		index.getTx = c.db.Begin
 	}
-	c.Indexes = indexes
+	c.indexes = indexes
 
 	return nil
 }
@@ -208,15 +208,15 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 	}
 
 	// If no index stop the query
-	if len(c.Indexes) <= 0 {
+	if len(c.indexes) <= 0 {
 		return nil, fmt.Errorf("no index in the collection")
 	}
 
-	if q.internalLimit > c.Conf.InternalQueryLimit {
-		q.internalLimit = c.Conf.InternalQueryLimit
+	if q.internalLimit > c.conf.InternalQueryLimit {
+		q.internalLimit = c.conf.InternalQueryLimit
 	}
-	if q.timeout > c.Conf.QueryTimeOut {
-		q.timeout = c.Conf.QueryTimeOut
+	if q.timeout > c.conf.QueryTimeOut {
+		q.timeout = c.conf.QueryTimeOut
 	}
 
 	// Set a timout
@@ -232,7 +232,7 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 }
 
 func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
-	return c.DB.Update(func(tx *bolt.Tx) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
 		refs, getRefsErr := c.getRefs(tx, id)
 		if getRefsErr != nil {
 			return getRefsErr
@@ -271,11 +271,11 @@ func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
 func (c *Collection) getAllStoreIDs(limit int) ([][]byte, error) {
 	ids := make([][]byte, limit)
 
-	err := c.Store.View(func(txn *badger.Txn) error {
+	err := c.store.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
-		prefix := []byte(c.ID[:4] + "_")
+		prefix := []byte(c.id[:4] + "_")
 		iter.Seek(prefix)
 
 		count := 0

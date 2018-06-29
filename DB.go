@@ -65,7 +65,7 @@ func Open(ctx context.Context, path string) (*DB, error) {
 // Use build or get a Collection pointer
 func (d *DB) Use(colName string) (*Collection, error) {
 	for _, col := range d.Collections {
-		if col.Name == colName {
+		if col.name == colName {
 			if err := col.loadIndex(); err != nil {
 				return nil, err
 			}
@@ -91,8 +91,8 @@ func (d *DB) SetConfig(conf *Conf) error {
 	d.Conf = conf
 
 	for _, col := range d.Collections {
-		col.Conf = conf
-		for _, index := range col.Indexes {
+		col.conf = conf
+		for _, index := range col.indexes {
 			index.conf = conf
 		}
 	}
@@ -108,7 +108,7 @@ func (d *DB) Close() error {
 
 	errors := ""
 	for i, col := range d.Collections {
-		if err := col.DB.Close(); err != nil {
+		if err := col.db.Close(); err != nil {
 			errors = fmt.Sprintf("%s%s\n", errors, err.Error())
 		}
 		d.Collections[i] = nil
@@ -137,7 +137,7 @@ func (d *DB) Close() error {
 func (d *DB) DeleteCollection(collectionName string) error {
 	var c *Collection
 	for i, col := range d.Collections {
-		if col.Name == collectionName {
+		if col.name == collectionName {
 			// Save the collection pointer for future cleanup
 			c = col
 			// Delete the collection form the list of collection pointers
@@ -149,11 +149,11 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	}
 
 	// Close index DB
-	if err := c.DB.Close(); err != nil {
+	if err := c.db.Close(); err != nil {
 		return err
 	}
 	// Remove the index DB files
-	if err := os.RemoveAll(d.Path + "/collections/" + c.ID); err != nil {
+	if err := os.RemoveAll(d.Path + "/collections/" + c.id); err != nil {
 		return err
 	}
 
