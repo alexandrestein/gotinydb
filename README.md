@@ -12,106 +12,11 @@ go get -u github.com/alexandrestein/gotinydb
 
 ## Getting started
 
-The package is supposed to be used inside your software and at this point it is not suppose to be a "real" database service.
+The package is supposed to be used inside your software and at this point it is not supposed to be a dedicated database service.
+Take a look at [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb) for examples.
 
-### Open database
-
-```golang
-db, initErr := New(internalTesting.Path)
-if initErr != nil {
-  log.Fatal(initErr.Error())
-  return
-}
-defer db.Close()
-```
-
-### Open collection
-
-```golang
-col, colErr := db.Use("collectionName")
-if colErr != nil {
-  log.Fatal("opening test collection: %s", colErr.Error())
-  return
-}
-```
-
-### Setup an index for future queries
-
-```golang
-// If you have user object like this:
-// {UserName: string, Address: {Street: string, Num: int, City: string, ZIP: int}}
-// and you want to index the username and the ZIP code.
-index := NewIndex("userName", []string{"UserName"},  vars.StringIndex)
-if err := c.SetIndex(index); err != nil {
-  log.Fatal(err)
-}
-index := NewIndex("zip", []string{"Address","ZIP"},  vars.IntIndex)
-if err := c.SetIndex(index); err != nil {
-  log.Fatal(err)
-}
-```
-
-There is many types of index. Take a look at the [index documentation](https://godoc.org/github.com/alexandrestein/gotinydb/index).
-
-### Put some data in the collection
-
-```golang
-putErr := col.Put(objectID, objectOrBytes)
-if putErr != nil {
-  log.Error(putErr)
-  return
-}
-```
-
-The content can be an object or a stream of bytes. If it's a stream it needs to
-have the form of `[]byte{}`.
-This will adds and updates existing values.
-
-### Get some data from the collection directly by it's the ID
-
-```golang
-getErr := col.Get(objectID, receiver)
-if getErr != nil {
-  t.Error(getErr)
-  return
-}
-```
-
-The receiver can be an object pointer or a stream of bytes. If it's a stream it needs to
-have the form of `*bytes.Buffer`.
-
-### Get objects by query
-
-```golang
-// Get IDs of object with ZIP code greater than 50 limited to 5 responses ordered via zip code
-q := NewQuery().SetOrder([]string{"Address", "ZipCode"}, true).Get(
-  NewFilter(Greater).SetSelector([]string{"Address", "ZipCode"}).EqualWanted().
-    CompareTo(uint(50)),
-).SetLimits(5, 0)
-
-// Do the query
-response, err := c.Query(q)
-if err != nil {
-  log.Fatal(err)
-}
-
-// Get the results
-users := make([]*User, response.Len())
-for i, _, v := gotResponse.First(); i >= 0; i, _, v = gotResponse.Next() {
-  user := new(User)
-  err := json.Unmarshal(v, user)
-  if err != nil {
-    t.Error(err)
-    return
-  }
-
-  users[i] = user
-}
-
-```
-
-This returns only a list of IDs. It's up to the caller to get the values he want
-with the Get function.
+It's hard to have accurate documentation when they are not automatically build from source.
+That why I prefer to put all documentation inside [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb)
 
 ## Built With
 
@@ -125,12 +30,14 @@ with the Get function.
 * List every element from one collection
 * Background indexing
 * Collection and Index removing
+* Make some benchmark
 * Full text search with [Bleve](http://www.blevesearch.com/)
 * Add some tests
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Any contribution will be appreciated.
+Feedbacks and suggestions are at this point very very important to me.
 
 ## Vendoring
 
@@ -142,7 +49,7 @@ The package is under heavy development for now and is just for testing and devel
 Ones the design will be finalized the version will start at `v1.0.0`.
 For future the versions, see the [tags on this repository](https://github.com/alexandrestein/gotinydb/tags).
 
-## Authors
+## Author
 
 * **Alexandre Stein** - [GitHub](https://github.com/alexandrestein)
 
