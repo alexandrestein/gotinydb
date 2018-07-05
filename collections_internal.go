@@ -20,9 +20,7 @@ func (c *Collection) loadInfos() error {
 		}
 
 		name := string(bucket.Get([]byte("name")))
-		id := string(bucket.Get([]byte("id")))
 		c.name = name
-		c.id = string(id)
 
 		return nil
 	})
@@ -43,9 +41,6 @@ func (c *Collection) init(name string) error {
 		}
 		if nameErr := confBucket.Put([]byte("name"), []byte(name)); nameErr != nil {
 			return nameErr
-		}
-		if idErr := confBucket.Put([]byte("id"), []byte(c.id)); idErr != nil {
-			return idErr
 		}
 		return nil
 	})
@@ -174,9 +169,7 @@ waitNext:
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
-	compositeID := fmt.Sprintf("%s_%s", c.name, id)
-	objectID := buildID(compositeID)
-	return []byte(fmt.Sprintf("%s_%s", c.id[:4], objectID))
+	return []byte(fmt.Sprintf("%s_%s", c.name[:4], id))
 }
 
 func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
@@ -468,7 +461,7 @@ func (c *Collection) loadIndex() error {
 	return nil
 }
 
-func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
+func (c *Collection) deleteItemFromIndexes(ctx context.Context, id string) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		refs, getRefsErr := c.getRefs(tx, id)
 		if getRefsErr != nil {
@@ -512,7 +505,7 @@ func (c *Collection) getAllStoreIDs(limit int) ([][]byte, error) {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
-		prefix := []byte(c.id[:4] + "_")
+		prefix := []byte(c.name[:4] + "_")
 		iter.Seek(prefix)
 
 		count := 0
@@ -544,4 +537,68 @@ func newTransaction(id string) *writeTransaction {
 	tr.responseChan = make(chan error, 0)
 
 	return tr
+}
+
+func (c *Collection) indexAllValues(i *indexType) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	doneChan := make(chan bool, 1)
+	errChan := make(chan error, 1)
+
+	return c.store.View(func(txn *badger.Txn) error {
+		iter := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer iter.Close()
+
+		prefix := []byte(c.id[:4] + "_")
+		iter.Seek(prefix)
+
+		for iter.Rewind(); iter.Valid(); iter.Next() {
+			item := iter.Item()
+			if !iter.ValidForPrefix(prefix) {
+				return nil
+			}
+
+			itemAsBytes, getBytesErr := item.Value()
+			if getBytesErr != nil {
+				return getBytesErr
+			}
+
+			var elem interface{}
+			if jsonErr := json.Unmarshal(itemAsBytes, &elem); jsonErr != nil {
+				return jsonErr
+			}
+
+			m := elem.(map[string]interface{})
+
+			tr := newTransaction(string(item.Key()))
+			tr.ctx = ctx
+			tr.contentInterface = m
+
+			c.putIntoIndexes(ctx, errChan, doneChan, tr)
+
+			// var valueToIndex interface{}
+			// for _, fieldSelector := range i.Selector {
+			// 	if valueToIndex == nil {
+			// 		if m[fieldSelector] == nil {
+			// 			break
+			// 		}
+			// 		valueToIndex = m[fieldSelector]
+			// 		continue
+			// 	}
+
+			// 	if m[fieldSelector] == nil {
+			// 		break
+			// 	}
+			// 	valueToIndex = m[fieldSelector]
+			// }
+
+			// i.
+			// fmt.Println("valueToIndex", valueToIndex)
+
+			fmt.Println(string(itemAsBytes))
+			fmt.Println(m)
+		}
+		return nil
+	})
 }

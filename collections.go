@@ -85,7 +85,7 @@ func (c *Collection) Delete(id string) error {
 		return rmStoreErr
 	}
 
-	return c.deleteIndexes(ctx, id)
+	return c.deleteItemFromIndexes(ctx, id)
 }
 
 // SetIndex enable the collection to index field or sub field
@@ -108,7 +108,32 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 	}); updateErr != nil {
 		return updateErr
 	}
+
+	if err := c.indexAllValues(i); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// DeleteIndex remove the index from the collection
+func (c *Collection) DeleteIndex(name string) error {
+	// Find the correct index from the list
+	for i, activeIndex := range c.indexes {
+		if activeIndex.Name == name {
+			// Clean the collection list from the index pointer
+			copy(c.indexes[i:], c.indexes[i+1:])
+			c.indexes[len(c.indexes)-1] = nil
+			c.indexes = c.indexes[:len(c.indexes)-1]
+
+			// Remove the all index from indexes database
+			return c.db.Update(func(tx *bolt.Tx) error {
+				return tx.Bucket([]byte("indexes")).DeleteBucket([]byte(name))
+			})
+		}
+	}
+
+	return ErrNotFound
 }
 
 // Query run the given query to all the collection indexes
