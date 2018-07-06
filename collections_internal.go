@@ -115,7 +115,6 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 		for {
 			select {
 			case tr := <-c.writeTransactionChan:
-				fmt.Println("put", tr.id)
 				c.putTransaction(tr)
 			case <-ctx.Done():
 				return
@@ -403,7 +402,6 @@ func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneC
 	defer func() { doneChan <- true }()
 	ret := c.store.Update(func(txn *badger.Txn) error {
 		storeID := c.buildStoreID(writeTransaction.id)
-		fmt.Println("putIntoStore", writeTransaction.id, string(storeID))
 		setErr := txn.Set(storeID, writeTransaction.contentAsBytes)
 		if setErr != nil {
 			err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
