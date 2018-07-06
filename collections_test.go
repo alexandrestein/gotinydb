@@ -547,3 +547,33 @@ func TestCollection_Delete(t *testing.T) {
 		return
 	}
 }
+
+func TestDynamicIndexing(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db, _ := queryFillUp(ctx, t, dataSet1)
+	if db == nil {
+		return
+	}
+
+	c, _ := db.Use("testCol")
+
+	ids, err := c.getStoredIDs("2", 500)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	for i, id := range ids {
+		fmt.Println(i, "id", string(id), string(id[5:]))
+		ret, err := c.Get(string(id[5:]), nil)
+		if err != nil {
+			t.Error("err", err)
+			return
+		}
+		fmt.Println(string(ret))
+	}
+
+	fmt.Println("len", len(ids))
+}
