@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -119,52 +120,54 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 }
 
 func (c *Collection) putTransaction(tr *writeTransaction) {
-	storeDoneChannel := make(chan bool, 1)
-	indexDoneChannel := make(chan bool, 1)
-	storeErrChan := make(chan error, 1)
-	indexErrChan := make(chan error, 1)
+	// Build a waiting group
+	wg := new(sync.WaitGroup)
 
-	go c.putIntoStore(tr.ctx, storeErrChan, storeDoneChannel, tr)
+	// Used to propagate the error for one or the other function
+	errChan := make(chan error, 1)
 
+	// doneChan is used inside the function to make possible to have the wait group
+	// and the done context to be waiting in parallele
+	doneChan := make(chan struct{}, 0)
+
+	cancelChan := make(chan struct{}, 0)
+	cancelFunc := func() {
+		for {
+			select {
+			case cancelChan <- struct{}{}:
+			case <-tr.ctx.Done():
+				return
+			}
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		for {
+			select {
+			case doneChan <- struct{}{}:
+			case <-tr.ctx.Done():
+				return
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go c.putIntoStore(tr.ctx, errChan, cancelChan, doneChan, wg, tr)
+
+	wg.Add(1)
 	if !tr.bin {
-		go c.putIntoIndexes(tr.ctx, indexErrChan, indexDoneChannel, tr)
+		go c.putIntoIndexes(tr.ctx, errChan, cancelChan, doneChan, wg, tr)
 	} else {
-		go c.onlyCleanRefs(tr.ctx, indexErrChan, indexDoneChannel, tr)
+		go c.onlyCleanRefs(tr.ctx, errChan, cancelChan, doneChan, wg, tr)
 	}
 
-	propagateFunc := func(ok bool, err error) {
-		storeDoneChannel <- ok
-		indexDoneChannel <- ok
-		<-storeDoneChannel
-		<-indexDoneChannel
-		tr.responseChan <- err
-		return
-	}
-
-waitNext:
 	select {
-	case err := <-storeErrChan:
-		if err == nil {
-			storeErrChan = nil
-			if storeErrChan == nil && indexErrChan == nil {
-				propagateFunc(true, err)
-				break
-			}
-			goto waitNext
-		}
-		propagateFunc(false, err)
-	case err := <-indexErrChan:
-		if err == nil {
-			indexErrChan = nil
-			if storeErrChan == nil && indexErrChan == nil {
-				propagateFunc(true, err)
-				break
-			}
-			goto waitNext
-		}
-		propagateFunc(false, err)
-	case <-tr.ctx.Done():
-		propagateFunc(false, tr.ctx.Err())
+	case <-doneChan:
+		tr.responseChan <- nil
+	case err := <-errChan:
+		go cancelFunc()
+		tr.responseChan <- err
 	}
 }
 
@@ -172,11 +175,11 @@ func (c *Collection) buildStoreID(id string) []byte {
 	return []byte(fmt.Sprintf("%s_%s", c.id[:4], id))
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
-	defer func() { doneChan <- true }()
+func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, cancelChan, doneChan chan struct{}, wg *sync.WaitGroup, writeTransaction *writeTransaction) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
+			errChan <- err
 			return err
 		}
 
@@ -227,12 +230,11 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, don
 			return err
 		}
 
-		return c.endOfIndexUpdate(ctx, errChan, doneChan, writeTransaction)
+		return c.endOfIndexUpdate(ctx, tx, cancelChan, doneChan, wg, writeTransaction)
 	})
 }
 
-func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
-	defer func() { doneChan <- true }()
+func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, cancelChan, doneChan chan struct{}, wg *sync.WaitGroup, writeTransaction *writeTransaction) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
@@ -240,21 +242,22 @@ func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, done
 			return err
 		}
 
-		return c.endOfIndexUpdate(ctx, errChan, doneChan, writeTransaction)
+		return c.endOfIndexUpdate(ctx, tx, cancelChan, doneChan, wg, writeTransaction)
 	})
 }
 
-func (c *Collection) endOfIndexUpdate(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
-	errChan <- nil
+func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, cancelChan, doneChan chan struct{}, wg *sync.WaitGroup, writeTransaction *writeTransaction) error {
+	wg.Done()
 
 	select {
-	case ok := <-doneChan:
-		if ok {
-			return nil
-		}
-		return fmt.Errorf("error from outsid of the index")
+	case <-doneChan:
+		fmt.Println("done from index", writeTransaction.id)
+		return nil
+		// return tx.Commit()
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-cancelChan:
+		return fmt.Errorf("canceled")
 	}
 }
 
@@ -393,8 +396,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	return
 }
 
-func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
-	defer func() { doneChan <- true }()
+func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, cancelChan, doneChan chan struct{}, wg *sync.WaitGroup, writeTransaction *writeTransaction) error {
 	ret := c.store.Update(func(txn *badger.Txn) error {
 		storeID := c.buildStoreID(writeTransaction.id)
 		setErr := txn.Set(storeID, writeTransaction.contentAsBytes)
@@ -404,17 +406,16 @@ func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneC
 			return err
 		}
 
-		errChan <- nil
+		wg.Done()
 
 		select {
-		case ok := <-doneChan:
-			if ok {
-				txn.Commit(nil)
-				return nil
-			}
-			return fmt.Errorf("error from outsid of the store")
+		case <-doneChan:
+			fmt.Println("done from store", writeTransaction.id)
+			return txn.Commit(nil)
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-cancelChan:
+			return fmt.Errorf("canceled")
 		}
 	})
 	return ret
@@ -569,8 +570,9 @@ func (c *Collection) indexAllValues(i *indexType) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	doneChan := make(chan bool, 0)
 	errChan := make(chan error, 0)
+	cancelChan := make(chan struct{}, 0)
+	doneChan := make(chan struct{}, 0)
 
 	lastID := ""
 
@@ -606,12 +608,10 @@ newLoop:
 
 		fmt.Println("sending", tr.id)
 
-		go c.putIntoIndexes(ctx, errChan, doneChan, tr)
+		wg := new(sync.WaitGroup)
+		go c.putIntoIndexes(ctx, errChan, cancelChan, doneChan, wg, tr)
 
 		fmt.Println("start waiting", tr.id)
-
-		<-doneChan
-		doneChan <- true
 
 		fmt.Println("1")
 
