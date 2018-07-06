@@ -48,7 +48,7 @@ func TestOpenAndClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, _ := queryFillUp(ctx, t, dataSet1)
+	db, _ := fillUpDB(ctx, t, dataSet1)
 	if db == nil {
 		return
 	}

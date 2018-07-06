@@ -21,11 +21,39 @@ func newIndex(name string, t IndexType, selector ...string) *indexType {
 // apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
 func (i *indexType) apply(object interface{}) (contentToIndex []byte, ok bool) {
-	structObj := structs.New(object)
+	if structs.IsStruct(object) {
+		return i.applyToStruct(structs.New(object))
+	}
+
+	if mp, ok := object.(map[string]interface{}); ok {
+		return i.applyToMap(mp)
+	}
+
+	return nil, false
+	// structMap := structs.Map(object)
+	// var field interface{}
+	// for i, fieldName := range i.Selector {
+	// 	if i == 0 {
+	// 		field, ok = structMap[fieldName]
+	// 	} else {
+	// 		fieldMap, mapConvertionOk := field.(map[string]interface{})
+	// 		if !mapConvertionOk {
+	// 			return nil, false
+	// 		}
+	// 		field, ok = fieldMap[fieldName]
+	// 	}
+	// 	if !ok {
+	// 		return nil, false
+	// 	}
+	// }
+	// return i.testType(field)
+}
+
+func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex []byte, ok bool) {
 	var field *structs.Field
 	for i, fieldName := range i.Selector {
 		if i == 0 {
-			field, ok = structObj.FieldOk(fieldName)
+			field, ok = object.FieldOk(fieldName)
 		} else {
 			field, ok = field.FieldOk(fieldName)
 		}
@@ -34,6 +62,28 @@ func (i *indexType) apply(object interface{}) (contentToIndex []byte, ok bool) {
 		}
 	}
 	return i.testType(field.Value())
+}
+
+func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex []byte, ok bool) {
+	var field interface{}
+	for i, fieldName := range i.Selector {
+		if i == 0 {
+			field, ok = object[fieldName]
+		} else {
+			fieldMap, mapConvertionOk := field.(map[string]interface{})
+			if !mapConvertionOk {
+				return nil, false
+			}
+			field, ok = fieldMap[fieldName]
+			if !ok {
+				return nil, false
+			}
+		}
+		if !ok {
+			return nil, false
+		}
+	}
+	return i.testType(field)
 }
 
 // doesFilterApplyToIndex only check if the filter belongs to the index

@@ -12,7 +12,7 @@ import (
 	"github.com/fatih/structs"
 )
 
-func queryFillUp(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) {
+func fillUpDB(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) {
 	testPath := <-getTestPathChan
 
 	db, openDBErr := Open(ctx, testPath)
@@ -52,7 +52,7 @@ func TestCollection_Query(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, users := queryFillUp(ctx, t, dataSet1)
+	db, users := fillUpDB(ctx, t, dataSet1)
 	if db == nil {
 		return
 	}
@@ -208,6 +208,11 @@ func TestCollection_Query(t *testing.T) {
 				return
 			}
 			if err != nil {
+				return
+			}
+
+			if gotResponse.Len() == 0 && !tt.wantErr {
+				t.Errorf("No response and no error")
 				return
 			}
 
@@ -535,7 +540,7 @@ func TestCollection_Delete(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, _ := queryFillUp(ctx, t, dataSet1)
+	db, _ := fillUpDB(ctx, t, dataSet1)
 	if db == nil {
 		return
 	}
@@ -552,28 +557,57 @@ func TestDynamicIndexing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, _ := queryFillUp(ctx, t, dataSet1)
+	db, _ := fillUpDB(ctx, t, dataSet1)
 	if db == nil {
 		return
 	}
 
 	c, _ := db.Use("testCol")
 
-	ids, err := c.getStoredIDs("2", 500)
-	if err != nil {
+	if err := query216(c); err != nil {
 		t.Error(err)
 		return
 	}
 
-	for i, id := range ids {
-		fmt.Println(i, "id", string(id), string(id[5:]))
-		ret, err := c.Get(string(id[5:]), nil)
-		if err != nil {
-			t.Error("err", err)
-			return
-		}
-		fmt.Println(string(ret))
+	if err := c.DeleteIndex("email"); err != nil {
+		t.Error(err)
+		return
 	}
 
-	fmt.Println("len", len(ids))
+	if err := query216(c); err == nil {
+		t.Error(err)
+		return
+	}
+
+	if setIndexErr := c.SetIndex("email", StringIndex, "Email"); setIndexErr != nil {
+		t.Error(setIndexErr)
+		return
+	}
+
+	if err := query216(c); err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func query216(c *Collection) error {
+	res, queryErr := c.Query(
+		NewQuery().SetFilter(
+			NewFilter(Equal).SetSelector("Email").CompareTo("dwight-73@alamogordo.com"),
+		),
+	)
+	if queryErr != nil {
+		return queryErr
+	}
+	user := new(User)
+	id, oneErr := res.One(user)
+	if oneErr != nil {
+		return oneErr
+	}
+
+	if id != "216" {
+		return fmt.Errorf("the id is not 216 but %s", id)
+	}
+
+	return nil
 }

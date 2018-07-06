@@ -136,7 +136,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 
 	// Remove stored values 1000 by 1000
 	for {
-		ids, err := c.getStoredIDs("", 1000)
+		ids, err := c.getStoredIDsAndValues("", 1000, true)
 		if err != nil {
 			return err
 		}
@@ -146,7 +146,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 
 		err = d.valueStore.Update(func(txn *badger.Txn) error {
 			for _, id := range ids {
-				err := txn.Delete(c.buildStoreID(id))
+				err := txn.Delete(c.buildStoreID(id.ID.ID))
 				if err != nil {
 					return err
 				}

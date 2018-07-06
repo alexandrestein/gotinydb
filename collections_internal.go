@@ -20,9 +20,7 @@ func (c *Collection) loadInfos() error {
 		}
 
 		name := string(bucket.Get([]byte("name")))
-		id := string(bucket.Get([]byte("id")))
 		c.name = name
-		c.id = string(id)
 
 		return nil
 	})
@@ -43,9 +41,6 @@ func (c *Collection) init(name string) error {
 		}
 		if nameErr := confBucket.Put([]byte("name"), []byte(name)); nameErr != nil {
 			return nameErr
-		}
-		if idErr := confBucket.Put([]byte("id"), []byte(c.id)); idErr != nil {
-			return idErr
 		}
 		return nil
 	})
@@ -252,8 +247,10 @@ func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, done
 func (c *Collection) endOfIndexUpdate(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	errChan <- nil
 
+	fmt.Println("wait for done")
 	select {
 	case ok := <-doneChan:
+		fmt.Println("done from end", ok, writeTransaction.id)
 		if ok {
 			return nil
 		}
@@ -467,7 +464,7 @@ func (c *Collection) loadIndex() error {
 	return nil
 }
 
-func (c *Collection) deleteIndexes(ctx context.Context, id string) error {
+func (c *Collection) deleteItemFromIndexes(ctx context.Context, id string) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		refs, getRefsErr := c.getRefs(tx, id)
 		if getRefsErr != nil {
@@ -504,27 +501,28 @@ func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
 // getStoredIDs returns all ids if it does not exceed the limit.
 // This will not returned the ID used to set the value inside the collection
 // It returns the id used to set the value inside the store
-func (c *Collection) getStoredIDs(starter string, limit int) ([]string, error) {
-	ids := make([]string, limit)
+func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bool) ([]*responseQueryElem, error) {
+	response := make([]*responseQueryElem, limit)
 
 	err := c.store.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
-		prefix := []byte(c.id[:4])
+		prefix := []byte(c.id[:4] + "_")
 		if starter == "" {
 			iter.Seek(prefix)
 		} else {
-			prefix = append(prefix, []byte("_"+starter)...)
-			iter.Seek(prefix)
+			iter.Seek(append(prefix, []byte(starter)...))
 		}
 
 		count := 0
 		for ; iter.Valid(); iter.Next() {
-			if !iter.ValidForPrefix(prefix) || count >= limit-1 {
-				ids = ids[:count]
+			if !iter.ValidForPrefix(prefix) || count > limit-1 {
+				response = response[:count]
 				return nil
 			}
+
+			responseItem := new(responseQueryElem)
 
 			item := iter.Item()
 
@@ -532,19 +530,33 @@ func (c *Collection) getStoredIDs(starter string, limit int) ([]string, error) {
 				continue
 			}
 
-			ids[count] = string(item.Key())
+			responseItem.ID = new(idType)
+			responseItem.ID.ID = string(item.Key()[5:])
+
+			if !IDsOnly {
+				var err error
+				responseItem.ContentAsBytes = make([]byte, 1000*1000*2)
+				// responseItem.ContentAsBytes = make([]byte, 1000*1000*2)
+				responseItem.ContentAsBytes, err = item.ValueCopy(responseItem.ContentAsBytes)
+				if err != nil {
+					return err
+				}
+			}
+
+			response[count] = responseItem
 
 			count++
 		}
 
-		ids = ids[:count]
+		// Clean the end of the slice if not full
+		response = response[:count]
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return ids, nil
+	return response, nil
 }
 
 func newTransaction(id string) *writeTransaction {
@@ -553,4 +565,119 @@ func newTransaction(id string) *writeTransaction {
 	tr.responseChan = make(chan error, 0)
 
 	return tr
+}
+
+func (c *Collection) indexAllValues(i *indexType) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	doneChan := make(chan bool, 0)
+	errChan := make(chan error, 0)
+
+	lastID := ""
+
+newLoop:
+	savedElements, getErr := c.getStoredIDsAndValues(lastID, 10, false)
+	if getErr != nil {
+		return getErr
+	}
+
+	if len(savedElements) <= 1 {
+		return nil
+	}
+
+	for _, savedElement := range savedElements {
+		if savedElement.ID.ID == lastID {
+			continue
+		}
+
+		var elem interface{}
+		if jsonErr := json.Unmarshal(savedElement.ContentAsBytes, &elem); jsonErr != nil {
+			return jsonErr
+		}
+
+		m := elem.(map[string]interface{})
+
+		ctx2, cancel2 := context.WithTimeout(ctx, time.Second)
+		defer cancel2()
+
+		tr := newTransaction(savedElement.ID.ID)
+		tr.ctx = ctx2
+
+		tr.contentInterface = m
+
+		fmt.Println("sending", tr.id)
+
+		go c.putIntoIndexes(ctx, errChan, doneChan, tr)
+
+		fmt.Println("start waiting", tr.id)
+
+		<-doneChan
+		doneChan <- true
+
+		fmt.Println("1")
+
+		err := <-errChan
+		if err != nil {
+			fmt.Println("err", err)
+			return err
+		}
+
+		lastID = tr.id
+	}
+
+	goto newLoop
+	// return c.store.View(func(txn *badger.Txn) error {
+	// 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
+	// 	defer iter.Close()
+
+	// 	for iter.Rewind(); iter.Valid(); iter.Next() {
+	// 		item := iter.Item()
+
+	// 		fmt.Println("item", string(item.Key()), item.String())
+	// 	}
+	// 	return nil
+	// })
+
+	// return c.store.View(func(txn *badger.Txn) error {
+	// 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
+	// 	defer iter.Close()
+
+	// 	iter.Seek(prefix)
+
+	// 	for iter.Rewind(); iter.Valid(); iter.Next() {
+	// 		item := iter.Item()
+	// 		if !iter.ValidForPrefix(prefix) {
+	// 			return nil
+	// 		}
+
+	// 		itemAsBytes, getBytesErr := item.Value()
+	// 		if getBytesErr != nil {
+	// 			return getBytesErr
+	// 		}
+
+	// 		// var valueToIndex interface{}
+	// 		// for _, fieldSelector := range i.Selector {
+	// 		// 	if valueToIndex == nil {
+	// 		// 		if m[fieldSelector] == nil {
+	// 		// 			break
+	// 		// 		}
+	// 		// 		valueToIndex = m[fieldSelector]
+	// 		// 		continue
+	// 		// 	}
+
+	// 		// 	if m[fieldSelector] == nil {
+	// 		// 		break
+	// 		// 	}
+	// 		// 	valueToIndex = m[fieldSelector]
+	// 		// }
+
+	// 		// i.
+	// 		// fmt.Println("valueToIndex", valueToIndex)
+
+	// 		fmt.Println(string(itemAsBytes))
+	// 		fmt.Println(m)
+	// 	}
+	// 	return nil
+	// })
 }
