@@ -554,6 +554,8 @@ func TestCollection_Delete(t *testing.T) {
 }
 
 func TestDynamicIndexing(t *testing.T) {
+	t.Error()
+	return
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

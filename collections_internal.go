@@ -247,10 +247,8 @@ func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, done
 func (c *Collection) endOfIndexUpdate(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	errChan <- nil
 
-	fmt.Println("wait for done")
 	select {
 	case ok := <-doneChan:
-		fmt.Println("done from end", ok, writeTransaction.id)
 		if ok {
 			return nil
 		}
