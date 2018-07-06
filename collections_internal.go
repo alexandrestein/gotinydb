@@ -169,7 +169,7 @@ waitNext:
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
-	return []byte(fmt.Sprintf("%s_%s", c.name[:4], id))
+	return []byte(fmt.Sprintf("%s_%s", c.id[:4], id))
 }
 
 func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
@@ -505,7 +505,7 @@ func (c *Collection) getAllStoreIDs(limit int) ([][]byte, error) {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
-		prefix := []byte(c.name[:4] + "_")
+		prefix := []byte(c.id[:4] + "_")
 		iter.Seek(prefix)
 
 		count := 0
@@ -546,11 +546,24 @@ func (c *Collection) indexAllValues(i *indexType) error {
 	doneChan := make(chan bool, 1)
 	errChan := make(chan error, 1)
 
+	prefix := []byte(c.id[:4] + "_")
+
 	return c.store.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
-		prefix := []byte(c.id[:4] + "_")
+		for iter.Rewind(); iter.Valid(); iter.Next() {
+			item := iter.Item()
+
+			fmt.Println("item", string(item.Key()), item.String())
+		}
+		return nil
+	})
+
+	return c.store.View(func(txn *badger.Txn) error {
+		iter := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer iter.Close()
+
 		iter.Seek(prefix)
 
 		for iter.Rewind(); iter.Valid(); iter.Next() {
