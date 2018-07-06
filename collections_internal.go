@@ -110,6 +110,7 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 		for {
 			select {
 			case tr := <-c.writeTransactionChan:
+				fmt.Println("put", tr.id)
 				c.putTransaction(tr)
 			case <-ctx.Done():
 				return
@@ -396,7 +397,9 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, doneChan chan bool, writeTransaction *writeTransaction) error {
 	defer func() { doneChan <- true }()
 	ret := c.store.Update(func(txn *badger.Txn) error {
-		setErr := txn.Set(c.buildStoreID(writeTransaction.id), writeTransaction.contentAsBytes)
+		storeID := c.buildStoreID(writeTransaction.id)
+		fmt.Println("putIntoStore", writeTransaction.id, string(storeID))
+		setErr := txn.Set(storeID, writeTransaction.contentAsBytes)
 		if setErr != nil {
 			err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
 			errChan <- err
@@ -495,28 +498,38 @@ func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
 	return refs, nil
 }
 
-// GetAllStoreIDs returns all ids if it does not exceed the limit.
+// getStoredIDs returns all ids if it does not exceed the limit.
 // This will not returned the ID used to set the value inside the collection
 // It returns the id used to set the value inside the store
-func (c *Collection) getAllStoreIDs(limit int) ([][]byte, error) {
-	ids := make([][]byte, limit)
+func (c *Collection) getStoredIDs(starter string, limit int) ([]string, error) {
+	ids := make([]string, limit)
 
 	err := c.store.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
-		prefix := []byte(c.id[:4] + "_")
-		iter.Seek(prefix)
+		prefix := []byte(c.id[:4])
+		if starter == "" {
+			iter.Seek(prefix)
+		} else {
+			prefix = append(prefix, []byte("_"+starter)...)
+			iter.Seek(prefix)
+		}
 
 		count := 0
-		for iter.Rewind(); iter.Valid(); iter.Next() {
-			item := iter.Item()
+		for ; iter.Valid(); iter.Next() {
 			if !iter.ValidForPrefix(prefix) || count >= limit-1 {
 				ids = ids[:count]
 				return nil
 			}
 
-			ids[count] = item.Key()
+			item := iter.Item()
+
+			if item.IsDeletedOrExpired() {
+				continue
+			}
+
+			ids[count] = string(item.Key())
 
 			count++
 		}
