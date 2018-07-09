@@ -584,7 +584,7 @@ newLoop:
 
 		m := elem.(map[string]interface{})
 
-		ctx2, cancel2 := context.WithTimeout(ctx, time.Second)
+		ctx2, cancel2 := context.WithTimeout(ctx, c.conf.TransactionTimeOut)
 		defer cancel2()
 
 		tr := newTransaction(savedElement.ID.ID)
@@ -596,15 +596,17 @@ newLoop:
 
 		fakeWgAction := new(sync.WaitGroup)
 		fakeWgCommitted := new(sync.WaitGroup)
+		fakeWgAction.Add(1)
+		fakeWgCommitted.Add(1)
 		go c.putIntoIndexes(ctx, errChan, fakeWgAction, fakeWgCommitted, tr)
 
 		fmt.Println("start waiting", tr.id)
 
 		fmt.Println("1")
 
-		err := <-errChan
+		err := waitForDoneErrOrCanceled(ctx2, fakeWgCommitted, errChan)
 		if err != nil {
-			fmt.Println("err", err)
+			fmt.Println("ERR")
 			return err
 		}
 
@@ -626,7 +628,7 @@ func waitForDoneErrOrCanceled(ctx context.Context, wg *sync.WaitGroup, errChan c
 	case <-c:
 		return nil // completed normally
 	case err := <-errChan:
-		return err
+		return err // returns the received err
 	case <-ctx.Done():
 		return ctx.Err() // timed out or canceled
 	}
