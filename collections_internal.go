@@ -357,14 +357,6 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	// Do the sorting
 	idsMs.Sort(q.limit)
 
-	// // get the ids in the order and with the given limit
-	// orderFunc, ret := orderTreeIterator(q.limit)
-	// if q.ascendent {
-	// 	retTree.Ascend(orderFunc)
-	// } else {
-	// 	retTree.Descend(orderFunc)
-	// }
-
 	// Build the response for the caller
 	response = newResponseQuery(len(idsMs.IDs))
 	response.query = q

@@ -50,12 +50,6 @@ type (
 		invert bool
 	}
 
-	// idsForOrderTree struct {
-	// 	value     []byte
-	// 	ids       []*idType
-	// 	indexHash uint64
-	// }
-
 	// FilterOperator defines the type of filter to perform
 	FilterOperator string
 
@@ -113,30 +107,6 @@ func (iMs *idsTypeMultiSorter) less(i, j int) bool {
 	}
 	return false
 }
-
-// func newIDsForOrderTree(orderValue []byte, indexHash uint64) *idsForOrderTree {
-// 	i := new(idsForOrderTree)
-// 	i.value = orderValue
-// 	i.ids = []*idType{}
-// 	i.indexHash = indexHash
-// 	return i
-// }
-
-// func (i *idsForOrderTree) addID(id *idType) {
-// 	i.ids = append(i.ids, id)
-// }
-
-// func (i *idsForOrderTree) Less(compareToItem btree.Item) bool {
-// 	compareTo, ok := compareToItem.(*idsForOrderTree)
-// 	if !ok {
-// 		return false
-// 	}
-
-// 	if bytes.Compare(i.value, compareTo.value) < 0 {
-// 		return true
-// 	}
-// 	return false
-// }
 
 // NewQuery build a new query object.
 // It also set the default limit.
@@ -218,42 +188,10 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 			}
 
 			ret.IDs = append(ret.IDs, nextAsID)
-			// ids := newIDsForOrderTree(nextAsID.values[orderSelectorHash], orderSelectorHash)
-			// idsFromTree := ret.Get(ids)
-			// if idsFromTree == nil {
-			// 	ids.addID(nextAsID)
-			// 	ret.ReplaceOrInsert(ids)
-			// 	return true
-			// }
-			// idsFromTree.(*idsForOrderTree).addID(nextAsID)
 		}
 		return true
 	}, ret
 }
-
-// func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *idsType) {
-// 	ret := new(idsType)
-
-// 	return func(next btree.Item) bool {
-// 		if len(ret.IDs) >= maxResponse {
-// 			return false
-// 		}
-
-// 		nextAsIDs, ok := next.(*idsForOrderTree)
-// 		if !ok {
-// 			return false
-// 		}
-
-// 		for _, id := range nextAsIDs.ids {
-// 			ret.IDs = append(ret.IDs, id)
-// 			if len(ret.IDs) >= maxResponse {
-// 				return false
-// 			}
-// 		}
-
-// 		return true
-// 	}, ret
-// }
 
 // newID returns a new ID with zero occurrence
 func newID(ctx context.Context, id string) *idType {
