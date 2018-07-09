@@ -120,62 +120,38 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 }
 
 func (c *Collection) putTransaction(tr *writeTransaction) {
-	// Build a waiting group
-	wg := new(sync.WaitGroup)
+	// Build a waiting groups
+	// This group is to make internal functions wait the otherone
+	wgActions := new(sync.WaitGroup)
+	// This group defines the waitgroup to consider that all have been done correctly.
+	wgCommitted := new(sync.WaitGroup)
 
 	// Used to propagate the error for one or the other function
 	errChan := make(chan error, 1)
 
-	// doneChan is used inside the function to make possible to have the wait group
-	// and the done context to be waiting in parallele
-	doneChan := make(chan struct{}, 0)
+	// Increment the tow waiting groups
+	wgActions.Add(2)
+	wgCommitted.Add(2)
 
-	cancelChan := make(chan struct{}, 0)
-	cancelFunc := func() {
-		for {
-			select {
-			case cancelChan <- struct{}{}:
-			case <-tr.ctx.Done():
-				return
-			}
-		}
-	}
+	// Runs saving into the store
+	go c.putIntoStore(tr.ctx, errChan, wgActions, wgCommitted, tr)
 
-	go func() {
-		wg.Wait()
-		for {
-			select {
-			case doneChan <- struct{}{}:
-			case <-tr.ctx.Done():
-				return
-			}
-		}
-	}()
-
-	wg.Add(1)
-	go c.putIntoStore(tr.ctx, errChan, cancelChan, doneChan, wg, tr)
-
-	wg.Add(1)
+	// Starts the indexing process
 	if !tr.bin {
-		go c.putIntoIndexes(tr.ctx, errChan, cancelChan, doneChan, wg, tr)
+		go c.putIntoIndexes(tr.ctx, errChan, wgActions, wgCommitted, tr)
 	} else {
-		go c.onlyCleanRefs(tr.ctx, errChan, cancelChan, doneChan, wg, tr)
+		go c.onlyCleanRefs(tr.ctx, errChan, wgActions, wgCommitted, tr)
 	}
 
-	select {
-	case <-doneChan:
-		tr.responseChan <- nil
-	case err := <-errChan:
-		go cancelFunc()
-		tr.responseChan <- err
-	}
+	// Respond to the caller with the error if any
+	tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
 	return []byte(fmt.Sprintf("%s_%s", c.id[:4], id))
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, cancelChan, doneChan chan struct{}, wg *sync.WaitGroup, writeTransaction *writeTransaction) error {
+func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
@@ -230,11 +206,11 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, can
 			return err
 		}
 
-		return c.endOfIndexUpdate(ctx, tx, cancelChan, doneChan, wg, writeTransaction)
+		return c.endOfIndexUpdate(ctx, tx, wgActions, wgCommitted)
 	})
 }
 
-func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, cancelChan, doneChan chan struct{}, wg *sync.WaitGroup, writeTransaction *writeTransaction) error {
+func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		err := c.cleanRefs(ctx, tx, writeTransaction.id)
 		if err != nil {
@@ -242,23 +218,27 @@ func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, canc
 			return err
 		}
 
-		return c.endOfIndexUpdate(ctx, tx, cancelChan, doneChan, wg, writeTransaction)
+		return c.endOfIndexUpdate(ctx, tx, wgActions, wgCommitted)
 	})
 }
 
-func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, cancelChan, doneChan chan struct{}, wg *sync.WaitGroup, writeTransaction *writeTransaction) error {
-	wg.Done()
+func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, wgActions, wgCommitted *sync.WaitGroup) error {
+	// Tells the rest of the callers that the index is done but not committed
+	wgActions.Done()
 
-	select {
-	case <-doneChan:
-		fmt.Println("done from index", writeTransaction.id)
-		return nil
-		// return tx.Commit()
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-cancelChan:
-		return fmt.Errorf("canceled")
+	// Wait for the store insetion to be completed
+	err := waitForDoneErrOrCanceled(ctx, wgActions, nil)
+	if err != nil {
+		return err
 	}
+
+	// After commit is done successfully the function is called
+	tx.OnCommit(func() {
+		// Propagate the commit done status
+		wgCommitted.Done()
+	})
+
+	return nil
 }
 
 func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString string) error {
@@ -396,7 +376,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	return
 }
 
-func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, cancelChan, doneChan chan struct{}, wg *sync.WaitGroup, writeTransaction *writeTransaction) error {
+func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
 	ret := c.store.Update(func(txn *badger.Txn) error {
 		storeID := c.buildStoreID(writeTransaction.id)
 		setErr := txn.Set(storeID, writeTransaction.contentAsBytes)
@@ -406,17 +386,25 @@ func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, cance
 			return err
 		}
 
-		wg.Done()
+		// Tells the rest of the callers that the index is done but not committed
+		wgActions.Done()
 
-		select {
-		case <-doneChan:
-			fmt.Println("done from store", writeTransaction.id)
-			return txn.Commit(nil)
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-cancelChan:
-			return fmt.Errorf("canceled")
+		// Wait for the store insetion to be completed
+		err := waitForDoneErrOrCanceled(ctx, wgActions, nil)
+		if err != nil {
+			return err
 		}
+
+		// Start the commit of the indexes
+		err = txn.Commit(nil)
+		if err != nil {
+			return err
+		}
+
+		// Propagate the commit done status
+		wgCommitted.Done()
+
+		return nil
 	})
 	return ret
 }
@@ -571,8 +559,6 @@ func (c *Collection) indexAllValues(i *indexType) error {
 	defer cancel()
 
 	errChan := make(chan error, 0)
-	cancelChan := make(chan struct{}, 0)
-	doneChan := make(chan struct{}, 0)
 
 	lastID := ""
 
@@ -608,8 +594,9 @@ newLoop:
 
 		fmt.Println("sending", tr.id)
 
-		wg := new(sync.WaitGroup)
-		go c.putIntoIndexes(ctx, errChan, cancelChan, doneChan, wg, tr)
+		fakeWgAction := new(sync.WaitGroup)
+		fakeWgCommitted := new(sync.WaitGroup)
+		go c.putIntoIndexes(ctx, errChan, fakeWgAction, fakeWgCommitted, tr)
 
 		fmt.Println("start waiting", tr.id)
 
@@ -625,57 +612,22 @@ newLoop:
 	}
 
 	goto newLoop
-	// return c.store.View(func(txn *badger.Txn) error {
-	// 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
-	// 	defer iter.Close()
+}
 
-	// 	for iter.Rewind(); iter.Valid(); iter.Next() {
-	// 		item := iter.Item()
-
-	// 		fmt.Println("item", string(item.Key()), item.String())
-	// 	}
-	// 	return nil
-	// })
-
-	// return c.store.View(func(txn *badger.Txn) error {
-	// 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
-	// 	defer iter.Close()
-
-	// 	iter.Seek(prefix)
-
-	// 	for iter.Rewind(); iter.Valid(); iter.Next() {
-	// 		item := iter.Item()
-	// 		if !iter.ValidForPrefix(prefix) {
-	// 			return nil
-	// 		}
-
-	// 		itemAsBytes, getBytesErr := item.Value()
-	// 		if getBytesErr != nil {
-	// 			return getBytesErr
-	// 		}
-
-	// 		// var valueToIndex interface{}
-	// 		// for _, fieldSelector := range i.Selector {
-	// 		// 	if valueToIndex == nil {
-	// 		// 		if m[fieldSelector] == nil {
-	// 		// 			break
-	// 		// 		}
-	// 		// 		valueToIndex = m[fieldSelector]
-	// 		// 		continue
-	// 		// 	}
-
-	// 		// 	if m[fieldSelector] == nil {
-	// 		// 		break
-	// 		// 	}
-	// 		// 	valueToIndex = m[fieldSelector]
-	// 		// }
-
-	// 		// i.
-	// 		// fmt.Println("valueToIndex", valueToIndex)
-
-	// 		fmt.Println(string(itemAsBytes))
-	// 		fmt.Println(m)
-	// 	}
-	// 	return nil
-	// })
+// waitForDoneErrOrCanceled waits for the waitgroup or context to be done.
+// If the waitgroup os done first it returns true otherways it returns false.
+func waitForDoneErrOrCanceled(ctx context.Context, wg *sync.WaitGroup, errChan chan error) error {
+	c := make(chan struct{})
+	go func() {
+		defer close(c)
+		wg.Wait()
+	}()
+	select {
+	case <-c:
+		return nil // completed normally
+	case err := <-errChan:
+		return err
+	case <-ctx.Done():
+		return ctx.Err() // timed out or canceled
+	}
 }
