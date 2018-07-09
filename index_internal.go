@@ -131,17 +131,3 @@ func (i *indexType) queryBetween(ctx context.Context, ids *idsType, filter *Filt
 
 	ids.AddIDs(tmpIDs)
 }
-
-// TypeName return the name of the type as a string
-func (it IndexType) TypeName() string {
-	switch it {
-	case StringIndex:
-		return "StringIndex"
-	case IntIndex:
-		return "IntIndex"
-	case TimeIndex:
-		return "TimeIndex"
-	default:
-		return ""
-	}
-}

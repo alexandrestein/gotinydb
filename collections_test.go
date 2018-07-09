@@ -564,8 +564,6 @@ func TestDynamicIndexing(t *testing.T) {
 		return
 	}
 
-	
-
 	c, _ := db.Use("testCol")
 
 	if err := query216(c); err != nil {

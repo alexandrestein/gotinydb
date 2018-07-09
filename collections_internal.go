@@ -342,22 +342,35 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	}
 
 	// iterate the response tree to get only IDs which has been found in every index queries
-	occurrenceFunc, retTree := occurrenceTreeIterator(len(q.filters), q.internalLimit, q.order, getRefFunc)
+	occurrenceFunc, idsSlice := occurrenceTreeIterator(len(q.filters), q.internalLimit, q.order, getRefFunc)
 	tree.Ascend(occurrenceFunc)
 
-	// get the ids in the order and with the given limit
-	orderFunc, ret := orderTreeIterator(q.limit)
-	if q.ascendent {
-		retTree.Ascend(orderFunc)
-	} else {
-		retTree.Descend(orderFunc)
+	// Build the new sorter
+	idsMs := new(idsTypeMultiSorter)
+	idsMs.IDs = idsSlice.IDs
+
+	// Invert the sort order
+	if !q.ascendent {
+		idsMs.invert = true
 	}
 
+	// Do the sorting
+	idsMs.Sort(q.limit)
+
+	// // get the ids in the order and with the given limit
+	// orderFunc, ret := orderTreeIterator(q.limit)
+	// if q.ascendent {
+	// 	retTree.Ascend(orderFunc)
+	// } else {
+	// 	retTree.Descend(orderFunc)
+	// }
+
 	// Build the response for the caller
-	response = newResponseQuery(len(ret.IDs))
+	response = newResponseQuery(len(idsMs.IDs))
 	response.query = q
+
 	// Get every content of the query from the database
-	responsesAsBytes, err := c.get(ctx, ret.Strings()...)
+	responsesAsBytes, err := c.get(ctx, getIDsAsString(idsSlice.IDs)...)
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +382,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 		}
 
 		response.list[i] = &responseQueryElem{
-			ID:             ret.IDs[i],
+			ID:             idsSlice.IDs[i],
 			ContentAsBytes: responsesAsBytes[i],
 		}
 	}
@@ -546,14 +559,6 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 	return response, nil
 }
 
-func newTransaction(id string) *writeTransaction {
-	tr := new(writeTransaction)
-	tr.id = id
-	tr.responseChan = make(chan error, 0)
-
-	return tr
-}
-
 func (c *Collection) indexAllValues(i *indexType) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -614,22 +619,4 @@ newLoop:
 	}
 
 	goto newLoop
-}
-
-// waitForDoneErrOrCanceled waits for the waitgroup or context to be done.
-// If the waitgroup os done first it returns true otherways it returns false.
-func waitForDoneErrOrCanceled(ctx context.Context, wg *sync.WaitGroup, errChan chan error) error {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return nil // completed normally
-	case err := <-errChan:
-		return err // returns the received err
-	case <-ctx.Done():
-		return ctx.Err() // timed out or canceled
-	}
 }

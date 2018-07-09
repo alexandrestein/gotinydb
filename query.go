@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/google/btree"
@@ -44,11 +45,16 @@ type (
 		IDs []*idType
 	}
 
-	idsForOrderTree struct {
-		value     []byte
-		ids       []*idType
-		indexHash uint64
+	idsTypeMultiSorter struct {
+		IDs    []*idType
+		invert bool
 	}
+
+	// idsForOrderTree struct {
+	// 	value     []byte
+	// 	ids       []*idType
+	// 	indexHash uint64
+	// }
 
 	// FilterOperator defines the type of filter to perform
 	FilterOperator string
@@ -67,29 +73,70 @@ type (
 	}
 )
 
-func newIDsForOrderTree(orderValue []byte, indexHash uint64) *idsForOrderTree {
-	i := new(idsForOrderTree)
-	i.value = orderValue
-	i.ids = []*idType{}
-	i.indexHash = indexHash
-	return i
-}
+func (iMs *idsTypeMultiSorter) Sort(limit int) {
+	sort.Sort(iMs)
 
-func (i *idsForOrderTree) addID(id *idType) {
-	i.ids = append(i.ids, id)
+	if iMs.Len() > limit {
+		iMs.IDs = iMs.IDs[:limit]
+	}
 }
-
-func (i *idsForOrderTree) Less(compareToItem btree.Item) bool {
-	compareTo, ok := compareToItem.(*idsForOrderTree)
-	if !ok {
-		return false
+func (iMs *idsTypeMultiSorter) Len() int {
+	return len(iMs.IDs)
+}
+func (iMs *idsTypeMultiSorter) Swap(i, j int) {
+	iMs.IDs[i], iMs.IDs[j] = iMs.IDs[j], iMs.IDs[i]
+}
+func (iMs *idsTypeMultiSorter) Less(i, j int) bool {
+	if iMs.invert {
+		return !iMs.less(i, j)
 	}
 
-	if bytes.Compare(i.value, compareTo.value) < 0 {
+	return iMs.less(i, j)
+}
+func (iMs *idsTypeMultiSorter) less(i, j int) bool {
+	p, q := iMs.IDs[i], iMs.IDs[j]
+
+	// Compare the order value
+	switch comp := bytes.Compare(p.values[p.selectorHash], q.values[q.selectorHash]); comp {
+	case -1:
 		return true
+	case 1:
+		return false
+		// If equal compare the ID
+	case 0:
+		switch p.ID < q.ID {
+		case true:
+			return true
+		case false:
+			return false
+		}
 	}
 	return false
 }
+
+// func newIDsForOrderTree(orderValue []byte, indexHash uint64) *idsForOrderTree {
+// 	i := new(idsForOrderTree)
+// 	i.value = orderValue
+// 	i.ids = []*idType{}
+// 	i.indexHash = indexHash
+// 	return i
+// }
+
+// func (i *idsForOrderTree) addID(id *idType) {
+// 	i.ids = append(i.ids, id)
+// }
+
+// func (i *idsForOrderTree) Less(compareToItem btree.Item) bool {
+// 	compareTo, ok := compareToItem.(*idsForOrderTree)
+// 	if !ok {
+// 		return false
+// 	}
+
+// 	if bytes.Compare(i.value, compareTo.value) < 0 {
+// 		return true
+// 	}
+// 	return false
+// }
 
 // NewQuery build a new query object.
 // It also set the default limit.
@@ -142,11 +189,11 @@ func (q *Query) SetFilter(f *Filter) *Query {
 	return q
 }
 
-func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64, getRefsFunc func(id string) *refs) (func(next btree.Item) (over bool), *btree.BTree) {
-	ret := btree.New(5)
-
+func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64, getRefsFunc func(id string) *refs) (func(next btree.Item) (over bool), *struct{ IDs []*idType }) {
+	ret := &struct{ IDs []*idType }{}
+	ret.IDs = []*idType{}
 	return func(next btree.Item) bool {
-		if ret.Len() >= maxResponse {
+		if len(ret.IDs) >= maxResponse {
 			return false
 		}
 
@@ -159,6 +206,7 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 			nextAsID.selectorHash = orderSelectorHash
 			nextAsID.getRefsFunc = getRefsFunc
 
+			// Get the value we need to index for ordering
 			if nextAsID.values[orderSelectorHash] == nil {
 				refs := getRefsFunc(nextAsID.ID)
 				for _, ref := range refs.Refs {
@@ -169,42 +217,43 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 				}
 			}
 
-			ids := newIDsForOrderTree(nextAsID.values[orderSelectorHash], orderSelectorHash)
-			idsFromTree := ret.Get(ids)
-			if idsFromTree == nil {
-				ids.addID(nextAsID)
-				ret.ReplaceOrInsert(ids)
-				return true
-			}
-			idsFromTree.(*idsForOrderTree).addID(nextAsID)
+			ret.IDs = append(ret.IDs, nextAsID)
+			// ids := newIDsForOrderTree(nextAsID.values[orderSelectorHash], orderSelectorHash)
+			// idsFromTree := ret.Get(ids)
+			// if idsFromTree == nil {
+			// 	ids.addID(nextAsID)
+			// 	ret.ReplaceOrInsert(ids)
+			// 	return true
+			// }
+			// idsFromTree.(*idsForOrderTree).addID(nextAsID)
 		}
 		return true
 	}, ret
 }
 
-func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *idsType) {
-	ret := new(idsType)
+// func orderTreeIterator(maxResponse int) (func(next btree.Item) (over bool), *idsType) {
+// 	ret := new(idsType)
 
-	return func(next btree.Item) bool {
-		if len(ret.IDs) >= maxResponse {
-			return false
-		}
+// 	return func(next btree.Item) bool {
+// 		if len(ret.IDs) >= maxResponse {
+// 			return false
+// 		}
 
-		nextAsIDs, ok := next.(*idsForOrderTree)
-		if !ok {
-			return false
-		}
+// 		nextAsIDs, ok := next.(*idsForOrderTree)
+// 		if !ok {
+// 			return false
+// 		}
 
-		for _, id := range nextAsIDs.ids {
-			ret.IDs = append(ret.IDs, id)
-			if len(ret.IDs) >= maxResponse {
-				return false
-			}
-		}
+// 		for _, id := range nextAsIDs.ids {
+// 			ret.IDs = append(ret.IDs, id)
+// 			if len(ret.IDs) >= maxResponse {
+// 				return false
+// 			}
+// 		}
 
-		return true
-	}, ret
-}
+// 		return true
+// 	}, ret
+// }
 
 // newID returns a new ID with zero occurrence
 func newID(ctx context.Context, id string) *idType {
