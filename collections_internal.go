@@ -243,22 +243,14 @@ func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, errChan 
 		return err
 	}
 
-	fmt.Println("before commit index", tx.DB().Stats().TxN, tx.DB().Stats().OpenTxN)
-
-	// // After commit is done successfully the function is called
-	// tx.OnCommit(func() {
-	// 	// Propagate the commit done status
-	// 	wgCommitted.Done()
-	// })
 	err = tx.Commit()
 	if err != nil {
-		fmt.Println("error on commit")
 		errChan <- err
+		tx.Rollback()
 		return err
 	}
 
 	wgCommitted.Done()
-	fmt.Println("after commit succeed index")
 
 	return nil
 }
@@ -591,8 +583,6 @@ newLoop:
 		return nil
 	}
 
-	fmt.Println("saved elements", savedElements[0].ID, string(savedElements[0].ContentAsBytes))
-
 	for _, savedElement := range savedElements {
 		if savedElement.ID.ID == lastID {
 			continue
@@ -613,17 +603,11 @@ newLoop:
 
 		tr.contentInterface = m
 
-		fmt.Println("sending", tr.id)
-
 		fakeWgAction := new(sync.WaitGroup)
 		fakeWgCommitted := new(sync.WaitGroup)
 		fakeWgAction.Add(1)
 		fakeWgCommitted.Add(1)
 		go c.putIntoIndexes(ctx, errChan, fakeWgAction, fakeWgCommitted, tr)
-
-		fmt.Println("start waiting", tr.id)
-
-		fmt.Println("1")
 
 		err := waitForDoneErrOrCanceled(ctx2, fakeWgCommitted, errChan)
 		if err != nil {

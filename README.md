@@ -31,7 +31,6 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 
 * List every element from one collection
 * Support Float indexing
-* Background indexing
 * Collection and Index removing
 * Add some tests with sample building, make a data set and test directly from it
 
