@@ -170,3 +170,24 @@ func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
 
 	return c.queryCleanAndOrder(ctx, q, tree)
 }
+
+// GetIDs returns a list of IDs for the given collection and starting
+// at the given ID. The limit paramiter let caller ask for a portion of the collection.
+func (c *Collection) GetIDs(startID string, limit int) ([]string, error) {
+	records, getElemErr := c.getStoredIDsAndValues(startID, limit, true)
+	if getElemErr != nil {
+		return nil, getElemErr
+	}
+
+	ret := make([]string, len(records))
+	for i, record := range records {
+		ret[i] = record.ID.ID
+	}
+	return ret, nil
+}
+
+// GetValues returns a list of IDs and values as bytes for the given collection and starting
+// at the given ID. The limit paramiter let caller ask for a portion of the collection.
+func (c *Collection) GetValues(startID string, limit int) ([]*ResponseQueryElem, error) {
+	return c.getStoredIDsAndValues(startID, limit, false)
+}

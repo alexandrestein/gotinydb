@@ -387,7 +387,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 			break
 		}
 
-		response.list[i] = &responseQueryElem{
+		response.list[i] = &ResponseQueryElem{
 			ID:             idsSlice.IDs[i],
 			ContentAsBytes: responsesAsBytes[i],
 		}
@@ -507,8 +507,8 @@ func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
 // getStoredIDs returns all ids if it does not exceed the limit.
 // This will not returned the ID used to set the value inside the collection
 // It returns the id used to set the value inside the store
-func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bool) ([]*responseQueryElem, error) {
-	response := make([]*responseQueryElem, limit)
+func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bool) ([]*ResponseQueryElem, error) {
+	response := make([]*ResponseQueryElem, limit)
 
 	err := c.store.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -528,7 +528,7 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 				return nil
 			}
 
-			responseItem := new(responseQueryElem)
+			responseItem := new(ResponseQueryElem)
 
 			item := iter.Item()
 
@@ -541,8 +541,6 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 
 			if !IDsOnly {
 				var err error
-				responseItem.ContentAsBytes = make([]byte, 1000*1000*2)
-				// responseItem.ContentAsBytes = make([]byte, 1000*1000*2)
 				responseItem.ContentAsBytes, err = item.ValueCopy(responseItem.ContentAsBytes)
 				if err != nil {
 					return err

@@ -55,13 +55,13 @@ type (
 
 	// ResponseQuery holds the results of a query
 	ResponseQuery struct {
-		list           []*responseQueryElem
+		list           []*ResponseQueryElem
 		actualPosition int
 		query          *Query
 	}
 
-	// responseQueryElem defines the response as a pointer
-	responseQueryElem struct {
+	// ResponseQueryElem defines the response as a pointer
+	ResponseQueryElem struct {
 		ID             *idType
 		ContentAsBytes []byte
 	}
@@ -343,7 +343,7 @@ func (i *idsType) Strings() []string {
 // newResponseQuery build a new ResponseQuery pointer with the given limit
 func newResponseQuery(limit int) *ResponseQuery {
 	r := new(ResponseQuery)
-	r.list = make([]*responseQueryElem, limit)
+	r.list = make([]*ResponseQueryElem, limit)
 	return r
 }
 
