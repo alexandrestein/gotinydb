@@ -27,7 +27,12 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 
 ## Road Map
 
-### v1.1.0
+### v1.0.0
+
+* Make a backup function
+* Add checksum
+
+### v1.X.0
 
 * Make some benchmark
 * Support float if asked
