@@ -566,30 +566,42 @@ func TestDynamicIndexing(t *testing.T) {
 
 	c, _ := db.Use("testCol")
 
+	fmt.Println("txn1", c.db.Stats().TxN)
+
 	if err := query216(c); err != nil {
 		t.Error(err)
 		return
 	}
+	fmt.Println("txn1", c.db.Stats().TxN)
 
 	if err := c.DeleteIndex("email"); err != nil {
 		t.Error(err)
 		return
 	}
+	fmt.Println("txn2", c.db.Stats().TxN)
 
 	if err := query216(c); err == nil {
 		t.Error(err)
 		return
 	}
 
+	fmt.Println("txn3", c.db.Stats().TxN)
+
 	if setIndexErr := c.SetIndex("email", StringIndex, "Email"); setIndexErr != nil {
 		t.Error(setIndexErr)
 		return
 	}
 
+	fmt.Println("txn4", c.db.Stats().TxN)
+
 	if err := query216(c); err != nil {
 		t.Error(err)
 		return
 	}
+
+	fmt.Println("txn5", c.db.Stats().TxN)
+	time.Sleep(time.Second)
+	fmt.Println("txn5", c.db.Stats().TxN)
 }
 
 func query216(c *Collection) error {

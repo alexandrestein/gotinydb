@@ -12,6 +12,7 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 	if getTxErr != nil {
 		return nil, getTxErr
 	}
+	defer tx.Rollback()
 
 	bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 	asBytes := bucket.Get(indexedValue)
@@ -28,6 +29,7 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, indexedValue, li
 	if getTxErr != nil {
 		return nil, getTxErr
 	}
+	defer tx.Rollback()
 
 	bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
 	// Initiate the cursor (iterator)

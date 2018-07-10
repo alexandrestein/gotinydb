@@ -47,7 +47,7 @@ Feedbacks and suggestions are at this point very very important to me.
 
 ## Vendoring
 
-We use [dep](https://github.com/golang/dep) or [vgo](https://github.com/golang/vgo/) for vendoring.
+You can use [dep](https://github.com/golang/dep) or [vgo](https://github.com/golang/vgo/) for vendoring.
 
 ## Versioning
 

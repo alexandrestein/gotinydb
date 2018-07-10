@@ -152,91 +152,113 @@ func (c *Collection) buildStoreID(id string) []byte {
 }
 
 func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		err := c.cleanRefs(ctx, tx, writeTransaction.id)
-		if err != nil {
+	tx, txErr := c.db.Begin(true)
+	if txErr != nil {
+		errChan <- txErr
+		return txErr
+	}
+	// return c.db.Update(func(tx *bolt.Tx) error {
+	err := c.cleanRefs(ctx, tx, writeTransaction.id)
+	if err != nil {
+		errChan <- err
+		return err
+	}
+
+	refsBucket := tx.Bucket([]byte("refs"))
+	refsAsBytes := refsBucket.Get(buildBytesID(writeTransaction.id))
+	refs := newRefs()
+	if refsAsBytes != nil && len(refsAsBytes) > 0 {
+		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
 			errChan <- err
 			return err
 		}
+	}
 
-		refsBucket := tx.Bucket([]byte("refs"))
-		refsAsBytes := refsBucket.Get(buildBytesID(writeTransaction.id))
-		refs := newRefs()
-		if refsAsBytes != nil && len(refsAsBytes) > 0 {
-			if err := json.Unmarshal(refsAsBytes, refs); err != nil {
+	if refs.ObjectID == "" {
+		refs.ObjectID = writeTransaction.id
+	}
+	if refs.ObjectHashID == "" {
+		refs.ObjectHashID = buildID(writeTransaction.id)
+	}
+
+	for _, index := range c.indexes {
+		if indexedValue, apply := index.apply(writeTransaction.contentInterface); apply {
+			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
+
+			idsAsBytes := indexBucket.Get(indexedValue)
+			ids, parseIDsErr := newIDs(ctx, 0, nil, idsAsBytes)
+			if parseIDsErr != nil {
+				errChan <- parseIDsErr
+				return parseIDsErr
+			}
+
+			id := newID(ctx, writeTransaction.id)
+			ids.AddID(id)
+			idsAsBytes = ids.MustMarshal()
+
+			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
 				errChan <- err
 				return err
 			}
+
+			refs.setIndexedValue(index.Name, index.SelectorHash, indexedValue)
 		}
+	}
 
-		if refs.ObjectID == "" {
-			refs.ObjectID = writeTransaction.id
-		}
-		if refs.ObjectHashID == "" {
-			refs.ObjectHashID = buildID(writeTransaction.id)
-		}
+	putErr := refsBucket.Put(refs.IDasBytes(), refs.asBytes())
+	if putErr != nil {
+		errChan <- err
+		return err
+	}
 
-		for _, index := range c.indexes {
-			if indexedValue, apply := index.apply(writeTransaction.contentInterface); apply {
-				indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
-
-				idsAsBytes := indexBucket.Get(indexedValue)
-				ids, parseIDsErr := newIDs(ctx, 0, nil, idsAsBytes)
-				if parseIDsErr != nil {
-					errChan <- parseIDsErr
-					return parseIDsErr
-				}
-
-				id := newID(ctx, writeTransaction.id)
-				ids.AddID(id)
-				idsAsBytes = ids.MustMarshal()
-
-				if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
-					errChan <- err
-					return err
-				}
-
-				refs.setIndexedValue(index.Name, index.SelectorHash, indexedValue)
-			}
-		}
-
-		putErr := refsBucket.Put(refs.IDasBytes(), refs.asBytes())
-		if putErr != nil {
-			errChan <- err
-			return err
-		}
-
-		return c.endOfIndexUpdate(ctx, tx, wgActions, wgCommitted)
-	})
+	return c.endOfIndexUpdate(ctx, tx, errChan, wgActions, wgCommitted)
+	// })
 }
 
 func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		err := c.cleanRefs(ctx, tx, writeTransaction.id)
-		if err != nil {
-			errChan <- err
-			return err
-		}
+	tx, txErr := c.db.Begin(true)
+	if txErr != nil {
+		errChan <- txErr
+		return txErr
+	}
+	// return c.db.Update(func(tx *bolt.Tx) error {
+	err := c.cleanRefs(ctx, tx, writeTransaction.id)
+	if err != nil {
+		errChan <- err
+		return err
+	}
 
-		return c.endOfIndexUpdate(ctx, tx, wgActions, wgCommitted)
-	})
+	return c.endOfIndexUpdate(ctx, tx, errChan, wgActions, wgCommitted)
+	// })
 }
 
-func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, wgActions, wgCommitted *sync.WaitGroup) error {
+func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, errChan chan error, wgActions, wgCommitted *sync.WaitGroup) error {
 	// Tells the rest of the callers that the index is done but not committed
 	wgActions.Done()
 
 	// Wait for the store insetion to be completed
 	err := waitForDoneErrOrCanceled(ctx, wgActions, nil)
 	if err != nil {
+		errChan <- err
 		return err
 	}
 
-	// After commit is done successfully the function is called
-	tx.OnCommit(func() {
-		// Propagate the commit done status
-		wgCommitted.Done()
-	})
+	fmt.Println("before commit index", tx.DB().Stats().TxN, tx.DB().Stats().OpenTxN)
+
+	// // After commit is done successfully the function is called
+	// tx.OnCommit(func() {
+	// 	// Propagate the commit done status
+	// 	wgCommitted.Done()
+	// })
+	err = tx.Commit()
+	if err != nil {
+		fmt.Println("error on commit")
+		errChan <- err
+		return err
+	}
+
+	wgCommitted.Done()
+	fmt.Println("after commit succeed index")
 
 	return nil
 }
@@ -569,6 +591,8 @@ newLoop:
 		return nil
 	}
 
+	fmt.Println("saved elements", savedElements[0].ID, string(savedElements[0].ContentAsBytes))
+
 	for _, savedElement := range savedElements {
 		if savedElement.ID.ID == lastID {
 			continue
@@ -603,7 +627,6 @@ newLoop:
 
 		err := waitForDoneErrOrCanceled(ctx2, fakeWgCommitted, errChan)
 		if err != nil {
-			fmt.Println("ERR")
 			return err
 		}
 
