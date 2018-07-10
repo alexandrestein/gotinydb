@@ -22,19 +22,15 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 
 * [Badger](https://github.com/dgraph-io/badger) - Is the main storage engine
 * [Bolt](https://github.com/boltdb/bolt) - Is the index engine
-* [Btree](https://github.com/google/btree) - Is the in memory tree used to save sub queries elements
+* [Btree](https://github.com/google/btree) - Is the in memory list used to save sub queries elements.
 * [Structs](https://github.com/fatih/structs) - Used to cut objects in part for indexing
 
-## Todo before
-
-### v1.0.0
-
-* Support Float indexing
-* Add some tests with sample building, make a data set and test directly from it
+## Road Map
 
 ### v1.1.0
 
 * Make some benchmark
+* Support float if asked
 * Full text search with [Bleve](http://www.blevesearch.com/)
 
 ## Contributing
