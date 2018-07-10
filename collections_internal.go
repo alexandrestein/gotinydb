@@ -81,29 +81,30 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
 	})
 }
-func (c *Collection) delIndexesIntoConfigBucket(indexName string) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		confBucket := tx.Bucket([]byte("config"))
-		indexesAsBytes := confBucket.Get([]byte("indexesList"))
-		indexes := []*indexType{}
-		err := json.Unmarshal(indexesAsBytes, &indexes)
-		if err != nil {
-			return err
-		}
 
-		for i, index := range indexes {
-			if index.Name == indexName {
-				copy(indexes[i:], indexes[i+1:])
-				indexes[len(indexes)-1] = nil
-				indexes = indexes[:len(indexes)-1]
-				break
-			}
-		}
+// func (c *Collection) delIndexesIntoConfigBucket(indexName string) error {
+// 	return c.db.Update(func(tx *bolt.Tx) error {
+// 		confBucket := tx.Bucket([]byte("config"))
+// 		indexesAsBytes := confBucket.Get([]byte("indexesList"))
+// 		indexes := []*indexType{}
+// 		err := json.Unmarshal(indexesAsBytes, &indexes)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		indexesAsBytes, _ = json.Marshal(indexes)
-		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
-	})
-}
+// 		for i, index := range indexes {
+// 			if index.Name == indexName {
+// 				copy(indexes[i:], indexes[i+1:])
+// 				indexes[len(indexes)-1] = nil
+// 				indexes = indexes[:len(indexes)-1]
+// 				break
+// 			}
+// 		}
+
+// 		indexesAsBytes, _ = json.Marshal(indexes)
+// 		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
+// 	})
+// }
 
 func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 	c.writeTransactionChan = make(chan *writeTransaction, 1000)
