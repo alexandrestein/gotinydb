@@ -547,6 +547,13 @@ func TestCollection_Delete(t *testing.T) {
 	defer db.Close()
 	defer os.RemoveAll(db.path)
 
+	c, _ := db.Use("testCol")
+	delErr := c.Delete("124")
+	if delErr != nil {
+		t.Error(delErr)
+		return
+	}
+
 	if err := db.DeleteCollection("testCol"); err != nil {
 		t.Error(err)
 		return
