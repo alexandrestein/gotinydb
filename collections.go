@@ -137,7 +137,7 @@ func (c *Collection) DeleteIndex(name string) error {
 }
 
 // Query run the given query to all the collection indexes
-func (c *Collection) Query(q *Query) (response *ResponseQuery, _ error) {
+func (c *Collection) Query(q *Query) (response *Response, _ error) {
 	if q == nil {
 		return
 	}
@@ -188,6 +188,6 @@ func (c *Collection) GetIDs(startID string, limit int) ([]string, error) {
 
 // GetValues returns a list of IDs and values as bytes for the given collection and starting
 // at the given ID. The limit paramiter let caller ask for a portion of the collection.
-func (c *Collection) GetValues(startID string, limit int) ([]*ResponseQueryElem, error) {
+func (c *Collection) GetValues(startID string, limit int) ([]*ResponseElem, error) {
 	return c.getStoredIDsAndValues(startID, limit, false)
 }

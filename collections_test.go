@@ -228,7 +228,7 @@ func TestCollection_Query(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
-func doQueryTest(t *testing.T, resp *ResponseQuery, q *Query) bool {
+func doQueryTest(t *testing.T, resp *Response, q *Query) bool {
 	if resp.Len() > q.limit {
 		had := ""
 		for _, responseQuery := range resp.list {
@@ -453,7 +453,7 @@ func doQueryTest(t *testing.T, resp *ResponseQuery, q *Query) bool {
 	return true
 }
 
-func testQueryResponseReaders(t *testing.T, response *ResponseQuery, checkRet []*User) bool {
+func testQueryResponseReaders(t *testing.T, response *Response, checkRet []*User) bool {
 	ret := make([]*User, response.Len())
 	// Use the All function to get the result into object
 	i := 0
@@ -647,6 +647,11 @@ func TestListCollection(t *testing.T) {
 
 	if len(values) != 300 {
 		t.Errorf("wrong length. expecting %d and had %d", 300, len(ids))
+		return
+	}
+
+	if values[0].GetID() != "0" {
+		t.Errorf("the first ID %q is not what is expected %q", values[0].GetID(), "0")
 		return
 	}
 }

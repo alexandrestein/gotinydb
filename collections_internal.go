@@ -347,7 +347,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 	}
 }
 
-func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btree.BTree) (response *ResponseQuery, _ error) {
+func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btree.BTree) (response *Response, _ error) {
 	getRefFunc := func(id string) (refs *refs) {
 		c.db.View(func(tx *bolt.Tx) error {
 			refs, _ = c.getRefs(tx, id)
@@ -373,7 +373,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	idsMs.Sort(q.limit)
 
 	// Build the response for the caller
-	response = newResponseQuery(len(idsMs.IDs))
+	response = newResponse(len(idsMs.IDs))
 	response.query = q
 
 	// Get every content of the query from the database
@@ -388,7 +388,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 			break
 		}
 
-		response.list[i] = &ResponseQueryElem{
+		response.list[i] = &ResponseElem{
 			ID:             idsSlice.IDs[i],
 			ContentAsBytes: responsesAsBytes[i],
 		}
@@ -508,8 +508,8 @@ func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
 // getStoredIDs returns all ids if it does not exceed the limit.
 // This will not returned the ID used to set the value inside the collection
 // It returns the id used to set the value inside the store
-func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bool) ([]*ResponseQueryElem, error) {
-	response := make([]*ResponseQueryElem, limit)
+func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bool) ([]*ResponseElem, error) {
+	response := make([]*ResponseElem, limit)
 
 	err := c.store.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -529,7 +529,7 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 				return nil
 			}
 
-			responseItem := new(ResponseQueryElem)
+			responseItem := new(ResponseElem)
 
 			item := iter.Item()
 

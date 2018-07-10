@@ -27,7 +27,7 @@ var (
 	// ErrTimeOut defines the error when the query is timed out
 	ErrTimeOut = fmt.Errorf("timed out")
 
-	// ErrTheResponseIsOver defines error when *ResponseQuery.One is called and all response has been returned
+	// ErrTheResponseIsOver defines error when *Response.One is called and all response has been returned
 	ErrTheResponseIsOver = fmt.Errorf("the response has no more values")
 )
 

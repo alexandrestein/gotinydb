@@ -53,15 +53,15 @@ type (
 	// FilterOperator defines the type of filter to perform
 	FilterOperator string
 
-	// ResponseQuery holds the results of a query
-	ResponseQuery struct {
-		list           []*ResponseQueryElem
+	// Response holds the results of a query
+	Response struct {
+		list           []*ResponseElem
 		actualPosition int
 		query          *Query
 	}
 
-	// ResponseQueryElem defines the response as a pointer
-	ResponseQueryElem struct {
+	// ResponseElem defines the response as a pointer
+	ResponseElem struct {
 		ID             *idType
 		ContentAsBytes []byte
 	}
@@ -340,20 +340,20 @@ func (i *idsType) Strings() []string {
 	return ret
 }
 
-// newResponseQuery build a new ResponseQuery pointer with the given limit
-func newResponseQuery(limit int) *ResponseQuery {
-	r := new(ResponseQuery)
-	r.list = make([]*ResponseQueryElem, limit)
+// newResponse build a new Response pointer with the given limit
+func newResponse(limit int) *Response {
+	r := new(Response)
+	r.list = make([]*ResponseElem, limit)
 	return r
 }
 
 // Len returns the length of the given response
-func (r *ResponseQuery) Len() int {
+func (r *Response) Len() int {
 	return len(r.list)
 }
 
 // First used with Next
-func (r *ResponseQuery) First() (i int, id string, objAsByte []byte) {
+func (r *Response) First() (i int, id string, objAsByte []byte) {
 	if len(r.list) <= 0 {
 		return -1, "", nil
 	}
@@ -363,13 +363,13 @@ func (r *ResponseQuery) First() (i int, id string, objAsByte []byte) {
 }
 
 // Next used with First
-func (r *ResponseQuery) Next() (i int, id string, objAsByte []byte) {
+func (r *Response) Next() (i int, id string, objAsByte []byte) {
 	r.actualPosition++
 	return r.next()
 }
 
 // Last used with Prev
-func (r *ResponseQuery) Last() (i int, id string, objAsByte []byte) {
+func (r *Response) Last() (i int, id string, objAsByte []byte) {
 	lastSlot := len(r.list) - 1
 	if lastSlot < 0 {
 		return -1, "", nil
@@ -380,13 +380,13 @@ func (r *ResponseQuery) Last() (i int, id string, objAsByte []byte) {
 }
 
 // Prev used with Last
-func (r *ResponseQuery) Prev() (i int, id string, objAsByte []byte) {
+func (r *Response) Prev() (i int, id string, objAsByte []byte) {
 	r.actualPosition--
 	return r.next()
 }
 
 // Is called by r.Next r.Prev to get their next values
-func (r *ResponseQuery) next() (i int, id string, objAsByte []byte) {
+func (r *Response) next() (i int, id string, objAsByte []byte) {
 	if r.actualPosition >= len(r.list) || r.actualPosition < 0 {
 		r.actualPosition = 0
 		return -1, "", nil
@@ -395,7 +395,7 @@ func (r *ResponseQuery) next() (i int, id string, objAsByte []byte) {
 }
 
 // All takes a function as argument and permit to unmarshal or to manage recoredes inside the function
-func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int, err error) {
+func (r *Response) All(fn func(id string, objAsBytes []byte) error) (n int, err error) {
 	n = 0
 	if r == nil {
 		return 0, ErrNotFound
@@ -416,7 +416,7 @@ func (r *ResponseQuery) All(fn func(id string, objAsBytes []byte) error) (n int,
 
 // One retrieve one element at the time and put it into the destination pointer.
 // Use it to get the objects one after the other.
-func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
+func (r *Response) One(destination interface{}) (id string, err error) {
 	if r.actualPosition >= len(r.list) {
 		r.actualPosition = 0
 		return "", ErrTheResponseIsOver
@@ -427,4 +427,9 @@ func (r *ResponseQuery) One(destination interface{}) (id string, err error) {
 	r.actualPosition++
 
 	return id, err
+}
+
+// GetID return the ID as string of the given element
+func (r *ResponseElem) GetID() string {
+	return r.ID.ID
 }

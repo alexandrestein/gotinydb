@@ -14,7 +14,7 @@ type (
 )
 
 var (
-	responseQuery *ResponseQuery
+	responseQuery *Response
 	result        = []*Type{}
 	collection    *Collection
 )
@@ -84,7 +84,7 @@ func Example() {
 	// Output: id &{ jonas-90@tlaloc.com 0 <nil> 0 0001-01-01 00:00:00 +0000 UTC}
 }
 
-func ExampleResponseQuery_All() {
+func ExampleResponse_All() {
 	i := 0
 	if _, err := responseQuery.All(func(id string, objAsBytes []byte) error {
 		tmpObj := new(Type)
@@ -102,7 +102,7 @@ func ExampleResponseQuery_All() {
 	}
 }
 
-func ExampleResponseQuery_Next() {
+func ExampleResponse_Next() {
 	for i, _, v := responseQuery.First(); i >= 0; i, _, v = responseQuery.Next() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
@@ -114,7 +114,7 @@ func ExampleResponseQuery_Next() {
 	}
 	// Slice is filled up your code goes here
 }
-func ExampleResponseQuery_First() {
+func ExampleResponse_First() {
 	for i, _, v := responseQuery.First(); i >= 0; i, _, v = responseQuery.Next() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
@@ -127,7 +127,7 @@ func ExampleResponseQuery_First() {
 	// Slice is filled up your code goes here
 }
 
-func ExampleResponseQuery_Prev() {
+func ExampleResponse_Prev() {
 	for i, _, v := responseQuery.Last(); i >= 0; i, _, v = responseQuery.Prev() {
 		tmpObj := new(Type)
 		err := json.Unmarshal(v, tmpObj)
@@ -139,7 +139,7 @@ func ExampleResponseQuery_Prev() {
 	}
 	// Slice is filled up your code goes here
 }
-func ExampleResponseQuery_Last() {
+func ExampleResponse_Last() {
 	// List all result from the last to the last with the prev function
 	for i, _, v := responseQuery.Last(); i >= 0; i, _, v = responseQuery.Prev() {
 		tmpObj := new(Type)
@@ -153,7 +153,7 @@ func ExampleResponseQuery_Last() {
 	// Slice is filled up your code goes here
 }
 
-func ExampleResponseQuery_One() {
+func ExampleResponse_One() {
 	for i := 0; true; i++ {
 		tmpObj := new(Type)
 		_, err := responseQuery.One(tmpObj)
