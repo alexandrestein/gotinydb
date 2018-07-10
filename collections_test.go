@@ -617,3 +617,36 @@ func query216(c *Collection) error {
 
 	return nil
 }
+
+func TestListCollection(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db, _ := fillUpDB(ctx, t, dataSet1)
+	if db == nil {
+		return
+	}
+
+	c, _ := db.Use("testCol")
+
+	ids, err := c.GetIDs("", 1000)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if len(ids) != 300 {
+		t.Errorf("wrong length. expecting %d and had %d", 300, len(ids))
+		return
+	}
+
+	values, valuesErr := c.GetValues("", 1000)
+	if valuesErr != nil {
+		return
+	}
+
+	if len(values) != 300 {
+		t.Errorf("wrong length. expecting %d and had %d", 300, len(ids))
+		return
+	}
+}
