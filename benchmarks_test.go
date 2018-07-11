@@ -2,18 +2,44 @@ package gotinydb
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"log"
+	"math/big"
 	"os"
 	"testing"
 )
 
 var (
-	getID      chan string
-	getSentID  chan string
-	getContent chan interface{}
+	benchmarkDB         *DB
+	benchmarkCollection *Collection
+
+	getID         chan string
+	getExistingID chan string
+	getContent    chan interface{}
 
 	initBenchmarkDone = false
 )
+
+func fillUpDBForBenchmarks() {
+	for i := 0; i < 10000; i++ {
+		// up to 1KB
+		contentSize, err := rand.Int(rand.Reader, big.NewInt(1000*1))
+		if err != nil {
+			log.Fatalln(err)
+			return
+		}
+
+		content := make([]byte, contentSize.Int64())
+		rand.Read(content)
+
+		err = benchmarkCollection.Put(buildID(fmt.Sprint(i)), content)
+		if err != nil {
+			log.Fatalln(err)
+			return
+		}
+	}
+}
 
 func initbenchmark() {
 	if initBenchmarkDone {
@@ -21,9 +47,19 @@ func initbenchmark() {
 	}
 	initBenchmarkDone = true
 
+	ctx := context.Background()
+
+	testPath := <-getTestPathChan
+	defer os.RemoveAll(testPath)
+
+	benchmarkDB, _ = Open(ctx, testPath)
+	benchmarkCollection, _ = benchmarkDB.Use("testCol")
+
+	fillUpDBForBenchmarks()
+
 	users := unmarshalDataSet(dataSet1)
 
-	iForIds := 0
+	iForIds := 10000
 	getID = make(chan string, 100)
 	go func() {
 		for {
@@ -31,12 +67,12 @@ func initbenchmark() {
 			iForIds++
 		}
 	}()
-	getSentID = make(chan string, 100)
+	getExistingID = make(chan string, 100)
 	go func() {
 		i := 0
 		for {
-			if i < iForIds {
-				getID <- buildID(fmt.Sprint(i))
+			if i < 10000 {
+				getExistingID <- buildID(fmt.Sprint(i))
 			} else {
 				i = 0
 			}
@@ -51,19 +87,13 @@ func initbenchmark() {
 	}()
 }
 
-func insertStructs(ctx context.Context, b *testing.B, parallel bool) {
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
-
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
+func insertStructs(b *testing.B, parallel bool) {
 	initbenchmark()
 	b.ResetTimer()
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				err := c.Put(<-getID, <-getContent)
+				err := benchmarkCollection.Put(<-getID, <-getContent)
 				if err != nil {
 					b.Error(err)
 					return
@@ -72,7 +102,7 @@ func insertStructs(ctx context.Context, b *testing.B, parallel bool) {
 		})
 	} else {
 		for i := 0; i < b.N; i++ {
-			err := c.Put(<-getID, <-getContent)
+			err := benchmarkCollection.Put(<-getID, <-getContent)
 			if err != nil {
 				b.Error(err)
 				return
@@ -81,13 +111,13 @@ func insertStructs(ctx context.Context, b *testing.B, parallel bool) {
 	}
 }
 
-func readStructs(b *testing.B, c *Collection, parallel bool) {
+func readStructs(b *testing.B, parallel bool) {
 	initbenchmark()
 	b.ResetTimer()
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				_, err := c.Get(<-getSentID, nil)
+				_, err := benchmarkCollection.Get(<-getExistingID, nil)
 				if err != nil {
 					b.Error(err)
 					return
@@ -96,191 +126,127 @@ func readStructs(b *testing.B, c *Collection, parallel bool) {
 		})
 	} else {
 		for i := 0; i < b.N; i++ {
-			_, err := c.Get(<-getSentID, nil)
+			_, err := benchmarkCollection.Get(<-getExistingID, nil)
 			if err != nil {
 				b.Error(err)
 				return
 			}
 		}
 	}
+}
+
+func setOneIndex() {
+	benchmarkCollection.SetIndex("email", StringIndex, "Email")
+}
+func delOneIndex() {
+	benchmarkCollection.DeleteIndex("email")
+}
+func setSixIndex() {
+	benchmarkCollection.SetIndex("email", StringIndex, "Email")
+	benchmarkCollection.SetIndex("balance", IntIndex, "Balance")
+	benchmarkCollection.SetIndex("city", StringIndex, "Address", "City")
+	benchmarkCollection.SetIndex("zip", IntIndex, "Address", "ZipCode")
+	benchmarkCollection.SetIndex("age", IntIndex, "Age")
+	benchmarkCollection.SetIndex("last login", TimeIndex, "LastLogin")
+}
+func delSixIndex() {
+	benchmarkCollection.DeleteIndex("email")
+	benchmarkCollection.DeleteIndex("balance")
+	benchmarkCollection.DeleteIndex("city")
+	benchmarkCollection.DeleteIndex("zip")
+	benchmarkCollection.DeleteIndex("age")
+	benchmarkCollection.DeleteIndex("last login")
 }
 
 func BenchmarkInsertStructs(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	insertStructs(ctx, b, false)
+	insertStructs(b, false)
 }
 
 func BenchmarkInsertStructsParallel(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	insertStructs(ctx,b, true)
+	insertStructs(b, true)
 }
 
 func BenchmarkInsertStructsWithOneIndex(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	setOneIndex()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
+	insertStructs(b, false)
 
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	c.SetIndex("email", StringIndex, "Email")
-
-	insertStructs(ctx,b, false)
+	b.StopTimer()
+	delOneIndex()
 }
 
 func BenchmarkInsertStructsParallelWithOneIndex(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	setOneIndex()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
+	insertStructs(b, true)
 
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	c.SetIndex("email", StringIndex, "Email")
-
-	insertStructs(b, c, true)
+	b.StopTimer()
+	delOneIndex()
 }
 
 func BenchmarkInsertStructsWithSixIndexes(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	setSixIndex()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
+	insertStructs(b, false)
 
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	c.SetIndex("email", StringIndex, "Email")
-	c.SetIndex("balance", IntIndex, "Balance")
-	c.SetIndex("city", StringIndex, "Address", "City")
-	c.SetIndex("zip", IntIndex, "Address", "ZipCode")
-	c.SetIndex("age", IntIndex, "Age")
-	c.SetIndex("last login", TimeIndex, "LastLogin")
-
-	insertStructs(b, c, false)
+	b.StopTimer()
+	benchmarkCollection.DeleteIndex("email")
+	benchmarkCollection.DeleteIndex("balance")
+	benchmarkCollection.DeleteIndex("city")
+	benchmarkCollection.DeleteIndex("zip")
+	benchmarkCollection.DeleteIndex("age")
+	benchmarkCollection.DeleteIndex("last login")
 }
 
 func BenchmarkInsertStructsParallelWithSixIndexes(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	setSixIndex()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
+	insertStructs(b, true)
 
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	c.SetIndex("email", StringIndex, "Email")
-	c.SetIndex("balance", IntIndex, "Balance")
-	c.SetIndex("city", StringIndex, "Address", "City")
-	c.SetIndex("zip", IntIndex, "Address", "ZipCode")
-	c.SetIndex("age", IntIndex, "Age")
-	c.SetIndex("last login", TimeIndex, "LastLogin")
-
-	insertStructs(b, c, true)
+	b.StopTimer()
+	delOneIndex()
 }
 
 func BenchmarkReadStructs(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
-
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	readStructs(b, c, false)
+	readStructs(b, false)
 }
 
 func BenchmarkReadStructsParallel(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
-
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	readStructs(b, c, true)
+	readStructs(b, true)
 }
 
 func BenchmarkReadStructsWithOneIndex(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	setOneIndex()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
+	readStructs(b, false)
 
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	c.SetIndex("email", StringIndex, "Email")
-
-	readStructs(b, c, false)
+	b.StopTimer()
+	delOneIndex()
 }
 
 func BenchmarkReadStructsParallelWithOneIndex(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	setOneIndex()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
+	readStructs(b, true)
 
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	c.SetIndex("email", StringIndex, "Email")
-
-	readStructs(b, c, true)
+	b.StopTimer()
+	delOneIndex()
 }
 
 func BenchmarkReadStructsWithSixIndexes(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	setSixIndex()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
+	readStructs(b, false)
 
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	c.SetIndex("email", StringIndex, "Email")
-	c.SetIndex("balance", IntIndex, "Balance")
-	c.SetIndex("city", StringIndex, "Address", "City")
-	c.SetIndex("zip", IntIndex, "Address", "ZipCode")
-	c.SetIndex("age", IntIndex, "Age")
-	c.SetIndex("last login", TimeIndex, "LastLogin")
-
-	readStructs(b, c, false)
+	b.StopTimer()
+	delOneIndex()
 }
 
 func BenchmarkReadStructsParallelWithSixIndexes(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	setSixIndex()
 
-	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
+	readStructs(b, true)
 
-	db, _ := Open(ctx, testPath)
-	c, _ := db.Use("testCol")
-
-	c.SetIndex("email", StringIndex, "Email")
-	c.SetIndex("balance", IntIndex, "Balance")
-	c.SetIndex("city", StringIndex, "Address", "City")
-	c.SetIndex("zip", IntIndex, "Address", "ZipCode")
-	c.SetIndex("age", IntIndex, "Age")
-	c.SetIndex("last login", TimeIndex, "LastLogin")
-
-	readStructs(b, c, true)
+	b.StopTimer()
+	delOneIndex()
 }
