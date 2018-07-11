@@ -21,23 +21,27 @@ var (
 	initBenchmarkDone = false
 )
 
+func putRandRecord(id string) {
+	// up to 1KB
+	contentSize, err := rand.Int(rand.Reader, big.NewInt(1000*10))
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+
+	content := make([]byte, contentSize.Int64())
+	rand.Read(content)
+
+	err = benchmarkCollection.Put(id, content)
+	if err != nil {
+		log.Fatalln(err)
+		return
+	}
+}
+
 func fillUpDBForBenchmarks() {
-	for i := 0; i < 10000; i++ {
-		// up to 1KB
-		contentSize, err := rand.Int(rand.Reader, big.NewInt(1000*1))
-		if err != nil {
-			log.Fatalln(err)
-			return
-		}
-
-		content := make([]byte, contentSize.Int64())
-		rand.Read(content)
-
-		err = benchmarkCollection.Put(buildID(fmt.Sprint(i)), content)
-		if err != nil {
-			log.Fatalln(err)
-			return
-		}
+	for i := 0; i < 100000; i++ {
+		putRandRecord(buildID(fmt.Sprint(i)))
 	}
 }
 
@@ -59,7 +63,7 @@ func initbenchmark() {
 
 	users := unmarshalDataSet(dataSet1)
 
-	iForIds := 10000
+	iForIds := 100000
 	getID = make(chan string, 100)
 	go func() {
 		for {
@@ -71,7 +75,7 @@ func initbenchmark() {
 	go func() {
 		i := 0
 		for {
-			if i < 10000 {
+			if i < 100000 {
 				getExistingID <- buildID(fmt.Sprint(i))
 			} else {
 				i = 0
@@ -87,7 +91,7 @@ func initbenchmark() {
 	}()
 }
 
-func insertStructs(b *testing.B, parallel bool) {
+func insert(b *testing.B, parallel bool) {
 	initbenchmark()
 	b.ResetTimer()
 	if parallel {
@@ -111,7 +115,72 @@ func insertStructs(b *testing.B, parallel bool) {
 	}
 }
 
-func readStructs(b *testing.B, parallel bool) {
+func read(b *testing.B, parallel bool) {
+	initbenchmark()
+	b.ResetTimer()
+	if parallel {
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, err := benchmarkCollection.Get(<-getExistingID, nil)
+				if err != nil {
+					b.Error(err)
+					return
+				}
+			}
+		})
+	} else {
+		for i := 0; i < b.N; i++ {
+			_, err := benchmarkCollection.Get(<-getExistingID, nil)
+			if err != nil {
+				b.Error(err)
+				return
+			}
+		}
+	}
+}
+
+func delete(b *testing.B, parallel bool) {
+	initbenchmark()
+
+	for i := 0; i < 100000; i++ {
+		putRandRecord(buildID(fmt.Sprintf("test-%d", i)))
+	}
+
+	getExistingIDToDelete := make(chan string, 100)
+	go func() {
+		i := 0
+		for {
+			if i < 100000 {
+				getExistingIDToDelete <- buildID(fmt.Sprintf("test-%d", i))
+			} else {
+				i = 0
+			}
+		}
+	}()
+
+	b.ResetTimer()
+	if parallel {
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				err := benchmarkCollection.Delete(<-getExistingIDToDelete)
+				if err != nil {
+					b.Error(err)
+					return
+				}
+			}
+		})
+	} else {
+		for i := 0; i < b.N; i++ {
+			err := benchmarkCollection.Delete(<-getExistingIDToDelete)
+			if err != nil {
+				b.Error(err)
+				return
+			}
+		}
+	}
+}
+
+func query(b *testing.B, parallel bool) {
 	initbenchmark()
 	b.ResetTimer()
 	if parallel {
@@ -158,95 +227,134 @@ func delSixIndex() {
 	benchmarkCollection.DeleteIndex("last login")
 }
 
-func BenchmarkInsertStructs(b *testing.B) {
-	insertStructs(b, false)
+func BenchmarkInsert(b *testing.B) {
+	insert(b, false)
 }
 
-func BenchmarkInsertStructsParallel(b *testing.B) {
-	insertStructs(b, true)
+func BenchmarkInsertParallel(b *testing.B) {
+	insert(b, true)
 }
 
-func BenchmarkInsertStructsWithOneIndex(b *testing.B) {
+func BenchmarkInsertWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	insertStructs(b, false)
+	insert(b, false)
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkInsertStructsParallelWithOneIndex(b *testing.B) {
+func BenchmarkInsertParallelWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	insertStructs(b, true)
+	insert(b, true)
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkInsertStructsWithSixIndexes(b *testing.B) {
+func BenchmarkInsertWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	insertStructs(b, false)
+	insert(b, false)
 
 	b.StopTimer()
-	benchmarkCollection.DeleteIndex("email")
-	benchmarkCollection.DeleteIndex("balance")
-	benchmarkCollection.DeleteIndex("city")
-	benchmarkCollection.DeleteIndex("zip")
-	benchmarkCollection.DeleteIndex("age")
-	benchmarkCollection.DeleteIndex("last login")
+	delSixIndex()
 }
 
-func BenchmarkInsertStructsParallelWithSixIndexes(b *testing.B) {
+func BenchmarkInsertParallelWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	insertStructs(b, true)
+	insert(b, true)
 
 	b.StopTimer()
-	delOneIndex()
+	delSixIndex()
 }
 
-func BenchmarkReadStructs(b *testing.B) {
-	readStructs(b, false)
+func BenchmarkRead(b *testing.B) {
+	read(b, false)
 }
 
-func BenchmarkReadStructsParallel(b *testing.B) {
-	readStructs(b, true)
+func BenchmarkReadParallel(b *testing.B) {
+	read(b, true)
 }
 
-func BenchmarkReadStructsWithOneIndex(b *testing.B) {
+func BenchmarkReadWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	readStructs(b, false)
+	read(b, false)
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkReadStructsParallelWithOneIndex(b *testing.B) {
+func BenchmarkReadParallelWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	readStructs(b, true)
+	read(b, true)
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkReadStructsWithSixIndexes(b *testing.B) {
+func BenchmarkReadWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	readStructs(b, false)
+	read(b, false)
+
+	b.StopTimer()
+	delSixIndex()
+}
+
+func BenchmarkReadParallelWithSixIndexes(b *testing.B) {
+	setSixIndex()
+
+	read(b, true)
+
+	b.StopTimer()
+	delSixIndex()
+}
+
+func BenchmarkDelete(b *testing.B) {
+	delete(b, false)
+}
+
+func BenchmarkDeleteParallel(b *testing.B) {
+	delete(b, true)
+}
+
+func BenchmarkDeleteWithOneIndex(b *testing.B) {
+	setOneIndex()
+
+	delete(b, false)
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkReadStructsParallelWithSixIndexes(b *testing.B) {
-	setSixIndex()
+func BenchmarkDeleteParallelWithOneIndex(b *testing.B) {
+	setOneIndex()
 
-	readStructs(b, true)
+	delete(b, true)
 
 	b.StopTimer()
 	delOneIndex()
+}
+
+func BenchmarkDeleteWithSixIndexes(b *testing.B) {
+	setSixIndex()
+
+	delete(b, false)
+
+	b.StopTimer()
+	delSixIndex()
+}
+
+func BenchmarkDeleteParallelWithSixIndexes(b *testing.B) {
+	setSixIndex()
+
+	delete(b, true)
+
+	b.StopTimer()
+	delSixIndex()
 }
