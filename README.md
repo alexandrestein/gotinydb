@@ -31,10 +31,11 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 
 * Make a backup function
 * Add checksum
+* Make some benchmark
 
 ### v1.X.0
 
-* Make some benchmark
+* Add "has" or "exist" filter
 * Support float if asked
 * Full text search with [Bleve](http://www.blevesearch.com/)
 
