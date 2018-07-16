@@ -37,7 +37,6 @@ func (d *DB) loadCollections() error {
 		return getColsIDsErr
 	}
 	for _, colID := range colsIDs {
-		fmt.Println("colID", colID)
 		col, err := d.getCollection(colID, "")
 		if err != nil {
 			return err

@@ -31,8 +31,7 @@ var (
 		NumLevelZeroTablesStall: 10,
 		NumMemtables:            5,
 		SyncWrites:              true,
-		// NumVersionsToKeep:       1,
-		NumVersionsToKeep: 0,
+		NumVersionsToKeep:       10,
 
 		ValueLogFileSize:   1 << 30,
 		ValueLogMaxEntries: 1000000,
