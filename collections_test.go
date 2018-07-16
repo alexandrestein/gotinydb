@@ -15,7 +15,7 @@ import (
 func fillUpDB(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) {
 	testPath := <-getTestPathChan
 
-	db, openDBErr := Open(ctx, NewDefaultTransactionTimeOut(testPath))
+	db, openDBErr := Open(ctx, NewDefaultOptions(testPath))
 	if openDBErr != nil {
 		t.Fatal(openDBErr)
 		return nil, nil
@@ -32,10 +32,9 @@ func fillUpDB(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) 
 		return nil, nil
 	}
 
-	// Get deferent versions of dataset
+	// Get different versions of dataset
 	users := unmarshalDataSet(dataset)
 
-	// doneChan := make(chan error, 0)
 	for i := 0; i < len(users); i++ {
 		err := c.Put(users[i].ID, users[i])
 		if err != nil {

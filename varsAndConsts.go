@@ -43,8 +43,8 @@ var (
 	DefaultBoltOptions = bolt.DefaultOptions
 )
 
-// NewDefaultTransactionTimeOut build default options with a path
-func NewDefaultTransactionTimeOut(path string) *Options {
+// NewDefaultOptions build default options with a path
+func NewDefaultOptions(path string) *Options {
 	return &Options{
 		Path:               path,
 		TransactionTimeOut: DefaultTransactionTimeOut,

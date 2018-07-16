@@ -16,7 +16,7 @@ func TestConcurrentCollections(t *testing.T) {
 
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(ctx, NewDefaultTransactionTimeOut(testPath))
+	db, openDBErr := Open(ctx, NewDefaultOptions(testPath))
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return

@@ -36,23 +36,27 @@ func Benchmark(b *testing.B) {
 		os.Exit(1)
 	}
 
-	b.Run("BenchmarkInsert", benchmarkInsert)
-	b.Run("BenchmarkInsertParallel", benchmarkInsertParallel)
-	b.Run("BenchmarkInsertParallelWithOneIndex", benchmarkInsertParallelWithOneIndex)
-	b.Run("BenchmarkInsertWithSixIndexes", benchmarkInsertWithSixIndexes)
-	b.Run("BenchmarkInsertParallelWithSixIndexes", benchmarkInsertParallelWithSixIndexes)
-	b.Run("BenchmarkRead", benchmarkRead)
-	b.Run("BenchmarkReadParallel", benchmarkReadParallel)
-	b.Run("BenchmarkReadWithOneIndex", benchmarkReadWithOneIndex)
-	b.Run("BenchmarkReadParallelWithOneIndex", benchmarkReadParallelWithOneIndex)
-	b.Run("BenchmarkReadWithSixIndexes", benchmarkReadWithSixIndexes)
-	b.Run("BenchmarkReadParallelWithSixIndexes", benchmarkReadParallelWithSixIndexes)
-	b.Run("BenchmarkDelete", benchmarkDelete)
-	b.Run("BenchmarkDeleteParallel", benchmarkDeleteParallel)
-	b.Run("BenchmarkDeleteWithOneIndex", benchmarkDeleteWithOneIndex)
-	b.Run("BenchmarkDeleteParallelWithOneIndex", benchmarkDeleteParallelWithOneIndex)
-	b.Run("BenchmarkDeleteWithSixIndexes", benchmarkDeleteWithSixIndexes)
-	b.Run("BenchmarkDeleteParallelWithSixIndexes", benchmarkDeleteParallelWithSixIndexes)
+	// b.Run("BenchmarkInsert", benchmarkInsert)
+	// b.Run("BenchmarkInsertParallel", benchmarkInsertParallel)
+	// b.Run("BenchmarkInsertParallelWithOneIndex", benchmarkInsertParallelWithOneIndex)
+	// b.Run("BenchmarkInsertWithSixIndexes", benchmarkInsertWithSixIndexes)
+	// b.Run("BenchmarkInsertParallelWithSixIndexes", benchmarkInsertParallelWithSixIndexes)
+	// b.Run("BenchmarkRead", benchmarkRead)
+	// b.Run("BenchmarkReadParallel", benchmarkReadParallel)
+	// b.Run("BenchmarkReadWithOneIndex", benchmarkReadWithOneIndex)
+	// b.Run("BenchmarkReadParallelWithOneIndex", benchmarkReadParallelWithOneIndex)
+	// b.Run("BenchmarkReadWithSixIndexes", benchmarkReadWithSixIndexes)
+	// b.Run("BenchmarkReadParallelWithSixIndexes", benchmarkReadParallelWithSixIndexes)
+	// b.Run("BenchmarkDelete", benchmarkDelete)
+	// b.Run("BenchmarkDeleteParallel", benchmarkDeleteParallel)
+	// b.Run("BenchmarkDeleteWithOneIndex", benchmarkDeleteWithOneIndex)
+	// b.Run("BenchmarkDeleteParallelWithOneIndex", benchmarkDeleteParallelWithOneIndex)
+	// b.Run("BenchmarkDeleteWithSixIndexes", benchmarkDeleteWithSixIndexes)
+	// b.Run("BenchmarkDeleteParallelWithSixIndexes", benchmarkDeleteParallelWithSixIndexes)
+	b.Run("benchmarkQuery", benchmarkQuery)
+	b.Run("benchmarkQueryParallel", benchmarkQueryParallel)
+	b.Run("benchmarkQueryComplex", benchmarkQueryComplex)
+	b.Run("benchmarkQueryParallelComplex", benchmarkQueryParallelComplex)
 
 	if err := benchmarkDB.Close(); err != nil {
 		b.Error("closing: ", err)
@@ -112,7 +116,7 @@ func initbenchmark(ctx context.Context) error {
 
 	testPath := <-getTestPathChan
 
-	benchmarkDB, _ = Open(ctx, NewDefaultTransactionTimeOut(testPath))
+	benchmarkDB, _ = Open(ctx, NewDefaultOptions(testPath))
 	benchmarkCollection, _ = benchmarkDB.Use("testCol")
 	deleteCollection, _ = benchmarkDB.Use("test del")
 
@@ -270,24 +274,41 @@ func delete(b *testing.B, parallel bool) error {
 	return nil
 }
 
-func query(b *testing.B, parallel bool) error {
+func query(b *testing.B, parallel bool, simple bool) error {
 	b.ResetTimer()
+
+	var query *Query
+
+	if simple {
+		query = NewQuery().SetFilter(NewFilter(Greater).SetSelector("Email").CompareTo("a"))
+	} else {
+		query = NewQuery().
+			SetFilter(NewFilter(Between).SetSelector("Email").CompareTo("a").CompareTo("b")).
+			SetFilter(NewFilter(Equal).SetSelector("Age").CompareTo(10)).
+			SetFilter(NewFilter(Greater).SetSelector("Balance").CompareTo(10000)).
+			SetFilter(NewFilter(Less).SetSelector("Balance").CompareTo(-100000))
+	}
+
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				_, err := benchmarkCollection.Get(<-getExistingID, nil)
+				responseQuery, err := benchmarkCollection.Query(query)
 				if err != nil {
 					b.Fatal(err)
 					return
 				}
+
+				fmt.Println("responseQuery", responseQuery.Len())
 			}
 		})
 	} else {
 		for i := 0; i < b.N; i++ {
-			_, err := benchmarkCollection.Get(<-getExistingID, nil)
+			responseQuery, err := benchmarkCollection.Query(query)
 			if err != nil {
 				return err
 			}
+
+			fmt.Println("responseQuery", responseQuery.Len())
 		}
 	}
 
@@ -512,6 +533,54 @@ func benchmarkDeleteParallelWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
 	err := delete(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
+
+	b.StopTimer()
+	delSixIndex()
+}
+
+func benchmarkQuery(b *testing.B) {
+	setSixIndex()
+	err := query(b, false, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
+
+	delSixIndex()
+}
+
+func benchmarkQueryParallel(b *testing.B) {
+	setSixIndex()
+	err := query(b, true, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
+
+	delSixIndex()
+}
+
+func benchmarkQueryComplex(b *testing.B) {
+	setSixIndex()
+
+	err := query(b, false, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
+
+	b.StopTimer()
+	delSixIndex()
+}
+
+func benchmarkQueryParallelComplex(b *testing.B) {
+	setSixIndex()
+
+	err := query(b, true, false)
 	if err != nil {
 		b.Error(err)
 		return

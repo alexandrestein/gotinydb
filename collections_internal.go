@@ -465,6 +465,7 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 func (c *Collection) loadIndex() error {
 	indexes := c.getIndexesFromConfigBucket()
 	for _, index := range indexes {
+		fmt.Println("index", index.Name)
 		index.options = c.options
 		index.getTx = c.db.Begin
 	}

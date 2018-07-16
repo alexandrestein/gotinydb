@@ -63,7 +63,7 @@ func TestOpenAndClose(t *testing.T) {
 	}
 
 	var err error
-	db, err = Open(ctx, NewDefaultTransactionTimeOut(testPath))
+	db, err = Open(ctx, NewDefaultOptions(testPath))
 	if err != nil {
 		t.Error(err)
 		return
@@ -105,7 +105,7 @@ func TestCreateCollection(t *testing.T) {
 
 	testPath := <-getTestPathChan
 	defer os.RemoveAll(testPath)
-	db, openDBErr := Open(ctx, NewDefaultTransactionTimeOut(testPath))
+	db, openDBErr := Open(ctx, NewDefaultOptions(testPath))
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return
@@ -156,7 +156,7 @@ func testPutGetAndDeleteCollection(t *testing.T, userID string, user interface{}
 		return
 	}
 
-	db, openDBErr := Open(ctx, NewDefaultTransactionTimeOut(testPath))
+	db, openDBErr := Open(ctx, NewDefaultOptions(testPath))
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return
@@ -204,7 +204,7 @@ func testPutGetAndDeleteCollection(t *testing.T, userID string, user interface{}
 }
 
 func testPutGetAndDeleteCollectionFillupTestAndClose(ctx context.Context, testPath string, t *testing.T, userID string, user interface{}, bin bool) bool {
-	db, openDBErr := Open(ctx, NewDefaultTransactionTimeOut(testPath))
+	db, openDBErr := Open(ctx, NewDefaultOptions(testPath))
 	if openDBErr != nil {
 		t.Error(openDBErr)
 		return false
