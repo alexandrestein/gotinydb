@@ -11,7 +11,7 @@ import (
 
 // Put add the given content to database with the given ID
 func (c *Collection) Put(id string, content interface{}) error {
-	ctx, cancel := context.WithTimeout(c.ctx, c.conf.TransactionTimeOut)
+	ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
 	defer cancel()
 
 	tr := newTransaction(id)
@@ -45,7 +45,7 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 		return nil, ErrEmptyID
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), c.conf.TransactionTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), c.options.TransactionTimeOut)
 	defer cancel()
 
 	response, getErr := c.get(ctx, id)
@@ -72,7 +72,7 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 
 // Delete removes the corresponding object if the given ID
 func (c *Collection) Delete(id string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), c.conf.TransactionTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), c.options.TransactionTimeOut)
 	defer cancel()
 
 	if id == "" {
@@ -91,7 +91,7 @@ func (c *Collection) Delete(id string) error {
 // SetIndex enable the collection to index field or sub field
 func (c *Collection) SetIndex(name string, t IndexType, selector ...string) error {
 	i := newIndex(name, t, selector...)
-	i.conf = c.conf
+	i.options = c.options
 	i.getTx = c.db.Begin
 
 	c.indexes = append(c.indexes, i)
@@ -152,11 +152,11 @@ func (c *Collection) Query(q *Query) (response *Response, _ error) {
 		return nil, fmt.Errorf("no index in the collection")
 	}
 
-	if q.internalLimit > c.conf.InternalQueryLimit {
-		q.internalLimit = c.conf.InternalQueryLimit
+	if q.internalLimit > c.options.InternalQueryLimit {
+		q.internalLimit = c.options.InternalQueryLimit
 	}
-	if q.timeout > c.conf.QueryTimeOut {
-		q.timeout = c.conf.QueryTimeOut
+	if q.timeout > c.options.QueryTimeOut {
+		q.timeout = c.options.QueryTimeOut
 	}
 
 	// Set a timout

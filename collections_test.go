@@ -15,7 +15,7 @@ import (
 func fillUpDB(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) {
 	testPath := <-getTestPathChan
 
-	db, openDBErr := Open(ctx, testPath)
+	db, openDBErr := Open(ctx, NewDefaultOptions(testPath))
 	if openDBErr != nil {
 		t.Fatal(openDBErr)
 		return nil, nil
@@ -32,12 +32,9 @@ func fillUpDB(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) 
 		return nil, nil
 	}
 
-	db.SetConfig(&Conf{DefaultTransactionTimeOut * 15, DefaultQueryTimeOut * 15, DefaultInternalQueryLimit})
-
-	// Get deferent versions of dataset
+	// Get different versions of dataset
 	users := unmarshalDataSet(dataset)
 
-	// doneChan := make(chan error, 0)
 	for i := 0; i < len(users); i++ {
 		err := c.Put(users[i].ID, users[i])
 		if err != nil {
@@ -57,7 +54,7 @@ func TestCollection_Query(t *testing.T) {
 		return
 	}
 	defer db.Close()
-	defer os.RemoveAll(db.path)
+	defer os.RemoveAll(db.options.Path)
 
 	c, userDBErr := db.Use("testCol")
 	if userDBErr != nil {
@@ -545,7 +542,7 @@ func TestCollection_Delete(t *testing.T) {
 		return
 	}
 	defer db.Close()
-	defer os.RemoveAll(db.path)
+	defer os.RemoveAll(db.options.Path)
 
 	c, _ := db.Use("testCol")
 	delErr := c.Delete("124")

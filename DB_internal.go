@@ -10,14 +10,14 @@ import (
 )
 
 func (d *DB) buildPath() error {
-	return os.MkdirAll(d.path+"/collections", FilePermission)
+	return os.MkdirAll(d.options.Path+"/collections", FilePermission)
 }
 
 func (d *DB) initBadger() error {
-	opts := badger.DefaultOptions
-	opts.Dir = d.path + "/store"
-	opts.ValueDir = d.path + "/store"
-	db, err := badger.Open(opts)
+	opts := d.options.BadgerOptions
+	opts.Dir = d.options.Path + "/store"
+	opts.ValueDir = d.options.Path + "/store"
+	db, err := badger.Open(*opts)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c.id = colID
 	c.name = colName
 
-	c.conf = d.conf
+	c.options = d.options
 
 	c.initWriteTransactionChan(d.ctx)
 
@@ -72,7 +72,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c.name = colName
 	c.ctx = d.ctx
 
-	db, openDBErr := bolt.Open(d.path+"/collections/"+colID, FilePermission, nil)
+	db, openDBErr := bolt.Open(d.options.Path+"/collections/"+colID, FilePermission, d.options.BoltOptions)
 	if openDBErr != nil {
 		return nil, openDBErr
 	}
@@ -102,7 +102,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 }
 
 func (d *DB) getCollectionsIDs() ([]string, error) {
-	files, err := ioutil.ReadDir(d.path + "/collections")
+	files, err := ioutil.ReadDir(d.options.Path + "/collections")
 	if err != nil {
 		return nil, err
 	}

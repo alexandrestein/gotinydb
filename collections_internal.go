@@ -397,36 +397,38 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 }
 
 func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
-	ret := c.store.Update(func(txn *badger.Txn) error {
-		storeID := c.buildStoreID(writeTransaction.id)
-		setErr := txn.Set(storeID, writeTransaction.contentAsBytes)
-		if setErr != nil {
-			err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
-			errChan <- err
-			return err
-		}
+	txn := c.store.NewTransaction(true)
+	defer txn.Discard()
+	// ret := c.store.Update(func(txn *badger.Txn) error {
+	storeID := c.buildStoreID(writeTransaction.id)
+	setErr := txn.Set(storeID, writeTransaction.contentAsBytes)
+	if setErr != nil {
+		err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
+		errChan <- err
+		return err
+	}
 
-		// Tells the rest of the callers that the index is done but not committed
-		wgActions.Done()
+	// Tells the rest of the callers that the index is done but not committed
+	wgActions.Done()
 
-		// Wait for the store insetion to be completed
-		err := waitForDoneErrOrCanceled(ctx, wgActions, nil)
-		if err != nil {
-			return err
-		}
+	// Wait for the store insetion to be completed
+	err := waitForDoneErrOrCanceled(ctx, wgActions, nil)
+	if err != nil {
+		return err
+	}
 
-		// Start the commit of the indexes
-		err = txn.Commit(nil)
-		if err != nil {
-			return err
-		}
+	// Start the commit of the indexes
+	err = txn.Commit(nil)
+	if err != nil {
+		return err
+	}
 
-		// Propagate the commit done status
-		wgCommitted.Done()
+	// Propagate the commit done status
+	wgCommitted.Done()
 
-		return nil
-	})
-	return ret
+	return nil
+	// })
+	// return ret
 }
 
 func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
@@ -463,7 +465,7 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 func (c *Collection) loadIndex() error {
 	indexes := c.getIndexesFromConfigBucket()
 	for _, index := range indexes {
-		index.conf = c.conf
+		index.options = c.options
 		index.getTx = c.db.Begin
 	}
 	c.indexes = indexes
@@ -594,7 +596,7 @@ newLoop:
 
 		m := elem.(map[string]interface{})
 
-		ctx2, cancel2 := context.WithTimeout(ctx, c.conf.TransactionTimeOut)
+		ctx2, cancel2 := context.WithTimeout(ctx, c.options.TransactionTimeOut)
 		defer cancel2()
 
 		tr := newTransaction(savedElement.ID.ID)

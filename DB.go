@@ -15,12 +15,12 @@ import (
 )
 
 // Open simply opens a new or existing database
-func Open(ctx context.Context, path string) (*DB, error) {
+func Open(ctx context.Context, options *Options) (*DB, error) {
 	d := new(DB)
-	d.path = path
+	d.options = options
 	d.ctx = ctx
 
-	d.conf = &Conf{DefaultTransactionTimeOut, DefaultQueryTimeOut, DefaultInternalQueryLimit}
+	d.options = options
 
 	if err := d.buildPath(); err != nil {
 		return nil, err
@@ -63,14 +63,14 @@ func (d *DB) Use(colName string) (*Collection, error) {
 	return c, nil
 }
 
-// SetConfig update the database configurations
-func (d *DB) SetConfig(conf *Conf) error {
-	d.conf = conf
+// SetOptions update the database configurations
+func (d *DB) SetOptions(options *Options) error {
+	d.options = options
 
 	for _, col := range d.collections {
-		col.conf = conf
+		col.options = options
 		for _, index := range col.indexes {
-			index.conf = conf
+			index.options = options
 		}
 	}
 	return nil
@@ -102,7 +102,7 @@ func (d *DB) Close() error {
 		return fmt.Errorf(errors)
 	}
 
-	d.path = ""
+	d.options.Path = ""
 	d.valueStore = nil
 	d.collections = nil
 
@@ -130,7 +130,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 		return err
 	}
 	// Remove the index DB files
-	if err := os.RemoveAll(d.path + "/collections/" + c.id); err != nil {
+	if err := os.RemoveAll(d.options.Path + "/collections/" + c.id); err != nil {
 		return err
 	}
 
