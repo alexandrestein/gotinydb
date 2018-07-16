@@ -30,8 +30,6 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 ### v1.0.0
 
 * Make a backup function
-* Add checksum
-* Make some benchmark
 
 ### v1.X.0
 
