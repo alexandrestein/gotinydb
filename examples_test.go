@@ -26,7 +26,7 @@ func Example() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, openDBErr := Open(ctx, dbTestPath)
+	db, openDBErr := Open(ctx, NewDefaultTransactionTimeOut(dbTestPath))
 	if openDBErr != nil {
 		log.Fatal(openDBErr)
 		return

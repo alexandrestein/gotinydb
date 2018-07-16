@@ -4,15 +4,16 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
+	"runtime/debug"
 	"testing"
+	"time"
 )
 
 var (
-	benchmarkDB         *DB
-	benchmarkCollection *Collection
+	benchmarkDB                           *DB
+	benchmarkCollection, deleteCollection *Collection
 
 	getID         chan string
 	getExistingID chan string
@@ -21,64 +22,129 @@ var (
 	initBenchmarkDone = false
 )
 
-func putRandRecord(id string) {
-	// up to 1KB
-	contentSize, err := rand.Int(rand.Reader, big.NewInt(1000*10))
-	if err != nil {
-		log.Fatalln(err)
+func Benchmark(b *testing.B) {
+	if testing.Short() {
 		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := initbenchmark(ctx)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	b.Run("BenchmarkInsert", benchmarkInsert)
+	b.Run("BenchmarkInsertParallel", benchmarkInsertParallel)
+	b.Run("BenchmarkInsertParallelWithOneIndex", benchmarkInsertParallelWithOneIndex)
+	b.Run("BenchmarkInsertWithSixIndexes", benchmarkInsertWithSixIndexes)
+	b.Run("BenchmarkInsertParallelWithSixIndexes", benchmarkInsertParallelWithSixIndexes)
+	b.Run("BenchmarkRead", benchmarkRead)
+	b.Run("BenchmarkReadParallel", benchmarkReadParallel)
+	b.Run("BenchmarkReadWithOneIndex", benchmarkReadWithOneIndex)
+	b.Run("BenchmarkReadParallelWithOneIndex", benchmarkReadParallelWithOneIndex)
+	b.Run("BenchmarkReadWithSixIndexes", benchmarkReadWithSixIndexes)
+	b.Run("BenchmarkReadParallelWithSixIndexes", benchmarkReadParallelWithSixIndexes)
+	b.Run("BenchmarkDelete", benchmarkDelete)
+	b.Run("BenchmarkDeleteParallel", benchmarkDeleteParallel)
+	b.Run("BenchmarkDeleteWithOneIndex", benchmarkDeleteWithOneIndex)
+	b.Run("BenchmarkDeleteParallelWithOneIndex", benchmarkDeleteParallelWithOneIndex)
+	b.Run("BenchmarkDeleteWithSixIndexes", benchmarkDeleteWithSixIndexes)
+	b.Run("BenchmarkDeleteParallelWithSixIndexes", benchmarkDeleteParallelWithSixIndexes)
+
+	if err := benchmarkDB.Close(); err != nil {
+		b.Error("closing: ", err)
+	}
+
+	cancel()
+
+	time.Sleep(time.Second)
+}
+
+func putRandRecord(c *Collection, id string) error {
+	// up to 1KB
+	contentSize, err := rand.Int(rand.Reader, big.NewInt(1000*1))
+	if err != nil {
+		return err
 	}
 
 	content := make([]byte, contentSize.Int64())
 	rand.Read(content)
 
-	err = benchmarkCollection.Put(id, content)
+	err = c.Put(id, content)
 	if err != nil {
-		log.Fatalln(err)
-		return
+		return err
 	}
+	return nil
 }
 
-func fillUpDBForBenchmarks() {
-	for i := 0; i < 100000; i++ {
-		putRandRecord(buildID(fmt.Sprint(i)))
+func fillUpDBForBenchmarks(n int) error {
+	fmt.Println("Fill up the database with 1'000'000 records up to 1KB")
+	pourcent := 0
+	for i := 0; i < n; i++ {
+		err := putRandRecord(benchmarkCollection, buildID(fmt.Sprint(i)))
+		if err != nil {
+			return err
+		}
+
+		if i%100000 == 0 {
+			if i != 0 {
+				fmt.Printf("%d0%%\n", pourcent)
+			}
+			pourcent++
+		}
 	}
+	fmt.Printf("100%% done\n")
+	return nil
 }
 
-func initbenchmark() {
+func initbenchmark(ctx context.Context) error {
 	if initBenchmarkDone {
-		return
+		return nil
 	}
+
+	nbInitInsertion := 1000 * 1000
+	// nbInitInsertion := 100
+
 	initBenchmarkDone = true
 
-	ctx := context.Background()
-
 	testPath := <-getTestPathChan
-	defer os.RemoveAll(testPath)
 
-	benchmarkDB, _ = Open(ctx, testPath)
+	benchmarkDB, _ = Open(ctx, NewDefaultTransactionTimeOut(testPath))
 	benchmarkCollection, _ = benchmarkDB.Use("testCol")
+	deleteCollection, _ = benchmarkDB.Use("test del")
 
-	fillUpDBForBenchmarks()
-
+	if err := fillUpDBForBenchmarks(nbInitInsertion); err != nil {
+		return err
+	}
 	users := unmarshalDataSet(dataSet1)
 
-	iForIds := 100000
+	iForIds := nbInitInsertion
 	getID = make(chan string, 100)
 	go func() {
 		for {
-			getID <- buildID(fmt.Sprint(iForIds))
-			iForIds++
+			select {
+			case getID <- buildID(fmt.Sprint(iForIds)):
+				iForIds++
+			case <-ctx.Done():
+				os.RemoveAll(testPath)
+				return
+			}
 		}
 	}()
 	getExistingID = make(chan string, 100)
 	go func() {
 		i := 0
 		for {
-			if i < 100000 {
-				getExistingID <- buildID(fmt.Sprint(i))
-			} else {
-				i = 0
+			select {
+			case getExistingID <- buildID(fmt.Sprint(i)):
+				if i >= nbInitInsertion {
+					i = 0
+				}
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
@@ -86,20 +152,25 @@ func initbenchmark() {
 	getContent = make(chan interface{}, 100)
 	go func() {
 		for {
-			getContent <- users[iForIds%299]
+			select {
+			case getContent <- users[iForIds%299]:
+			case <-ctx.Done():
+				os.RemoveAll(testPath)
+				return
+			}
 		}
 	}()
+	return nil
 }
 
-func insert(b *testing.B, parallel bool) {
-	initbenchmark()
+func insert(b *testing.B, parallel bool) error {
 	b.ResetTimer()
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				err := benchmarkCollection.Put(<-getID, <-getContent)
 				if err != nil {
-					b.Error(err)
+					b.Fatal(err)
 					return
 				}
 			}
@@ -108,22 +179,21 @@ func insert(b *testing.B, parallel bool) {
 		for i := 0; i < b.N; i++ {
 			err := benchmarkCollection.Put(<-getID, <-getContent)
 			if err != nil {
-				b.Error(err)
-				return
+				return err
 			}
 		}
 	}
+	return nil
 }
 
-func read(b *testing.B, parallel bool) {
-	initbenchmark()
+func read(b *testing.B, parallel bool) error {
 	b.ResetTimer()
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				_, err := benchmarkCollection.Get(<-getExistingID, nil)
 				if err != nil {
-					b.Error(err)
+					b.Fatal(err)
 					return
 				}
 			}
@@ -132,63 +202,82 @@ func read(b *testing.B, parallel bool) {
 		for i := 0; i < b.N; i++ {
 			_, err := benchmarkCollection.Get(<-getExistingID, nil)
 			if err != nil {
-				b.Error(err)
-				return
+				return err
 			}
 		}
 	}
+
+	return nil
 }
 
-func delete(b *testing.B, parallel bool) {
-	initbenchmark()
+func delete(b *testing.B, parallel bool) error {
+	b.StopTimer()
+	nbOfSamples := 50000
 
-	for i := 0; i < 100000; i++ {
-		putRandRecord(buildID(fmt.Sprintf("test-%d", i)))
+	for i := 0; i < nbOfSamples; i++ {
+		err := putRandRecord(deleteCollection, buildID(fmt.Sprintf("test-%d", i)))
+		if err != nil {
+			debug.PrintStack()
+			return err
+		}
 	}
 
 	getExistingIDToDelete := make(chan string, 100)
 	go func() {
 		i := 0
 		for {
-			if i < 100000 {
+			if i < nbOfSamples {
 				getExistingIDToDelete <- buildID(fmt.Sprintf("test-%d", i))
+				i++
 			} else {
-				i = 0
+				close(getExistingIDToDelete)
+				return
 			}
 		}
 	}()
 
-	b.ResetTimer()
+	b.StartTimer()
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				err := benchmarkCollection.Delete(<-getExistingIDToDelete)
+				id, ok := <-getExistingIDToDelete
+				if !ok {
+					return
+				}
+
+				err := deleteCollection.Delete(id)
 				if err != nil {
-					b.Error(err)
+					b.Fatal(err)
 					return
 				}
 			}
 		})
 	} else {
 		for i := 0; i < b.N; i++ {
-			err := benchmarkCollection.Delete(<-getExistingIDToDelete)
+			id, ok := <-getExistingIDToDelete
+			if !ok {
+				return nil
+			}
+
+			err := deleteCollection.Delete(id)
 			if err != nil {
-				b.Error(err)
-				return
+				debug.PrintStack()
+				return err
 			}
 		}
 	}
+
+	return nil
 }
 
-func query(b *testing.B, parallel bool) {
-	initbenchmark()
+func query(b *testing.B, parallel bool) error {
 	b.ResetTimer()
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				_, err := benchmarkCollection.Get(<-getExistingID, nil)
 				if err != nil {
-					b.Error(err)
+					b.Fatal(err)
 					return
 				}
 			}
@@ -197,11 +286,12 @@ func query(b *testing.B, parallel bool) {
 		for i := 0; i < b.N; i++ {
 			_, err := benchmarkCollection.Get(<-getExistingID, nil)
 			if err != nil {
-				b.Error(err)
-				return
+				return err
 			}
 		}
 	}
+
+	return nil
 }
 
 func setOneIndex() {
@@ -227,133 +317,205 @@ func delSixIndex() {
 	benchmarkCollection.DeleteIndex("last login")
 }
 
-func BenchmarkInsert(b *testing.B) {
-	insert(b, false)
+func benchmarkInsert(b *testing.B) {
+	err := insert(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 }
 
-func BenchmarkInsertParallel(b *testing.B) {
-	insert(b, true)
+func benchmarkInsertParallel(b *testing.B) {
+	err := insert(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 }
 
-func BenchmarkInsertWithOneIndex(b *testing.B) {
+func benchmarkInsertWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	insert(b, false)
+	err := insert(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkInsertParallelWithOneIndex(b *testing.B) {
+func benchmarkInsertParallelWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	insert(b, true)
+	err := insert(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkInsertWithSixIndexes(b *testing.B) {
+func benchmarkInsertWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	insert(b, false)
+	err := insert(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delSixIndex()
 }
 
-func BenchmarkInsertParallelWithSixIndexes(b *testing.B) {
+func benchmarkInsertParallelWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	insert(b, true)
+	err := insert(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delSixIndex()
 }
 
-func BenchmarkRead(b *testing.B) {
-	read(b, false)
+func benchmarkRead(b *testing.B) {
+	err := read(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 }
 
-func BenchmarkReadParallel(b *testing.B) {
-	read(b, true)
+func benchmarkReadParallel(b *testing.B) {
+	err := read(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 }
 
-func BenchmarkReadWithOneIndex(b *testing.B) {
+func benchmarkReadWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	read(b, false)
+	err := read(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkReadParallelWithOneIndex(b *testing.B) {
+func benchmarkReadParallelWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	read(b, true)
+	err := read(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkReadWithSixIndexes(b *testing.B) {
+func benchmarkReadWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	read(b, false)
+	err := read(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delSixIndex()
 }
 
-func BenchmarkReadParallelWithSixIndexes(b *testing.B) {
+func benchmarkReadParallelWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	read(b, true)
+	err := read(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delSixIndex()
 }
 
-func BenchmarkDelete(b *testing.B) {
-	delete(b, false)
+func benchmarkDelete(b *testing.B) {
+	err := delete(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 }
 
-func BenchmarkDeleteParallel(b *testing.B) {
-	delete(b, true)
+func benchmarkDeleteParallel(b *testing.B) {
+	err := delete(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 }
 
-func BenchmarkDeleteWithOneIndex(b *testing.B) {
+func benchmarkDeleteWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	delete(b, false)
+	err := delete(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkDeleteParallelWithOneIndex(b *testing.B) {
+func benchmarkDeleteParallelWithOneIndex(b *testing.B) {
 	setOneIndex()
 
-	delete(b, true)
+	err := delete(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delOneIndex()
 }
 
-func BenchmarkDeleteWithSixIndexes(b *testing.B) {
+func benchmarkDeleteWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	delete(b, false)
+	err := delete(b, false)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delSixIndex()
 }
 
-func BenchmarkDeleteParallelWithSixIndexes(b *testing.B) {
+func benchmarkDeleteParallelWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
-	delete(b, true)
+	err := delete(b, true)
+	if err != nil {
+		b.Error(err)
+		return
+	}
 
 	b.StopTimer()
 	delSixIndex()

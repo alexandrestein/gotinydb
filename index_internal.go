@@ -80,8 +80,8 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, indexedValue, li
 		allIDs.AddIDs(ids)
 
 		// Clean if to big
-		if len(allIDs.IDs) > i.conf.InternalQueryLimit {
-			allIDs.IDs = allIDs.IDs[:i.conf.InternalQueryLimit]
+		if len(allIDs.IDs) > i.options.InternalQueryLimit {
+			allIDs.IDs = allIDs.IDs[:i.options.InternalQueryLimit]
 			break
 		}
 	}

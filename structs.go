@@ -11,8 +11,7 @@ import (
 type (
 	// DB is the main element of the package and provide all access to sub commands
 	DB struct {
-		path string
-		conf *Conf
+		options *Options
 
 		valueStore  *badger.DB
 		collections []*Collection
@@ -21,10 +20,14 @@ type (
 		closing bool
 	}
 
-	// Conf defines the deferent configuration elements of the database
-	Conf struct {
+	// Options defines the deferent configuration elements of the database
+	Options struct {
+		Path                             string
 		TransactionTimeOut, QueryTimeOut time.Duration
 		InternalQueryLimit               int
+
+		BadgerOptions *badger.Options
+		BoltOptions   *bolt.Options
 	}
 
 	// Collection defines the storage object
@@ -32,7 +35,7 @@ type (
 		name, id string
 		indexes  []*indexType
 
-		conf *Conf
+		options *Options
 
 		db    *bolt.DB
 		store *badger.DB
@@ -67,7 +70,7 @@ type (
 		SelectorHash uint64
 		Type         IndexType
 
-		conf *Conf
+		options *Options
 
 		getTx func(update bool) (*bolt.Tx, error)
 	}

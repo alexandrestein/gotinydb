@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/boltdb/bolt"
+	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/options"
 )
 
 // Defines the default values of the database configuration
@@ -12,7 +16,45 @@ var (
 	DefaultQueryTimeOut       = time.Second * 5
 	DefaultQueryLimit         = 100
 	DefaultInternalQueryLimit = 1000
+
+	DefaultBadgerOptions = &badger.Options{
+		DoNotCompact:        false,
+		LevelOneSize:        256 << 20,
+		LevelSizeMultiplier: 10,
+		TableLoadingMode:    options.LoadToRAM,
+		ValueLogLoadingMode: options.MemoryMap,
+
+		MaxLevels:               7,
+		MaxTableSize:            64 << 20,
+		NumCompactors:           3,
+		NumLevelZeroTables:      5,
+		NumLevelZeroTablesStall: 10,
+		NumMemtables:            5,
+		SyncWrites:              true,
+		// NumVersionsToKeep:       1,
+		NumVersionsToKeep: 0,
+
+		ValueLogFileSize:   1 << 30,
+		ValueLogMaxEntries: 1000000,
+		ValueThreshold:     32,
+		Truncate:           false,
+	}
+
+	DefaultBoltOptions = bolt.DefaultOptions
 )
+
+// NewDefaultTransactionTimeOut build default options with a path
+func NewDefaultTransactionTimeOut(path string) *Options {
+	return &Options{
+		Path:               path,
+		TransactionTimeOut: DefaultTransactionTimeOut,
+		QueryTimeOut:       DefaultQueryTimeOut,
+		InternalQueryLimit: DefaultQueryLimit,
+
+		BadgerOptions: DefaultBadgerOptions,
+		BoltOptions:   DefaultBoltOptions,
+	}
+}
 
 var (
 	// FilePermission defines the database file permission
