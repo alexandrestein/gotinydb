@@ -138,6 +138,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	for {
 		ids, err := c.getStoredIDsAndValues("", 1000, true)
 		if err != nil {
+			fmt.Println("ici", err)
 			return err
 		}
 		if len(ids) == 0 {

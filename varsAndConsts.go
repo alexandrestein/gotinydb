@@ -31,7 +31,8 @@ var (
 		NumLevelZeroTablesStall: 10,
 		NumMemtables:            5,
 		SyncWrites:              true,
-		NumVersionsToKeep:       10,
+		// NumVersionsToKeep:       1,
+		NumVersionsToKeep: 10,
 
 		ValueLogFileSize:   1 << 30,
 		ValueLogMaxEntries: 1000000,
@@ -67,6 +68,8 @@ var (
 	ErrEmptyID = fmt.Errorf("empty ID")
 	// ErrTimeOut defines the error when the query is timed out
 	ErrTimeOut = fmt.Errorf("timed out")
+	// ErrDataCorrupted defines the error when the checksum is not valid
+	ErrDataCorrupted = fmt.Errorf("content corrupted")
 
 	// ErrTheResponseIsOver defines error when *Response.One is called and all response has been returned
 	ErrTheResponseIsOver = fmt.Errorf("the response has no more values")

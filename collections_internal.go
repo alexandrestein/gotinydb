@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
+	"github.com/minio/highwayhash"
 )
 
 func (c *Collection) loadInfos() error {
@@ -81,30 +83,6 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
 	})
 }
-
-// func (c *Collection) delIndexesIntoConfigBucket(indexName string) error {
-// 	return c.db.Update(func(tx *bolt.Tx) error {
-// 		confBucket := tx.Bucket([]byte("config"))
-// 		indexesAsBytes := confBucket.Get([]byte("indexesList"))
-// 		indexes := []*indexType{}
-// 		err := json.Unmarshal(indexesAsBytes, &indexes)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		for i, index := range indexes {
-// 			if index.Name == indexName {
-// 				copy(indexes[i:], indexes[i+1:])
-// 				indexes[len(indexes)-1] = nil
-// 				indexes = indexes[:len(indexes)-1]
-// 				break
-// 			}
-// 		}
-
-// 		indexesAsBytes, _ = json.Marshal(indexes)
-// 		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
-// 	})
-// }
 
 func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 	c.writeTransactionChan = make(chan *writeTransaction, 1000)
@@ -399,9 +377,12 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
 	txn := c.store.NewTransaction(true)
 	defer txn.Discard()
-	// ret := c.store.Update(func(txn *badger.Txn) error {
+
+	hashSignature, _ := intToBytes((highwayhash.Sum64(writeTransaction.contentAsBytes, make([]byte, highwayhash.Size))))
+	contentToWrite := append(hashSignature, writeTransaction.contentAsBytes...)
+
 	storeID := c.buildStoreID(writeTransaction.id)
-	setErr := txn.Set(storeID, writeTransaction.contentAsBytes)
+	setErr := txn.Set(storeID, contentToWrite)
 	if setErr != nil {
 		err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
 		errChan <- err
@@ -427,8 +408,6 @@ func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, wgAct
 	wgCommitted.Done()
 
 	return nil
-	// })
-	// return ret
 }
 
 func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
@@ -448,10 +427,16 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 				return ErrNotFound
 			}
 
-			contentAsBytes, getValErr := item.Value()
+			contentAndHashSignatureAsBytes, getValErr := item.Value()
 			if getValErr != nil {
 				return getValErr
 			}
+
+			contentAsBytes, corrupted := c.getAndCheckContent(contentAndHashSignatureAsBytes)
+			if corrupted != nil {
+				return corrupted
+			}
+
 			ret[i] = contentAsBytes
 		}
 		return nil
@@ -460,6 +445,23 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 	}
 
 	return ret, nil
+}
+
+func (c *Collection) getAndCheckContent(contentAndHashSignatureAsBytes []byte) (content []byte, _ error) {
+	if len(contentAndHashSignatureAsBytes) <= 8 {
+		fmt.Println("contentAndHashSignatureAsBytes", len(contentAndHashSignatureAsBytes), contentAndHashSignatureAsBytes)
+		return nil, ErrDataCorrupted
+	}
+
+	savedSignature := contentAndHashSignatureAsBytes[:8]
+	contentAsBytes := contentAndHashSignatureAsBytes[8:]
+	retrievedSignature, _ := intToBytes(highwayhash.Sum64(contentAsBytes, make([]byte, highwayhash.Size)))
+
+	if !reflect.DeepEqual(savedSignature, retrievedSignature) {
+		return nil, ErrDataCorrupted
+	}
+
+	return contentAsBytes, nil
 }
 
 func (c *Collection) loadIndex() error {
@@ -547,6 +549,12 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 				responseItem.ContentAsBytes, err = item.ValueCopy(responseItem.ContentAsBytes)
 				if err != nil {
 					return err
+				}
+
+				var corrupted error
+				responseItem.ContentAsBytes, corrupted = c.getAndCheckContent(responseItem.ContentAsBytes)
+				if corrupted != nil {
+					return corrupted
 				}
 			}
 
