@@ -15,7 +15,11 @@ import (
 func fillUpDB(ctx context.Context, t *testing.T, dataset []byte) (*DB, []*User) {
 	testPath := <-getTestPathChan
 
-	db, openDBErr := Open(ctx, NewDefaultOptions(testPath))
+	options := NewDefaultOptions(testPath)
+	options.TransactionTimeOut = time.Second * 100
+	options.QueryTimeOut = time.Second * 100
+
+	db, openDBErr := Open(ctx, options)
 	if openDBErr != nil {
 		t.Fatal(openDBErr)
 		return nil, nil

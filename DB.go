@@ -20,8 +20,6 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	d.options = options
 	d.ctx = ctx
 
-	d.options = options
-
 	if err := d.buildPath(); err != nil {
 		return nil, err
 	}
@@ -29,7 +27,6 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	if initBadgerErr := d.initBadger(); initBadgerErr != nil {
 		return nil, initBadgerErr
 	}
-
 	if loadErr := d.loadCollections(); loadErr != nil {
 		return nil, loadErr
 	}
