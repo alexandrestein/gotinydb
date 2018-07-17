@@ -9,6 +9,7 @@ package gotinydb
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/dgraph-io/badger"
@@ -155,4 +156,9 @@ func (d *DB) DeleteCollection(collectionName string) error {
 			return err
 		}
 	}
+}
+
+func (d *DB) Backup(w io.Writer) error {
+}
+func (d *DB) Load(r io.Reader) error {
 }

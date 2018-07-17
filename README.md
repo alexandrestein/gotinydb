@@ -30,6 +30,7 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 ### v1.0.0
 
 * Make a backup function
+* Build a rollback function for a given key. The idea is to make possible to recover a corrupted record from the previous one for example.
 
 ### v1.X.0
 

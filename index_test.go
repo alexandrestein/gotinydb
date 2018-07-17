@@ -159,3 +159,4 @@ func updateUser(c *Collection, v1, v2, v3 *User, done chan error) error {
 	done <- nil
 	return nil
 }
+
