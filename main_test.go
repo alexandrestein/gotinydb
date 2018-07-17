@@ -253,3 +253,19 @@ func testPutGetAndDeleteCollectionFillupTestAndClose(ctx context.Context, testPa
 
 	return true
 }
+
+func TestBackup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db, _ := fillUpDB(ctx, t, dataSet1)
+	if db == nil {
+		return
+	}
+
+	path := fmt.Sprintf("%s/backupTest.zip", os.TempDir())
+	err := db.Backup(path, 0)
+	if err != nil {
+		t.Error(err)
+	}
+}

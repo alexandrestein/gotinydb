@@ -7,10 +7,14 @@ It can handel big binnary files as structured objects with fields and subfields 
 package gotinydb
 
 import (
+	"archive/zip"
+	"compress/flate"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/dgraph-io/badger"
 )
@@ -158,7 +162,151 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	}
 }
 
-func (d *DB) Backup(w io.Writer) error {
+// Backup run a backup to the given archive
+func (d *DB) Backup(path string, since uint64) error {
+	t0 := time.Now()
+	file, openFileErr := os.OpenFile(path, os.O_CREATE|os.O_RDWR, FilePermission)
+	if openFileErr != nil {
+		return openFileErr
+	}
+	defer file.Close()
+
+	zipWriter := zip.NewWriter(file)
+	// Setup compression
+	zipWriter.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+		return flate.NewWriter(out, flate.BestCompression)
+	})
+
+	backupFile, createFileErr := zipWriter.Create("archive")
+	if createFileErr != nil {
+		return createFileErr
+	}
+
+	timestamp, backupErr := d.valueStore.Backup(backupFile, since)
+	if backupErr != nil {
+		return backupErr
+	}
+
+	configFile, createFileErr := zipWriter.Create("config.json")
+	if createFileErr != nil {
+		return createFileErr
+	}
+
+	archivePointer := d.loadArchive()
+	archivePointer.StartTime = t0
+	archivePointer.EndTime = time.Now()
+	archivePointer.Timestamp = timestamp
+
+	configAsBytes, marshalErr := json.Marshal(archivePointer)
+	if marshalErr != nil {
+		return marshalErr
+	}
+
+	_, writeErr := configFile.Write(configAsBytes)
+	if writeErr != nil {
+		return writeErr
+	}
+
+	return zipWriter.Close()
 }
-func (d *DB) Load(r io.Reader) error {
+
+// func (d *DB) ListBackup(path string) []uint64 {
+
+// }
+
+// func (d *DB) Load(path string, timestamp uint64) error {
+// }
+
+// func ()  {
+
+// }
+
+// func (d *DB) setConfig(file *os.File, since uint64) error {
+// 	ret := new(archive)
+
+// 	info, statErr := file.Stat()
+// 	if statErr != nil {
+// 		return nil, statErr
+// 	}
+
+// 	zipWriter, err := zip.NewWriter(file)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	archive.
+// }
+
+func (d *DB) loadArchive() *archive {
+	ret := new(archive)
+	ret.Collections = make([]string, len(d.collections))
+	ret.Indexes = map[string][]*indexType{}
+
+	for i, collection := range d.collections {
+		ret.Collections[i] = collection.name
+
+		ret.Indexes[collection.name] = make([]*indexType, len(collection.indexes))
+		for j, index := range collection.indexes {
+			ret.Indexes[collection.name][j] = index
+		}
+	}
+
+	return ret
 }
+
+// func (d *DB) loadArchive(path string) (_ *archive, close func(), _ error) {
+// 	file, openFileErr := os.OpenFile(path, os.O_CREATE|os.O_RDWR, FilePermission)
+// 	if openFileErr != nil {
+// 		return nil, nil, openFileErr
+// 	}
+
+// 	ret := new(archive)
+// 	ret.file = file
+
+// 	r, loadZipErr := d.getZipReader(file)
+// 	if loadZipErr != nil {
+// 		return nil, nil, loadZipErr
+// 	}
+
+// 	// Iterate through the files in the archive,
+// 	// printing some of their contents.
+// 	for _, f := range r.File {
+// 		if f.Name == "archive.json" {
+// 			fileAsReader, openFileErr := f.Open()
+// 			if openFileErr != nil {
+// 				return nil, nil, openFileErr
+// 			}
+
+// 			buf := make([]byte, 1000*100)
+// 			n, readErr := fileAsReader.Read(buf)
+// 			if readErr != nil {
+// 				return nil, nil, readErr
+// 			} else {
+// 				buf = buf[:n]
+// 			}
+
+// 			unmarshalErr := json.Unmarshal(buf, ret)
+// 			if unmarshalErr != nil {
+// 				return nil, nil, unmarshalErr
+// 			}
+
+// 			return ret, nil, nil
+// 		}
+// 	}
+
+// 	return ret, func() { file.Close() }, nil
+// }
+
+// func (d *DB) getZipReader(file *os.File) (*zip.Reader, error) {
+// 	info, statErr := file.Stat()
+// 	if statErr != nil {
+// 		return nil, statErr
+// 	}
+// 	// Open a zip archive for reading.
+// 	r, err := zip.NewReader(file, info.Size())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return r, nil
+// }

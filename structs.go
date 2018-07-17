@@ -2,6 +2,7 @@ package gotinydb
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -98,5 +99,15 @@ type (
 		responseChan     chan error
 		ctx              context.Context
 		bin              bool
+	}
+
+	// Archive defines the way archives are saved inside the zip file
+	archive struct {
+		StartTime, EndTime time.Time
+		Indexes            map[string][]*indexType
+		Collections        []string
+		Timestamp          uint64
+
+		file *os.File
 	}
 )
