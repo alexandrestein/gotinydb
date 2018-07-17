@@ -268,4 +268,12 @@ func TestBackup(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	db2Conf := NewDefaultOptions(fmt.Sprintf("%s/backupRestor", os.TempDir()))
+	db2, _ := Open(ctx, db2Conf)
+
+	err = db2.Load(path)
+	if err != nil {
+		t.Error(err)
+	}
 }

@@ -165,7 +165,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 // Backup run a backup to the given archive
 func (d *DB) Backup(path string, since uint64) error {
 	t0 := time.Now()
-	file, openFileErr := os.OpenFile(path, os.O_CREATE|os.O_RDWR, FilePermission)
+	file, openFileErr := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, FilePermission)
 	if openFileErr != nil {
 		return openFileErr
 	}
@@ -214,8 +214,30 @@ func (d *DB) Backup(path string, since uint64) error {
 
 // }
 
-// func (d *DB) Load(path string, timestamp uint64) error {
-// }
+func (d *DB) Load(path string) error {
+	zipReader, openZipErr := zip.OpenReader(path)
+	if openZipErr != nil {
+		return openZipErr
+	}
+
+	for _, file := range zipReader.File {
+		switch file.Name {
+		case "archive":
+			reader, openErr := file.Open()
+			if openErr != nil {
+				return openErr
+			}
+
+			return d.valueStore.Load(reader)
+			// if loadErr != nil {
+			// 	return loadErr
+			// }
+		case "config.json":
+			continue
+		}
+	}
+	return fmt.Errorf("no backup found")
+}
 
 // func ()  {
 
