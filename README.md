@@ -15,9 +15,6 @@ go get -u github.com/alexandrestein/gotinydb
 The package is supposed to be used inside your software and at this point it is not supposed to be a dedicated database service.
 Take a look at [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb) for examples.
 
-It's hard to have accurate documentation when they are not automatically build from source.
-That why I prefer to put all documentation inside [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb)
-
 ## Built With
 
 * [Badger](https://github.com/dgraph-io/badger) - Is the main storage engine
