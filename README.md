@@ -27,11 +27,7 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 
 ## Road Map
 
-### v1.0.0
-
-* Build a rollback function for a given key. The idea is to make possible to recover a corrupted record from the previous one for example.
-
-### v1.X.0
+### Maybe for v1.1.0
 
 * Add "has" or "exist" filter
 * Make incremental backups
@@ -41,7 +37,7 @@ That why I prefer to put all documentation inside [GoDoc](https://godoc.org/gith
 ## Contributing
 
 Any contribution will be appreciate.
-Feedbacks and suggestions are at this point very very important to me.
+Feedbacks and suggestions are welcome.
 
 ## Vendoring
 
@@ -49,8 +45,7 @@ You can use [dep](https://github.com/golang/dep) or [vgo](https://github.com/gol
 
 ## Versioning
 
-The package is under heavy development for now and is just for testing and development at this point.
-Ones the design will be finalized the version will start at `v1.0.0`.
+Version `v1.0.0` is now ready.
 For future the versions, see the [tags on this repository](https://github.com/alexandrestein/gotinydb/tags).
 
 ## Author

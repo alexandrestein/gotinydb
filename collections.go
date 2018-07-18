@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
@@ -190,4 +191,69 @@ func (c *Collection) GetIDs(startID string, limit int) ([]string, error) {
 // at the given ID. The limit paramiter let caller ask for a portion of the collection.
 func (c *Collection) GetValues(startID string, limit int) ([]*ResponseElem, error) {
 	return c.getStoredIDsAndValues(startID, limit, false)
+}
+
+// Rollback reset content to a previous version for the given key.
+// The database by default keeps 10 version of the same key.
+// previousVersion provide a way to get the wanted version where 0 is the fist previous
+// content and bigger previousVersion is older the content will be.
+// It returns the previous asked version timestamp.
+// Everytime this function is called a new version is added.
+func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64, err error) {
+	var contentAsInterface interface{}
+	found := false
+
+	err = c.store.View(func(txn *badger.Txn) error {
+		// Init the iterator
+		iterator := txn.NewIterator(
+			badger.IteratorOptions{
+				AllVersions:    true,
+				PrefetchSize:   c.options.BadgerOptions.NumVersionsToKeep,
+				PrefetchValues: true,
+			},
+		)
+		defer iterator.Close()
+
+		// Set the rollback to at least the immediate previous content
+		previousVersion = previousVersion + 1
+
+		// Seek to the wanted key
+		// Loop to the version
+		for iterator.Seek(c.buildStoreID(id)); iterator.Valid(); iterator.Next() {
+			if !reflect.DeepEqual(c.buildStoreID(id), iterator.Item().Key()) {
+				return fmt.Errorf("passed to an other key before hitting the requested version")
+			} else if previousVersion == 0 {
+				item := iterator.Item()
+				asBytes, valueErr := item.Value()
+				if valueErr != nil {
+					return valueErr
+				}
+
+				unmarshalErr := json.Unmarshal(asBytes[8:], &contentAsInterface)
+				if unmarshalErr != nil {
+					return unmarshalErr
+				}
+
+				timestamp = item.Version()
+				found = true
+				return nil
+			}
+			previousVersion--
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	if !found {
+		return 0, fmt.Errorf("the prior version %d was not found", previousVersion)
+	}
+
+	putErr := c.Put(id, contentAsInterface)
+	if putErr != nil {
+		return 0, putErr
+	}
+
+	return timestamp, nil
 }

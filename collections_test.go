@@ -656,3 +656,103 @@ func TestListCollection(t *testing.T) {
 		return
 	}
 }
+
+func TestRollback(t *testing.T) {
+	testPath := <-getTestPathChan
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	options := NewDefaultOptions(testPath)
+	options.TransactionTimeOut = time.Second * 100
+	options.QueryTimeOut = time.Second * 100
+
+	db, openDBErr := Open(ctx, options)
+	if openDBErr != nil {
+		t.Error(openDBErr)
+		return
+	}
+
+	c, userDBErr := db.Use("testCol")
+	if userDBErr != nil {
+		t.Error(userDBErr)
+		return
+	}
+
+	if err := setIndexes(c); err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Get different versions of dataset
+	users := unmarshalDataSet(dataSet1)
+	for i := 0; i < len(users); i++ {
+		err := c.Put(users[i].ID, users[i])
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+	// Get different versions of dataset
+	users = unmarshalDataSet(dataSet2)
+	for i := 0; i < len(users); i++ {
+		err := c.Put(users[i].ID, users[i])
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+	// Get different versions of dataset
+	users = unmarshalDataSet(dataSet3)
+	for i := 0; i < len(users); i++ {
+		err := c.Put(users[i].ID, users[i])
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	oneAsBytes, _ := c.Get("1", nil)
+	if string(oneAsBytes) != `{"ID":"1","Email":"christi-81@muppet.com","Balance":7456846233081745525,"Address":{"City":"Scribner","ZipCode":86},"Age":6,"LastLogin":"2018-01-21T20:42:49.779258288+01:00"}` {
+		t.Errorf("Value is not what is expected")
+		return
+	}
+	timestamp, rollbackErr := c.Rollback("1", 0)
+	if rollbackErr != nil {
+		t.Error(rollbackErr)
+		return
+	}
+	if timestamp != 302 {
+		t.Errorf("timestamp %d is not what is expected %d", timestamp, 302)
+	}
+
+	oneAsBytes, _ = c.Get("1", nil)
+	if string(oneAsBytes) != `{"Address":{"City":"Kuznetsk","ZipCode":71},"Age":14,"Balance":777382239779228500,"Email":"carol-60@rigoletto.com","ID":"1","LastLogin":"2016-08-01T21:59:36.165049552+02:00"}` {
+		t.Errorf("Value is not what is expected")
+		return
+	}
+	timestamp, rollbackErr = c.Rollback("1", 2)
+	if rollbackErr != nil {
+		t.Error(rollbackErr)
+		return
+	}
+	if timestamp != 2 {
+		t.Errorf("timestamp %d is not what is expected %d", timestamp, 2)
+	}
+
+	oneAsBytes, _ = c.Get("1", nil)
+	if string(oneAsBytes) != `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"Email":"geritol-60@puget.com","ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00"}` {
+		t.Errorf("Value is not what is expected")
+		return
+	}
+	timestamp, rollbackErr = c.Rollback("1", 4)
+	if rollbackErr == nil {
+		t.Errorf("this must returns an error because there is no 4 previous values")
+		return
+	}
+
+	oneAsBytes, _ = c.Get("1", nil)
+	if string(oneAsBytes) != `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"Email":"geritol-60@puget.com","ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00"}` {
+		t.Errorf("Value is not what is expected")
+		return
+	}
+}
