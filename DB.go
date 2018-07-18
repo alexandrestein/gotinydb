@@ -210,15 +210,14 @@ func (d *DB) Backup(path string, since uint64) error {
 	return zipWriter.Close()
 }
 
-// func (d *DB) ListBackup(path string) []uint64 {
-
-// }
-
+// Load restor the database from a backup file
 func (d *DB) Load(path string) error {
 	zipReader, openZipErr := zip.OpenReader(path)
 	if openZipErr != nil {
 		return openZipErr
 	}
+
+	config := new(archive)
 
 	for _, file := range zipReader.File {
 		switch file.Name {
@@ -238,45 +237,25 @@ func (d *DB) Load(path string) error {
 				return openConfigReaderErr
 			}
 
-			config := new(archive)
 			decodeErr := json.NewDecoder(configReader).Decode(config)
 			if decodeErr != nil {
 				return decodeErr
 			}
+		}
+	}
 
-			for _, collectionName := range config.Collections {
-				collection, useCollectionErr := d.Use(collectionName)
-				if useCollectionErr != nil {
-					return useCollectionErr
-				}
-				for _, index := range config.Indexes[collectionName] {
-					collection.SetIndex(index.Name, index.Type, index.Selector...)
-				}
-			}
+	// Add the indexes to the filledup database
+	for _, collectionName := range config.Collections {
+		collection, useCollectionErr := d.Use(collectionName)
+		if useCollectionErr != nil {
+			return useCollectionErr
+		}
+		for _, index := range config.Indexes[collectionName] {
+			collection.SetIndex(index.Name, index.Type, index.Selector...)
 		}
 	}
 	return nil
 }
-
-// func ()  {
-
-// }
-
-// func (d *DB) setConfig(file *os.File, since uint64) error {
-// 	ret := new(archive)
-
-// 	info, statErr := file.Stat()
-// 	if statErr != nil {
-// 		return nil, statErr
-// 	}
-
-// 	zipWriter, err := zip.NewWriter(file)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	archive.
-// }
 
 func (d *DB) loadArchive() *archive {
 	ret := new(archive)
@@ -294,60 +273,3 @@ func (d *DB) loadArchive() *archive {
 
 	return ret
 }
-
-// func (d *DB) loadArchive(path string) (_ *archive, close func(), _ error) {
-// 	file, openFileErr := os.OpenFile(path, os.O_CREATE|os.O_RDWR, FilePermission)
-// 	if openFileErr != nil {
-// 		return nil, nil, openFileErr
-// 	}
-
-// 	ret := new(archive)
-// 	ret.file = file
-
-// 	r, loadZipErr := d.getZipReader(file)
-// 	if loadZipErr != nil {
-// 		return nil, nil, loadZipErr
-// 	}
-
-// 	// Iterate through the files in the archive,
-// 	// printing some of their contents.
-// 	for _, f := range r.File {
-// 		if f.Name == "archive.json" {
-// 			fileAsReader, openFileErr := f.Open()
-// 			if openFileErr != nil {
-// 				return nil, nil, openFileErr
-// 			}
-
-// 			buf := make([]byte, 1000*100)
-// 			n, readErr := fileAsReader.Read(buf)
-// 			if readErr != nil {
-// 				return nil, nil, readErr
-// 			} else {
-// 				buf = buf[:n]
-// 			}
-
-// 			unmarshalErr := json.Unmarshal(buf, ret)
-// 			if unmarshalErr != nil {
-// 				return nil, nil, unmarshalErr
-// 			}
-
-// 			return ret, nil, nil
-// 		}
-// 	}
-
-// 	return ret, func() { file.Close() }, nil
-// }
-
-// func (d *DB) getZipReader(file *os.File) (*zip.Reader, error) {
-// 	info, statErr := file.Stat()
-// 	if statErr != nil {
-// 		return nil, statErr
-// 	}
-// 	// Open a zip archive for reading.
-// 	r, err := zip.NewReader(file, info.Size())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return r, nil
-// }
