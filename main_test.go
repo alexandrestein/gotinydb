@@ -267,13 +267,50 @@ func TestBackup(t *testing.T) {
 	err := db.Backup(path, 0)
 	if err != nil {
 		t.Error(err)
+		return
 	}
+	defer os.RemoveAll(path)
 
-	db2Conf := NewDefaultOptions(fmt.Sprintf("%s/backupRestor", os.TempDir()))
+	restoredDBPath := fmt.Sprintf("%s/backupRestor", os.TempDir())
+	db2Conf := NewDefaultOptions(restoredDBPath)
 	db2, _ := Open(ctx, db2Conf)
+	defer os.RemoveAll(restoredDBPath)
 
 	err = db2.Load(path)
 	if err != nil {
 		t.Error(err)
+		return
+	}
+
+	collection, getColErr := db2.Use("testCol")
+	if getColErr != nil {
+		t.Error(getColErr)
+		return
+	}
+
+	response, queryErr := collection.Query(
+		NewQuery().SetFilter(
+			NewFilter(Equal).CompareTo("witt-77@clayton.com").SetSelector("Email"),
+		),
+	)
+	if queryErr != nil {
+		t.Error(queryErr)
+		return
+	}
+
+	backedUpUser := new(User)
+	id, oneErr := response.One(backedUpUser)
+	if oneErr != nil {
+		t.Error(oneErr)
+		return
+	}
+
+	if id != "9" {
+		t.Errorf("ID %q is not what is expected %q", id, "9")
+		return
+	}
+	if backedUpUser == nil {
+		t.Errorf("pointer is nil")
+		return
 	}
 }

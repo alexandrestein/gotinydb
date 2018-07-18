@@ -228,15 +228,34 @@ func (d *DB) Load(path string) error {
 				return openErr
 			}
 
-			return d.valueStore.Load(reader)
-			// if loadErr != nil {
-			// 	return loadErr
-			// }
+			loadErr := d.valueStore.Load(reader)
+			if loadErr != nil {
+				return loadErr
+			}
 		case "config.json":
-			continue
+			configReader, openConfigReaderErr := file.Open()
+			if openConfigReaderErr != nil {
+				return openConfigReaderErr
+			}
+
+			config := new(archive)
+			decodeErr := json.NewDecoder(configReader).Decode(config)
+			if decodeErr != nil {
+				return decodeErr
+			}
+
+			for _, collectionName := range config.Collections {
+				collection, useCollectionErr := d.Use(collectionName)
+				if useCollectionErr != nil {
+					return useCollectionErr
+				}
+				for _, index := range config.Indexes[collectionName] {
+					collection.SetIndex(index.Name, index.Type, index.Selector...)
+				}
+			}
 		}
 	}
-	return fmt.Errorf("no backup found")
+	return nil
 }
 
 // func ()  {
