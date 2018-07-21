@@ -26,6 +26,7 @@ Take a look at [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb) for
 
 ### Maybe for v1.1.0
 
+* Make a backup service to be able to have a separate backup managed by a dedicated backup service. The goal whould be to have let's say one backup services for many working database instances. Like there is one place to keep safe groups of applications.
 * Add "has" or "exist" filter
 * Make incremental backups
 * Support float if asked
