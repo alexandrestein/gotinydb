@@ -251,7 +251,10 @@ func (d *DB) Load(path string) error {
 			return useCollectionErr
 		}
 		for _, index := range config.Indexes[collectionName] {
-			collection.SetIndex(index.Name, index.Type, index.Selector...)
+			err := collection.SetIndex(index.Name, index.Type, index.Selector...)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
