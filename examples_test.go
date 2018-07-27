@@ -21,31 +21,35 @@ var (
 
 func Example() {
 	// getTestPathChan is an test channel to get test path to TMP directory
-	dbTestPath := <-getTestPathChan
+	dbTestPath := "basicExample"
+	defer os.RemoveAll(dbTestPath)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db, openDBErr := Open(ctx, NewDefaultOptions(dbTestPath))
+	db, openDBErr := Open(ctx,
+		NewDefaultOptions(dbTestPath),
+	)
+
 	if openDBErr != nil {
-		log.Fatal(openDBErr)
+		log.Print(openDBErr)
 		return
 	}
 	defer db.Close()
-	// Clean database directory after the test
-	defer os.RemoveAll(dbTestPath)
 
 	// Open a collection
-	c, useDBErr := db.Use("testCol")
+	c, useDBErr := db.Use("users")
 	if useDBErr != nil {
-		log.Println(useDBErr)
+		log.Print(useDBErr)
 		return
 	}
 
 	// Setup indexexes
-	c.SetIndex("email", StringIndex, "Email")
-	c.SetIndex("projects counter", StringIndex, "NbProject")
-	c.SetIndex("last login", StringIndex, "LastLogin")
+	indexErr := c.SetIndex("email", StringIndex, "Email")
+	if indexErr != nil {
+		log.Print(indexErr)
+		return
+	}
 
 	// Example struct
 	record := struct {
@@ -57,16 +61,35 @@ func Example() {
 		316,
 		time.Time{},
 	}
+
 	// Save it in DB
 	if err := c.Put("id", record); err != nil {
-		log.Println(err)
+		log.Print(err)
 		return
 	}
 
+	// Initialize a query pointer
+	queryPointer := NewQuery()
+
+	// Build the filter
+	queryFilter := NewFilter(Equal).
+		SetSelector("Email").
+		CompareTo("jonas-90@tlaloc.com")
+
+	// Add the filter to the query pointer
+	queryPointer.SetFilter(queryFilter)
+
+	// Or this could be:
+	queryPointer = NewQuery().SetFilter(
+		NewFilter(Equal).
+			SetSelector("Email").
+			CompareTo("jonas-90@tlaloc.com"),
+	)
+
 	// Query the collection to get the struct based on the Email field
-	response, queryErr := c.Query(NewQuery().SetFilter(NewFilter(Equal).SetSelector("Email").CompareTo("jonas-90@tlaloc.com")))
+	response, queryErr := c.Query(queryPointer)
 	if queryErr != nil {
-		log.Println(queryErr)
+		log.Print(queryErr)
 		return
 	}
 
@@ -74,7 +97,7 @@ func Example() {
 	retrievedRecord := new(User)
 	id, respErr := response.One(retrievedRecord)
 	if respErr != nil {
-		log.Println(respErr)
+		log.Print(respErr)
 		return
 	}
 
