@@ -95,11 +95,6 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 	i.options = c.options
 	i.getTx = c.db.Begin
 
-	c.indexes = append(c.indexes, i)
-	if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
-		return errSetingIndexIntoConfig
-	}
-
 	if updateErr := c.db.Update(func(tx *bolt.Tx) error {
 		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
 		if createErr != nil {
@@ -112,6 +107,11 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 
 	if err := c.indexAllValues(i); err != nil {
 		return err
+	}
+
+	c.indexes = append(c.indexes, i)
+	if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
+		return errSetingIndexIntoConfig
 	}
 
 	return nil
