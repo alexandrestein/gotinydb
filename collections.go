@@ -105,13 +105,13 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 		return updateErr
 	}
 
-	if err := c.indexAllValues(i); err != nil {
-		return err
-	}
-
 	c.indexes = append(c.indexes, i)
 	if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
 		return errSetingIndexIntoConfig
+	}
+
+	if err := c.indexAllValues(i); err != nil {
+		return err
 	}
 
 	return nil
