@@ -50,11 +50,10 @@ func Basic() error {
 	}
 
 	// Setup indexexes
-	c.SetIndex("email", gotinydb.StringIndex, "Email")
-	// indexErr := c.SetIndex("email", gotinydb.StringIndex, "Email")
-	// if indexErr != nil {
-	// 	return indexErr
-	// }
+	indexErr := c.SetIndex("email", gotinydb.StringIndex, "Email")
+	if indexErr != nil {
+		return indexErr
+	}
 
 	// Example struct
 	record := struct {
@@ -83,7 +82,7 @@ func Basic() error {
 	// Add the filter to the query pointer
 	queryPointer.SetFilter(queryFilter)
 
-	// It could be
+	// Or this could be:
 	queryPointer = gotinydb.NewQuery().SetFilter(
 		gotinydb.NewFilter(gotinydb.Equal).
 			SetSelector("Email").
@@ -112,9 +111,6 @@ func Basic() error {
 }
 
 func main() {
-	if err := Basic(); err != nil {
-		fmt.Println(err)
-	}
 	if err := Basic(); err != nil {
 		fmt.Println(err)
 	}
