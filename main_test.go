@@ -273,6 +273,7 @@ func TestBackup(t *testing.T) {
 
 	restoredDBPath := fmt.Sprintf("%s/backupRestor", os.TempDir())
 	db2Conf := NewDefaultOptions(restoredDBPath)
+	db2Conf.TransactionTimeOut = db2Conf.TransactionTimeOut * 5
 	db2, _ := Open(ctx, db2Conf)
 	defer os.RemoveAll(restoredDBPath)
 
