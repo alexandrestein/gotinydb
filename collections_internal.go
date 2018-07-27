@@ -312,7 +312,7 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 					fromTree.(*idType).Increment()
 				}
 			}
-			// Save the fact that one more query has been respond
+			// Save the fact that one more query has respond
 			nbToDo--
 			// If nomore query to wait, quit the loop
 			if nbToDo <= 0 {
