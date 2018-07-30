@@ -52,7 +52,9 @@ func Basic() error {
 	// Setup indexexes
 	indexErr := c.SetIndex("email", gotinydb.StringIndex, "Email")
 	if indexErr != nil {
-		return indexErr
+		if indexErr.Error() != "bucket already exists" {
+			return indexErr
+		}
 	}
 
 	// Example struct
