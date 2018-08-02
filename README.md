@@ -28,14 +28,12 @@ Take a look at [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb) for
 * [Btree](https://github.com/google/btree) - Is the in memory list used to save sub queries elements.
 * [Structs](https://github.com/fatih/structs) - Used to cut objects in part for indexing
 
-## Road Map
+## Possible Road Map
 
-### Maybe for v1.1.0
-
-* Make a backup service to be able to have a separate backup managed by a dedicated backup service. The goal whould be to have let's say one backup services for many working database instances. Like there is one place to keep safe groups of applications.
+* Make a backup service or replication system
 * Add "has" or "exist" filter
 * Make incremental backups
-* Support float if asked
+* Support float
 * Full text search with [Bleve](http://www.blevesearch.com/)
 
 ## Contributing
