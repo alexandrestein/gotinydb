@@ -3,17 +3,22 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:4c5803754aedbf42ec7da8cdfea47d36337397267851828610a4f9a76c1b7fd9"
   name = "github.com/AndreasBriese/bbloom"
   packages = ["."]
+  pruneopts = "UT"
   revision = "28f7e881ca57bc00e028f9ede9f0d9104cfeef5e"
 
 [[projects]]
+  digest = "1:0f98f59e9a2f4070d66f0c9c39561f68fcd1dc837b22a852d28d0003aebd1b1e"
   name = "github.com/boltdb/bolt"
   packages = ["."]
+  pruneopts = "UT"
   revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
   version = "v1.3.1"
 
 [[projects]]
+  digest = "1:e69eed3a095cfa14010241bec50ed52af765480899ac95ffd5687f35091f9e09"
   name = "github.com/dgraph-io/badger"
   packages = [
     ".",
@@ -21,75 +26,101 @@
     "protos",
     "skl",
     "table",
-    "y"
+    "y",
   ]
+  pruneopts = "UT"
   revision = "391b6d3b93e6014fe8c2971fcc0c1266e47dbbd9"
   version = "v1.5.3"
 
 [[projects]]
   branch = "master"
+  digest = "1:8583eab935e3d99d3a7ac489cd2ee7c8e95eecd7c64ab1fc8382746dacaf8563"
   name = "github.com/dgryski/go-farm"
   packages = ["."]
+  pruneopts = "UT"
   revision = "2de33835d10275975374b37b2dcfd22c9020a1f5"
 
 [[projects]]
+  digest = "1:ca82a3b99694824c627573c2a76d0e49719b4a9c02d1d85a2ac91f1c1f52ab9b"
   name = "github.com/fatih/structs"
   packages = ["."]
+  pruneopts = "UT"
   revision = "a720dfa8df582c51dee1b36feabb906bde1588bd"
   version = "v1.0"
 
 [[projects]]
+  digest = "1:15042ad3498153684d09f393bbaec6b216c8eec6d61f63dff711de7d64ed8861"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
+  pruneopts = "UT"
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
   version = "v1.1.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:9887333bbef17574b1db5f9893ea137ac44107235d624408a3ac9e0b98fbb2cb"
   name = "github.com/google/btree"
   packages = ["."]
+  pruneopts = "UT"
   revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
 
 [[projects]]
   branch = "master"
+  digest = "1:c99caced18127b6ae7a0be25bdf64155a8b5337d18fce1e7df0a8e68beb18767"
   name = "github.com/minio/highwayhash"
   packages = ["."]
+  pruneopts = "UT"
   revision = "85fc8a2dacad36a6beb2865793cd81363a496696"
 
 [[projects]]
   branch = "master"
+  digest = "1:3bf17a6e6eaa6ad24152148a631d18662f7212e21637c2699bff3369b7f00fa2"
   name = "github.com/petar/GoLLRB"
   packages = ["llrb"]
+  pruneopts = "UT"
   revision = "53be0d36a84c2a886ca057d34b6aa4468df9ccb4"
 
 [[projects]]
+  digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
   name = "github.com/pkg/errors"
   packages = ["."]
+  pruneopts = "UT"
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:cedc1a3a48e70dec85168f8c19de5433bf54a75da94c4d165c4cbf400b6a1e49"
   name = "golang.org/x/net"
   packages = [
     "context",
     "internal/timeseries",
-    "trace"
+    "trace",
   ]
-  revision = "4cb1c02c05b0e749b0365f61ae859a8e0cfceed9"
+  pruneopts = "UT"
+  revision = "f4c29de78a2a91c00474a2e689954305c350adf9"
 
 [[projects]]
   branch = "master"
+  digest = "1:70656e26ab4a96e683a21d677630edb5239a3d60b2d54bdc861c808ab5aa42c7"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
-    "unix"
+    "unix",
   ]
-  revision = "7138fd3d9dc8335c567ca206f4333fb75eb05d56"
+  pruneopts = "UT"
+  revision = "3dc4335d56c789b04b0ba99b7a37249d9b614314"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8524fa2853ba1838c9599b6fe8c9875ccb61f1d616531981e75991a90a92280b"
+  input-imports = [
+    "github.com/boltdb/bolt",
+    "github.com/dgraph-io/badger",
+    "github.com/dgraph-io/badger/options",
+    "github.com/fatih/structs",
+    "github.com/google/btree",
+    "github.com/minio/highwayhash",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
