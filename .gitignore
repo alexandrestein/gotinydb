@@ -1,3 +1,6 @@
 /vendor/
 debug.test
 .vscode
+
+/examples/basicExample
+/examples/vendor
