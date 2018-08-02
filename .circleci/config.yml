@@ -20,9 +20,9 @@ jobs:
     working_directory: /go/src/github.com/alexandrestein/gotinydb
     steps:
       # specify any bash command here prefixed with `run: `
-      
+
       - dep
-      - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run: go get -u github.com/golang/dep/cmd/dep
       - run: dep ensure -v
       
       - vgo 
