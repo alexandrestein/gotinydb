@@ -19,16 +19,17 @@ jobs:
     ####   /go/src/bitbucket.org/circleci/go-tool
     working_directory: /go/src/github.com/alexandrestein/gotinydb
     steps:
+      - checkout
       # specify any bash command here prefixed with `run: `
 
-      - dep
+      # dep
       - run: go get -u github.com/golang/dep/cmd/dep
       - run: dep ensure -v
       
-      - vgo 
+      # vgo 
       - run: go get -u golang.org/x/vgo
       - run: vgo get -v
 
-      - test
+      # test
       - run: go test -v -race ./...
       - run: vgo test -v -race ./...
