@@ -2,6 +2,8 @@ language: go
 
 go_import_path: github.com/alexandrestein/gotinydb
 
+sudo: required 
+
 go:
   - "1.10.x"
   - master
