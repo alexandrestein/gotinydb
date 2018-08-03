@@ -61,6 +61,7 @@ func TestOpenAndClose(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	db = nil
 
 	var err error
 	db, err = Open(ctx, NewDefaultOptions(testPath))
@@ -95,6 +96,28 @@ func TestOpenAndClose(t *testing.T) {
 
 	if !reflect.DeepEqual(user, unmarshalDataSet(dataSet1)[0]) {
 		t.Errorf("%v is not the right value. Expected %v", user, unmarshalDataSet(dataSet1)[0])
+		return
+	}
+
+	response, queryErr = c.Query(NewQuery().SetFilter(NewFilter(Greater).SetSelector("Email").CompareTo("jonas")).SetLimits(1, 1000))
+	if queryErr != nil {
+		t.Error(queryErr)
+		return
+	}
+
+	id, respErr = response.One(user)
+	if respErr != nil {
+		t.Error(respErr)
+		return
+	}
+
+	if id != "99" {
+		t.Errorf("%s is not the right ID. Expected %s", id, "99")
+		return
+	}
+
+	if !reflect.DeepEqual(user, unmarshalDataSet(dataSet1)[99]) {
+		t.Errorf("%v is not the right value. Expected %v", user, unmarshalDataSet(dataSet1)[99])
 		return
 	}
 }
