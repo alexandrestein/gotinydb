@@ -196,7 +196,7 @@ func TestCollection_Query(t *testing.T) {
 			NewQuery().SetOrder(false, "Balance").SetFilter(
 				NewFilter(Between).SetSelector("Balance").EqualWanted().
 					CompareTo(-104466272306065862).CompareTo(997373309132031595),
-			).SetLimits(10, 10).SetTimeout(time.Nanosecond),
+			).SetLimits(10, 10).SetTimeout(0),
 			true,
 		},
 	}
