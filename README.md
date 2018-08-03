@@ -2,7 +2,6 @@
 
 [![GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb?status.svg)](https://godoc.org/github.com/alexandrestein/gotinydb)
 [![Travis Build](https://travis-ci.org/alexandrestein/gotinydb.svg?branch=master)](https://travis-ci.org/alexandrestein/gotinydb) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Falexandrestein%2Fgotinydb.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Falexandrestein%2Fgotinydb?ref=badge_shield)
-
 [![AppVeyor Build](https://ci.appveyor.com/api/projects/status/7kr5y6kk9jtkg261?svg=true)](https://ci.appveyor.com/project/alexandrestein/gotinydb)
 [![CircleCI](https://circleci.com/gh/alexandrestein/gotinydb.svg?style=svg)](https://circleci.com/gh/alexandrestein/gotinydb)
 [![codecov](https://codecov.io/gh/alexandreStein/GoTinyDB/branch/master/graph/badge.svg)](https://codecov.io/gh/alexandreStein/GoTinyDB) 
