@@ -61,7 +61,6 @@ For future the versions, see the [tags on this repository](https://github.com/al
 
 This project is licensed under the "Apache License, Version 2.0" - see the [LICENSE](LICENSE) file for details or follow this [link](http://www.apache.org/licenses/LICENSE-2.0).
 
-
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Falexandrestein%2Fgotinydb.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Falexandrestein%2Fgotinydb?ref=badge_large)
 
 ## Acknowledgments
