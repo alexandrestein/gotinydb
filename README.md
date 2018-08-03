@@ -48,8 +48,10 @@ You can use [dep](https://github.com/golang/dep) or [vgo](https://github.com/gol
 
 ## Versioning
 
-Version `v1.0.0` is now ready.
-For future the versions, see the [tags on this repository](https://github.com/alexandrestein/gotinydb/tags).
+Version `v1.0.0` is not ready.
+It's under development and versions have the form of v0.0.x.
+
+There is no compatibility promise for now.
 
 ## Author
 
