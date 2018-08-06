@@ -276,3 +276,8 @@ func (d *DB) loadArchive() *archive {
 
 	return ret
 }
+
+// GetCollections returns all collection pointers
+func (d *DB) GetCollections() []*Collection {
+	return d.collections
+}
