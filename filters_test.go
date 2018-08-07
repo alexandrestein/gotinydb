@@ -19,7 +19,7 @@ func TestAction_ValueToCompareAsBytes(t *testing.T) {
 		}, {
 			"String upper",
 			"String",
-			[]byte("string"),
+			[]byte("String"),
 		}, {
 			"int -1",
 			-1,

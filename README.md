@@ -9,7 +9,13 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/alexandrestein/gotinydb)](https://goreportcard.com/report/github.com/alexandrestein/gotinydb) 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
-The goal is to have a fairly simple database which is light and don't needs to fit in RAM. It supports indexing for most of the basic Golang types.
+The goal is to have a fairly simple database which is light and don't needs to fit in RAM. It supports indexing for:
+
+- string
+- int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64
+- time.Time
+
+If the selector point to an array values inside the array are indexed.
 
 ## Installing
 

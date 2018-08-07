@@ -3,7 +3,6 @@ package gotinydb
 import (
 	"encoding/binary"
 	"math"
-	"strings"
 	"time"
 )
 
@@ -15,9 +14,7 @@ func stringToBytes(input interface{}) ([]byte, error) {
 		return nil, ErrWrongType
 	}
 
-	lowerCaseString := strings.ToLower(typedInput)
-
-	return []byte(lowerCaseString), nil
+	return []byte(typedInput), nil
 }
 
 // intToBytes converter from a int or uint of any size (int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64)
