@@ -51,17 +51,39 @@ func (i *indexType) apply(object interface{}) (contentToIndex []byte, ok bool) {
 
 func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex []byte, ok bool) {
 	var field *structs.Field
-	for i, fieldName := range i.Selector {
-		if i == 0 {
+	for j, fieldName := range i.Selector {
+		if j == 0 {
 			field, ok = object.FieldOk(fieldName)
+			// Check the JSON tag
+			if !ok {
+				field, ok = i.testJSONTag(object.Fields(), fieldName)
+			}
 		} else {
 			field, ok = field.FieldOk(fieldName)
+			// Check the JSON tag
+			if !ok {
+				field, ok = i.testJSONTag(object.Fields(), fieldName)
+			}
 		}
+
 		if !ok {
+			// return i.testJSONTag(object)
 			return nil, false
 		}
 	}
 	return i.testType(field.Value())
+}
+
+func (i *indexType) testJSONTag(fields []*structs.Field, fieldName string) (field *structs.Field, ok bool) {
+	for _, tagField := range fields {
+		if tagField.Tag("json") == fieldName {
+			ok = true
+			field = tagField
+			return
+		}
+	}
+
+	return
 }
 
 func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex []byte, ok bool) {

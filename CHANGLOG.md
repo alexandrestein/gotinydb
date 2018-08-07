@@ -12,4 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add CHANGELOG.md.
 - Methods to show collections and indexes informations.
 
+### Fixed
+
+- Consistent indexing with JSON tags. [#6](https://github.com/alexandrestein/gotinydb/issues/6)
+
 ## [0.0.4] - 2018-8-3

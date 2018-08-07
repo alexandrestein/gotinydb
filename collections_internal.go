@@ -191,7 +191,6 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, wgA
 	}
 
 	return c.endOfIndexUpdate(ctx, tx, errChan, wgActions, wgCommitted)
-	// })
 }
 
 func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
