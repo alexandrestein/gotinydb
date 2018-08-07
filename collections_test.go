@@ -780,7 +780,76 @@ func TestRollback(t *testing.T) {
 
 	oneAsBytes, _ = c.Get("1", nil)
 	if string(oneAsBytes) != `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00","email":"geritol-60@puget.com"}` {
-		t.Errorf("Value is not what is expected. Had %s but wants %s", string(oneAsBytes) , `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00","email":"geritol-60@puget.com"}`)
+		t.Errorf("Value is not what is expected. Had %s but wants %s", string(oneAsBytes), `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00","email":"geritol-60@puget.com"}`)
 		return
+	}
+}
+
+func TestSliceIndexing(t *testing.T) {
+	testPath := <-getTestPathChan
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	options := NewDefaultOptions(testPath)
+	options.TransactionTimeOut = time.Second * 100
+	options.QueryTimeOut = time.Second * 100
+
+	db, openDBErr := Open(ctx, options)
+	if openDBErr != nil {
+		t.Error(openDBErr)
+		return
+	}
+
+	c, userDBErr := db.Use("testCol")
+	if userDBErr != nil {
+		t.Error(userDBErr)
+		return
+	}
+
+	err := c.SetIndex("names", StringIndex, "Names")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	testSliceStruct := struct {
+		Names []string
+	}{
+		Names: []string{"John", "Fitzgerald", "Jack", "Kennedy"},
+	}
+
+	err = c.Put("jfk", testSliceStruct)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	query := NewQuery().SetFilter(
+		NewFilter(Equal).CompareTo("Jack").SetSelector("Names"),
+	)
+
+	var response *Response
+	response, err = c.Query(query)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	testResponseSliceStruct := struct {
+		Names []string
+	}{}
+
+	var id string
+	id, err = response.One(&testResponseSliceStruct)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if id != "jfk" {
+		t.Errorf("returned id: %v is not equal to the expected one: %v", id, "jfk")
+	}
+	if !reflect.DeepEqual(testSliceStruct, testResponseSliceStruct) {
+		t.Errorf("returned values: %v is not equal to the expected one: %v", testSliceStruct, testResponseSliceStruct)
 	}
 }

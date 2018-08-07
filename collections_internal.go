@@ -161,26 +161,30 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, wgA
 	}
 
 	for _, index := range c.indexes {
-		if indexedValue, apply := index.apply(writeTransaction.contentInterface); apply {
+		if indexedValues, apply := index.apply(writeTransaction.contentInterface); apply {
 			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
 
-			idsAsBytes := indexBucket.Get(indexedValue)
-			ids, parseIDsErr := newIDs(ctx, 0, nil, idsAsBytes)
-			if parseIDsErr != nil {
-				errChan <- parseIDsErr
-				return parseIDsErr
+			// If the selector hit a slice.
+			// apply can returns more than one value to index
+			for _, indexedValue := range indexedValues {
+				idsAsBytes := indexBucket.Get(indexedValue)
+				ids, parseIDsErr := newIDs(ctx, 0, nil, idsAsBytes)
+				if parseIDsErr != nil {
+					errChan <- parseIDsErr
+					return parseIDsErr
+				}
+
+				id := newID(ctx, writeTransaction.id)
+				ids.AddID(id)
+				idsAsBytes = ids.MustMarshal()
+
+				if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
+					errChan <- err
+					return err
+				}
+
+				refs.setIndexedValue(index.Name, index.SelectorHash, indexedValue)
 			}
-
-			id := newID(ctx, writeTransaction.id)
-			ids.AddID(id)
-			idsAsBytes = ids.MustMarshal()
-
-			if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
-				errChan <- err
-				return err
-			}
-
-			refs.setIndexedValue(index.Name, index.SelectorHash, indexedValue)
 		}
 	}
 

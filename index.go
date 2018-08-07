@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 
 	"github.com/fatih/structs"
 )
@@ -20,7 +21,7 @@ func newIndex(name string, t IndexType, selector ...string) *indexType {
 
 // apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
-func (i *indexType) apply(object interface{}) (contentToIndex []byte, ok bool) {
+func (i *indexType) apply(object interface{}) (contentToIndex [][]byte, ok bool) {
 	if structs.IsStruct(object) {
 		return i.applyToStruct(structs.New(object))
 	}
@@ -32,7 +33,7 @@ func (i *indexType) apply(object interface{}) (contentToIndex []byte, ok bool) {
 	return nil, false
 }
 
-func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex []byte, ok bool) {
+func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex [][]byte, ok bool) {
 	var field *structs.Field
 	for j, fieldName := range i.Selector {
 		if j == 0 {
@@ -69,7 +70,7 @@ func (i *indexType) testJSONTag(fields []*structs.Field, fieldName string) (fiel
 	return
 }
 
-func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex []byte, ok bool) {
+func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex [][]byte, ok bool) {
 	var field interface{}
 	for i, fieldName := range i.Selector {
 		if i == 0 {
@@ -108,7 +109,36 @@ func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
 	return false
 }
 
-func (i *indexType) testType(value interface{}) (contentToIndex []byte, ok bool) {
+func (i *indexType) testType(value interface{}) (contentToIndexes [][]byte, ok bool) {
+	switch reflect.TypeOf(value).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(value)
+
+		for j := 0; j < s.Len(); j++ {
+			contentToIndex, ok := i.convertType(s.Index(j).Interface())
+			if !ok {
+				continue
+			}
+
+			contentToIndexes = append(contentToIndexes, contentToIndex)
+		}
+	default:
+		contentToIndex, ok := i.convertType(value)
+		if !ok {
+			return nil, false
+		}
+
+		contentToIndexes = append(contentToIndexes, contentToIndex)
+	}
+
+	if len(contentToIndexes) <= 0 {
+		return nil, false
+	}
+
+	return contentToIndexes, true
+}
+
+func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bool) {
 	var conversionFunc func(interface{}) ([]byte, error)
 	switch i.Type {
 	case StringIndex:
@@ -120,10 +150,12 @@ func (i *indexType) testType(value interface{}) (contentToIndex []byte, ok bool)
 	default:
 		return nil, false
 	}
+
 	var err error
 	if contentToIndex, err = conversionFunc(value); err != nil {
 		return nil, false
 	}
+
 	return contentToIndex, true
 }
 
