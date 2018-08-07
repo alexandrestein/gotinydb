@@ -257,3 +257,18 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 
 	return timestamp, nil
 }
+
+// GetIndexesInfo retruns a slice with indexes settings
+func (c *Collection) GetIndexesInfo() []*IndexInfo {
+	indexesInfo := make([]*IndexInfo, len(c.indexes))
+	for i := 0; i < len(c.indexes); i++ {
+		indexInfo := &IndexInfo{
+			Name:     c.indexes[i].Name,
+			Selector: c.indexes[i].Selector,
+			Type:     c.indexes[i].Type,
+		}
+		indexesInfo[i] = indexInfo
+	}
+
+	return indexesInfo
+}

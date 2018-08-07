@@ -205,3 +205,17 @@ func (r *refs) asBytes() []byte {
 	ret, _ := json.Marshal(r)
 	return ret
 }
+
+// GetType returns the string representation of the index type
+func (i *IndexInfo) GetType() string {
+	switch i.Type {
+	case StringIndex:
+		return StringIndexString
+	case IntIndex:
+		return IntIndexString
+	case TimeIndex:
+		return TimeIndexString
+	default:
+		return ""
+	}
+}

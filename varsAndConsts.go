@@ -88,4 +88,8 @@ const (
 	StringIndex IndexType = iota
 	IntIndex
 	TimeIndex
+
+	StringIndexString string = "string"
+	IntIndexString    string = "int"
+	TimeIndexString   string = "time"
 )

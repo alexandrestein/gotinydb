@@ -85,7 +85,7 @@ type (
 		Refs []*ref
 	}
 
-	// Ref defines the relations between a object with some index with indexed value
+	// ref defines the relations between a object with some index with indexed value
 	ref struct {
 		IndexName    string
 		IndexHash    uint64
@@ -109,5 +109,13 @@ type (
 		Timestamp          uint64
 
 		file *os.File
+	}
+
+	// IndexInfo is returned by *Collection.GetIndexesInfo and let call see
+	// what indexes are present in the collection.
+	IndexInfo struct {
+		Name     string
+		Selector []string
+		Type     IndexType
 	}
 )
