@@ -160,3 +160,62 @@ func updateUser(c *Collection, v1, v2, v3 *User, done chan error) error {
 	return nil
 }
 
+func TestGetInfo(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db, _ := fillUpDB(ctx, t, dataSet1)
+	if db == nil {
+		return
+	}
+	defer db.Close()
+	defer os.RemoveAll(db.options.Path)
+
+	testPath := db.options.Path
+
+	if err := db.Close(); err != nil {
+		t.Error(err)
+		return
+	}
+	db = nil
+
+	var err error
+	db, err = Open(ctx, NewDefaultOptions(testPath))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	c, userDBErr := db.Use("testCol")
+	if userDBErr != nil {
+		t.Error(err)
+		return
+	}
+
+	collections := db.GetCollections()
+	if len(collections) != 1 {
+		t.Errorf("it must be only one collection and has %d", len(collections))
+		return
+	}
+
+	errFunc := func(expected, had string) {
+		t.Errorf("the index name translation is not correct. Expected %q but had %q", expected, had)
+	}
+
+	indexesInfo := c.GetIndexesInfo()
+	if len(indexesInfo) != 6 {
+		t.Errorf("it must have 6 indexes but has %d", len(indexesInfo))
+	}
+	for _, indexInfo := range indexesInfo {
+		indexTypeAsString := indexInfo.GetType()
+		if indexInfo.Type == StringIndex && indexTypeAsString != StringIndexString {
+			errFunc(indexTypeAsString, StringIndexString)
+		} else if indexInfo.Type == IntIndex && indexTypeAsString != IntIndexString {
+			errFunc(indexTypeAsString, IntIndexString)
+		} else if indexInfo.Type == TimeIndex && indexTypeAsString != TimeIndexString {
+			errFunc(indexTypeAsString, TimeIndexString)
+		}
+	}
+
+	return
+}
