@@ -30,23 +30,6 @@ func (i *indexType) apply(object interface{}) (contentToIndex []byte, ok bool) {
 	}
 
 	return nil, false
-	// structMap := structs.Map(object)
-	// var field interface{}
-	// for i, fieldName := range i.Selector {
-	// 	if i == 0 {
-	// 		field, ok = structMap[fieldName]
-	// 	} else {
-	// 		fieldMap, mapConvertionOk := field.(map[string]interface{})
-	// 		if !mapConvertionOk {
-	// 			return nil, false
-	// 		}
-	// 		field, ok = fieldMap[fieldName]
-	// 	}
-	// 	if !ok {
-	// 		return nil, false
-	// 	}
-	// }
-	// return i.testType(field)
 }
 
 func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex []byte, ok bool) {

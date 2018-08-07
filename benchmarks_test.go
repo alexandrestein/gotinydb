@@ -280,10 +280,10 @@ func query(b *testing.B, parallel bool, simple bool) error {
 	var query *Query
 
 	if simple {
-		query = NewQuery().SetFilter(NewFilter(Greater).SetSelector("Email").CompareTo("a"))
+		query = NewQuery().SetFilter(NewFilter(Greater).SetSelector("email").CompareTo("a"))
 	} else {
 		query = NewQuery().
-			SetFilter(NewFilter(Between).SetSelector("Email").CompareTo("a").CompareTo("b")).
+			SetFilter(NewFilter(Between).SetSelector("email").CompareTo("a").CompareTo("b")).
 			SetFilter(NewFilter(Equal).SetSelector("Age").CompareTo(10)).
 			SetFilter(NewFilter(Greater).SetSelector("Balance").CompareTo(10000)).
 			SetFilter(NewFilter(Less).SetSelector("Balance").CompareTo(-100000))
@@ -316,13 +316,13 @@ func query(b *testing.B, parallel bool, simple bool) error {
 }
 
 func setOneIndex() {
-	benchmarkCollection.SetIndex("email", StringIndex, "Email")
+	benchmarkCollection.SetIndex("email", StringIndex, "email")
 }
 func delOneIndex() {
 	benchmarkCollection.DeleteIndex("email")
 }
 func setSixIndex() {
-	benchmarkCollection.SetIndex("email", StringIndex, "Email")
+	benchmarkCollection.SetIndex("email", StringIndex, "email")
 	benchmarkCollection.SetIndex("balance", IntIndex, "Balance")
 	benchmarkCollection.SetIndex("city", StringIndex, "Address", "City")
 	benchmarkCollection.SetIndex("zip", IntIndex, "Address", "ZipCode")

@@ -85,7 +85,7 @@ func setIndexes(c *Collection) error {
 		selector []string
 		t        IndexType
 	}{
-		{"email", []string{"Email"}, StringIndex},
+		{"email", []string{"email"}, StringIndex},
 		{"balance", []string{"Balance"}, IntIndex},
 		{"city", []string{"Address", "City"}, StringIndex},
 		{"zip", []string{"Address", "ZipCode"}, IntIndex},

@@ -17,7 +17,7 @@ var (
 type (
 	User struct {
 		ID        string
-		Email     string
+		Email     string `json:"email"`
 		Balance   int
 		Address   *Address
 		Age       uint
@@ -76,7 +76,7 @@ func TestOpenAndClose(t *testing.T) {
 		return
 	}
 
-	response, queryErr := c.Query(NewQuery().SetFilter(NewFilter(Equal).SetSelector("Email").CompareTo("jonas-90@tlaloc.com")))
+	response, queryErr := c.Query(NewQuery().SetFilter(NewFilter(Equal).SetSelector("email").CompareTo("jonas-90@tlaloc.com")))
 	if queryErr != nil {
 		t.Error(queryErr)
 		return
@@ -99,7 +99,7 @@ func TestOpenAndClose(t *testing.T) {
 		return
 	}
 
-	response, queryErr = c.Query(NewQuery().SetFilter(NewFilter(Greater).SetSelector("Email").CompareTo("jonas")).SetLimits(1, 1000))
+	response, queryErr = c.Query(NewQuery().SetFilter(NewFilter(Greater).SetSelector("email").CompareTo("jonas")).SetLimits(1, 1000))
 	if queryErr != nil {
 		t.Error(queryErr)
 		return
@@ -314,7 +314,7 @@ func TestBackup(t *testing.T) {
 
 	response, queryErr := collection.Query(
 		NewQuery().SetFilter(
-			NewFilter(Equal).CompareTo("witt-77@clayton.com").SetSelector("Email"),
+			NewFilter(Equal).CompareTo("witt-77@clayton.com").SetSelector("email"),
 		),
 	)
 	if queryErr != nil {

@@ -87,55 +87,55 @@ func TestCollection_Query(t *testing.T) {
 		args    *Query
 		wantErr bool
 	}{
-		// string index "Email" no oreder
+		// string index "email" no oreder
 		{
-			"Email Equal no order gödel-76",
+			"email Equal no order gödel-76",
 			NewQuery().SetTimeout(time.Hour).SetLimits(10, 0).SetFilter(
-				NewFilter(Equal).SetSelector("Email").
+				NewFilter(Equal).SetSelector("email").
 					CompareTo("gödel-76@rudolph.com"),
 			),
 			false,
 		}, {
-			"Email Greater no order f",
+			"email Greater no order f",
 			NewQuery().SetFilter(
-				NewFilter(Greater).SetSelector("Email").
+				NewFilter(Greater).SetSelector("email").
 					CompareTo("f"),
 			).SetLimits(5, 0),
 			false,
 		}, {
-			"Email Less no order k",
+			"email Less no order k",
 			NewQuery().SetFilter(
-				NewFilter(Less).SetSelector("Email").
+				NewFilter(Less).SetSelector("email").
 					CompareTo("k"),
 			).SetLimits(5, 0),
 			false,
 		}, {
-			"Email Between no order m to u",
+			"email Between no order m to u",
 			NewQuery().SetFilter(
-				NewFilter(Between).SetSelector("Email").
+				NewFilter(Between).SetSelector("email").
 					CompareTo("m").CompareTo("u"),
 			).SetLimits(5, 0),
 			false,
 		},
-		// string index "Email" with oreder
+		// string index "email" with oreder
 		{
-			"Email Greater ordered by Email descendent equal wanted f",
-			NewQuery().SetOrder(false, "Email").SetFilter(
-				NewFilter(Greater).SetSelector("Email").EqualWanted().
+			"email Greater ordered by email descendent equal wanted f",
+			NewQuery().SetOrder(false, "email").SetFilter(
+				NewFilter(Greater).SetSelector("email").EqualWanted().
 					CompareTo("f"),
 			).SetLimits(5, 0),
 			false,
 		}, {
-			"Email Less ordered by Age ascendent k",
+			"email Less ordered by Age ascendent k",
 			NewQuery().SetOrder(true, "Age").SetFilter(
-				NewFilter(Less).SetSelector("Email").
+				NewFilter(Less).SetSelector("email").
 					CompareTo("k"),
 			).SetLimits(5, 0),
 			false,
 		}, {
-			"Email Between ordered by Age descendent equal wanted m to u",
+			"email Between ordered by Age descendent equal wanted m to u",
 			NewQuery().SetOrder(false, "Age").SetFilter(
-				NewFilter(Between).SetSelector("Email").EqualWanted().
+				NewFilter(Between).SetSelector("email").EqualWanted().
 					CompareTo("m").CompareTo("u"),
 			).SetLimits(5, 0),
 			false,
@@ -143,11 +143,11 @@ func TestCollection_Query(t *testing.T) {
 
 		// many filters
 		{
-			"Age 19 and a < Email < j balance and last login after 6 month ego more than 0 order by email",
-			NewQuery().SetOrder(true, "Email").SetFilter(
+			"Age 19 and a < email < j balance and last login after 6 month ego more than 0 order by email",
+			NewQuery().SetOrder(true, "email").SetFilter(
 				NewFilter(Equal).SetSelector("Age").
 					CompareTo(uint(19))).SetFilter(
-				NewFilter(Between).SetSelector("Email").
+				NewFilter(Between).SetSelector("email").
 					CompareTo("a").CompareTo("j")).SetFilter(
 				NewFilter(Greater).SetSelector("Balance").
 					CompareTo(0)).SetFilter(
@@ -158,7 +158,7 @@ func TestCollection_Query(t *testing.T) {
 
 		{
 			"Many Equal integer filter limit 5 order by email",
-			NewQuery().SetOrder(true, "Email").SetFilter(
+			NewQuery().SetOrder(true, "email").SetFilter(
 				NewFilter(Equal).SetSelector("Age").
 					CompareTo(uint(5)),
 			).SetLimits(5, 0),
@@ -186,7 +186,7 @@ func TestCollection_Query(t *testing.T) {
 			false,
 		}, {
 			"Between int filter limit 10 order by email",
-			NewQuery().SetOrder(true, "Email").SetFilter(
+			NewQuery().SetOrder(true, "email").SetFilter(
 				NewFilter(Between).SetSelector("Address", "ZipCode").
 					CompareTo(uint(60)).CompareTo(uint(63)),
 			).SetLimits(10000, 0),
@@ -265,8 +265,16 @@ func doQueryTest(t *testing.T, resp *Response, q *Query) bool {
 			for i, fieldName := range filter.selector {
 				if i == 0 {
 					field, ok = userAsStruct.FieldOk(fieldName)
+					// test JSON tag
+					if !ok {
+						field, ok = testJSONTag(userAsStruct.Fields(), fieldName)
+					}
 				} else {
 					field, ok = field.FieldOk(fieldName)
+					// test JSON tag
+					if !ok {
+						field, ok = testJSONTag(field.Fields(), fieldName)
+					}
 				}
 				if !ok {
 					t.Errorf("the filed %s should contain value", fieldName)
@@ -385,8 +393,16 @@ func doQueryTest(t *testing.T, resp *Response, q *Query) bool {
 		for i, fieldName := range q.orderSelector {
 			if i == 0 {
 				field, ok = userAsStruct.FieldOk(fieldName)
+				// test JSON tag
+				if !ok {
+					field, ok = testJSONTag(userAsStruct.Fields(), fieldName)
+				}
 			} else {
 				field, ok = field.FieldOk(fieldName)
+				// test JSON tag
+				if !ok {
+					field, ok = testJSONTag(userAsStruct.Fields(), fieldName)
+				}
 			}
 			if !ok {
 				t.Errorf("the filed %s should contain value", fieldName)
@@ -452,6 +468,18 @@ func doQueryTest(t *testing.T, resp *Response, q *Query) bool {
 		return false
 	}
 	return true
+}
+
+func testJSONTag(fields []*structs.Field, fieldName string) (field *structs.Field, ok bool) {
+	for _, tagField := range fields {
+		if tagField.Tag("json") == fieldName {
+			ok = true
+			field = tagField
+			return
+		}
+	}
+
+	return
 }
 
 func testQueryResponseReaders(t *testing.T, response *Response, checkRet []*User) bool {
@@ -586,7 +614,7 @@ func TestDynamicIndexing(t *testing.T) {
 		return
 	}
 
-	if setIndexErr := c.SetIndex("email", StringIndex, "Email"); setIndexErr != nil {
+	if setIndexErr := c.SetIndex("email", StringIndex, "email"); setIndexErr != nil {
 		t.Error(setIndexErr)
 		return
 	}
@@ -600,7 +628,7 @@ func TestDynamicIndexing(t *testing.T) {
 func query216(c *Collection) error {
 	res, queryErr := c.Query(
 		NewQuery().SetFilter(
-			NewFilter(Equal).SetSelector("Email").CompareTo("dwight-73@alamogordo.com"),
+			NewFilter(Equal).SetSelector("email").CompareTo("dwight-73@alamogordo.com"),
 		),
 	)
 	if queryErr != nil {
@@ -712,7 +740,7 @@ func TestRollback(t *testing.T) {
 	}
 
 	oneAsBytes, _ := c.Get("1", nil)
-	if string(oneAsBytes) != `{"ID":"1","Email":"christi-81@muppet.com","Balance":7456846233081745525,"Address":{"City":"Scribner","ZipCode":86},"Age":6,"LastLogin":"2018-01-21T20:42:49.779258288+01:00"}` {
+	if string(oneAsBytes) != `{"ID":"1","email":"christi-81@muppet.com","Balance":7456846233081745525,"Address":{"City":"Scribner","ZipCode":86},"Age":6,"LastLogin":"2018-01-21T20:42:49.779258288+01:00"}` {
 		t.Errorf("Value is not what is expected")
 		return
 	}
@@ -726,8 +754,8 @@ func TestRollback(t *testing.T) {
 	}
 
 	oneAsBytes, _ = c.Get("1", nil)
-	if string(oneAsBytes) != `{"Address":{"City":"Kuznetsk","ZipCode":71},"Age":14,"Balance":777382239779228500,"Email":"carol-60@rigoletto.com","ID":"1","LastLogin":"2016-08-01T21:59:36.165049552+02:00"}` {
-		t.Errorf("Value is not what is expected")
+	if string(oneAsBytes) != `{"Address":{"City":"Kuznetsk","ZipCode":71},"Age":14,"Balance":777382239779228500,"ID":"1","LastLogin":"2016-08-01T21:59:36.165049552+02:00","email":"carol-60@rigoletto.com"}` {
+		t.Errorf("Value is not what is expected. Has: %s, but wants %s", string(oneAsBytes), `{"Address":{"City":"Kuznetsk","ZipCode":71},"Age":14,"Balance":777382239779228500,"ID":"1","LastLogin":"2016-08-01T21:59:36.165049552+02:00","email":"carol-60@rigoletto.com"}`)
 		return
 	}
 	timestamp, rollbackErr = c.Rollback("1", 2)
@@ -740,8 +768,8 @@ func TestRollback(t *testing.T) {
 	}
 
 	oneAsBytes, _ = c.Get("1", nil)
-	if string(oneAsBytes) != `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"Email":"geritol-60@puget.com","ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00"}` {
-		t.Errorf("Value is not what is expected")
+	if string(oneAsBytes) != `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00","email":"geritol-60@puget.com"}` {
+		t.Errorf("Value is not what is expected. Had %s but wants %s", string(oneAsBytes), `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00","email":"geritol-60@puget.com"}`)
 		return
 	}
 	timestamp, rollbackErr = c.Rollback("1", 4)
@@ -751,8 +779,8 @@ func TestRollback(t *testing.T) {
 	}
 
 	oneAsBytes, _ = c.Get("1", nil)
-	if string(oneAsBytes) != `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"Email":"geritol-60@puget.com","ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00"}` {
-		t.Errorf("Value is not what is expected")
+	if string(oneAsBytes) != `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00","email":"geritol-60@puget.com"}` {
+		t.Errorf("Value is not what is expected. Had %s but wants %s", string(oneAsBytes) , `{"Address":{"City":"Stan","ZipCode":84},"Age":5,"Balance":2126067743217278000,"ID":"1","LastLogin":"2017-02-09T23:28:19.405858256+01:00","email":"geritol-60@puget.com"}`)
 		return
 	}
 }

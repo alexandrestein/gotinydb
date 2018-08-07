@@ -45,7 +45,7 @@ func Example() {
 	}
 
 	// Setup indexexes
-	indexErr := c.SetIndex("email", StringIndex, "Email")
+	indexErr := c.SetIndex("email", StringIndex, "email")
 	if indexErr != nil {
 		log.Print(indexErr)
 		return
@@ -53,7 +53,7 @@ func Example() {
 
 	// Example struct
 	record := struct {
-		Email     string
+		Email     string `json:"email"`
 		NbProject int
 		LastLogin time.Time
 	}{
@@ -73,7 +73,7 @@ func Example() {
 
 	// Build the filter
 	queryFilter := NewFilter(Equal).
-		SetSelector("Email").
+		SetSelector("email").
 		CompareTo("jonas-90@tlaloc.com")
 
 	// Add the filter to the query pointer
@@ -82,11 +82,11 @@ func Example() {
 	// Or this could be:
 	queryPointer = NewQuery().SetFilter(
 		NewFilter(Equal).
-			SetSelector("Email").
+			SetSelector("email").
 			CompareTo("jonas-90@tlaloc.com"),
 	)
 
-	// Query the collection to get the struct based on the Email field
+	// Query the collection to get the struct based on the email field
 	response, queryErr := c.Query(queryPointer)
 	if queryErr != nil {
 		log.Print(queryErr)
@@ -194,7 +194,7 @@ func ExampleResponse_One() {
 func ExampleNewQuery() {
 	// Build a new query
 	q := NewQuery().SetFilter(
-		NewFilter(Equal).SetSelector("Email").CompareTo("jonas-90@tlaloc.com"),
+		NewFilter(Equal).SetSelector("email").CompareTo("jonas-90@tlaloc.com"),
 	)
 
 	// Initialize an struct to get the value using One method
