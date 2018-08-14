@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.6] - 2018-08-14
+
+### Fixed
+
+- Bug fixe with index range not working
+
 ## [0.0.5] - 2018-08-03
 
 ### Added

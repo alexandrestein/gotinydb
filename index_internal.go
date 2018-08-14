@@ -44,7 +44,11 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, indexedValue, li
 	allIDs, _ = newIDs(ctx, i.SelectorHash, indexedValue, nil)
 
 	// if the asked value is found
-	if reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) && keepEqual {
+	if !reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) {
+		if increasing {
+			allIDs.AddIDs(firstIDsValue)
+		}
+	} else if keepEqual {
 		allIDs.AddIDs(firstIDsValue)
 	}
 
