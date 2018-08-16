@@ -53,6 +53,7 @@ type (
 		operator     FilterOperator
 		values       []*filterValue
 		equal        bool
+		exclusion    bool
 	}
 
 	// IndexType defines what kind of field the index is scanning

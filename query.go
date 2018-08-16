@@ -28,7 +28,7 @@ type (
 	idType struct {
 		ID          string
 		occurrences int
-		ch          chan bool
+		ch          chan int
 		// values defines the different values and selector that called this ID
 		// selectors are defined by a hash 64
 		values map[uint64][]byte
@@ -198,7 +198,7 @@ func newID(ctx context.Context, id string) *idType {
 	ret := new(idType)
 	ret.ID = id
 	ret.occurrences = 0
-	ret.ch = make(chan bool, 0)
+	ret.ch = make(chan int, 0)
 	ret.values = map[uint64][]byte{}
 
 	go ret.incrementLoop(ctx)
@@ -209,12 +209,12 @@ func newID(ctx context.Context, id string) *idType {
 func (i *idType) incrementLoop(ctx context.Context) {
 	for {
 		select {
-		case trueIncrement, ok := <-i.ch:
+		case indice, ok := <-i.ch:
 			if !ok {
 				return
 			}
-			if trueIncrement {
-				i.occurrences++
+			if indice != 0 {
+				i.occurrences = i.occurrences + indice
 			}
 		case <-ctx.Done():
 			i.occurrences = 0
@@ -225,8 +225,8 @@ func (i *idType) incrementLoop(ctx context.Context) {
 }
 
 // Increment add +1 to the occurrence counter
-func (i *idType) Increment() {
-	i.ch <- true
+func (i *idType) Increment(indice int) {
+	i.ch <- indice
 }
 
 // Occurrences take care that the channel is empty and all occurrences have been saved
@@ -234,7 +234,7 @@ func (i *idType) Occurrences(target int) bool {
 	if i.ch == nil {
 		return false
 	}
-	i.ch <- false
+	i.ch <- 0
 
 	if i.occurrences == target {
 		return true

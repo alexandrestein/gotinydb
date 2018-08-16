@@ -278,6 +278,9 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 	finishedChan := make(chan *idsType, 16)
 	defer close(finishedChan)
 
+	excludeFinishedChan := make(chan *idsType, 16)
+	defer close(excludeFinishedChan)
+
 	// This count the number of running index query for this actual collection query
 	nbToDo := 0
 
@@ -286,7 +289,11 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 	for _, index := range c.indexes {
 		for _, filter := range q.filters {
 			if index.doesFilterApplyToIndex(filter) {
-				go index.query(ctx, filter, finishedChan)
+				if !filter.exclusion {
+					go index.query(ctx, filter, finishedChan)
+				} else {
+					go index.query(ctx, filter, excludeFinishedChan)
+				}
 				nbToDo++
 			}
 		}
@@ -296,6 +303,19 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 		return nil, fmt.Errorf("no index found")
 	}
 
+	incrementTreeFunc := func(id *idType, nb int) {
+		// Try to get the id from the tree
+		fromTree := tree.Get(id)
+		if fromTree == nil {
+			// If not in the tree add it
+			id.Increment(nb)
+			tree.ReplaceOrInsert(id)
+			return
+		}
+		// if already increment the counter
+		fromTree.(*idType).Increment(nb)
+	}
+
 	// Loop every response from the index query
 	for {
 		select {
@@ -303,27 +323,26 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 			if tmpIDs != nil {
 				// Add IDs into the response tree
 				for _, id := range tmpIDs.IDs {
-					// Try to get the id from the tree
-					fromTree := tree.Get(id)
-					if fromTree == nil {
-						// If not in the tree add it
-						id.Increment()
-						tree.ReplaceOrInsert(id)
-						continue
-					}
-					// if already increment the counter
-					fromTree.(*idType).Increment()
+					incrementTreeFunc(id, 1)
 				}
 			}
-			// Save the fact that one more query has respond
-			nbToDo--
-			// If nomore query to wait, quit the loop
-			if nbToDo <= 0 {
-				return tree, nil
+		case tmpIDs := <-excludeFinishedChan:
+			if tmpIDs != nil {
+				// Add IDs into the response tree
+				for _, id := range tmpIDs.IDs {
+					incrementTreeFunc(id, -1)
+				}
 			}
 		case <-ctx.Done():
 			time.Sleep(time.Millisecond * 100)
 			return nil, ErrTimeOut
+		}
+
+		// Save the fact that one more query has respond
+		nbToDo--
+		// If nomore query to wait, quit the loop
+		if nbToDo <= 0 {
+			return tree, nil
 		}
 	}
 }
