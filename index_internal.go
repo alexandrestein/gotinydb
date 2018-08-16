@@ -24,7 +24,7 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 	return ids, nil
 }
 
-func (i *indexType) getIDsForRangeOfValues(ctx context.Context, indexedValue, limit []byte, keepEqual, increasing bool) (allIDs *idsType, err error) {
+func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, limit []byte, keepEqual, increasing bool) (allIDs *idsType, err error) {
 	tx, getTxErr := i.getTx(false)
 	if getTxErr != nil {
 		return nil, getTxErr
@@ -35,21 +35,24 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, indexedValue, li
 	// Initiate the cursor (iterator)
 	iter := bucket.Cursor()
 	// Go to the requested position and get the values of it
-	firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(indexedValue)
-	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.SelectorHash, indexedValue, firstIDsAsByte)
+	firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(filterValue)
+	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.SelectorHash, filterValue, firstIDsAsByte)
 	if unmarshalIDsErr != nil {
 		return nil, unmarshalIDsErr
 	}
 
-	allIDs, _ = newIDs(ctx, i.SelectorHash, indexedValue, nil)
+	allIDs, _ = newIDs(ctx, i.SelectorHash, filterValue, nil)
 
-	// if the asked value is found
-	if !reflect.DeepEqual(firstIndexedValueAsByte, indexedValue) {
-		if increasing {
+	// If the index is not string index or if index is a string but the filter value is contained into the indexed value
+	if i.Type != StringIndex || bytes.Contains(firstIndexedValueAsByte, filterValue) && i.Type == StringIndex {
+		// if the asked value is found
+		if !reflect.DeepEqual(firstIndexedValueAsByte, filterValue) {
+			if increasing {
+				allIDs.AddIDs(firstIDsValue)
+			}
+		} else if keepEqual {
 			allIDs.AddIDs(firstIDsValue)
 		}
-	} else if keepEqual {
-		allIDs.AddIDs(firstIDsValue)
 	}
 
 	var nextFunc func() (key []byte, value []byte)
@@ -64,6 +67,12 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, indexedValue, li
 		if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 			break
 		}
+
+		// The indexed value needs at least to containe the filter value
+		if i.Type == StringIndex && !bytes.Contains(indexedValue, filterValue) {
+			continue
+		}
+
 		ids, unmarshalIDsErr := newIDs(ctx, i.SelectorHash, indexedValue, idsAsByte)
 		if unmarshalIDsErr != nil {
 			return nil, unmarshalIDsErr

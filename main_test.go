@@ -111,13 +111,13 @@ func TestOpenAndClose(t *testing.T) {
 		return
 	}
 
-	if id != "99" {
-		t.Errorf("%s is not the right ID. Expected %s", id, "99")
+	if id != "0" {
+		t.Errorf("%s is not the right ID. Expected %s", id, "0")
 		return
 	}
 
-	if !reflect.DeepEqual(user, unmarshalDataSet(dataSet1)[99]) {
-		t.Errorf("%v is not the right value. Expected %v", user, unmarshalDataSet(dataSet1)[99])
+	if !reflect.DeepEqual(user, unmarshalDataSet(dataSet1)[0]) {
+		t.Errorf("%v is not the right value. Expected %v", user, unmarshalDataSet(dataSet1)[0])
 		return
 	}
 }

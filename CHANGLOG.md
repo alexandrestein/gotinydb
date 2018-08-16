@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Added
 
-- Add support for exclusion filter 
+- Add support for exclusion filter
+
+### Changed
+
+- String indexed values need to contains the filter value to be referenced
 
 ## [0.0.6] - 2018-08-14
 
