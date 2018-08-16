@@ -159,6 +159,15 @@ func (q *Query) SetFilter(f *Filter) *Query {
 	return q
 }
 
+func (q *Query) nbSelectFilters() (ret int) {
+	for _, filter := range q.filters {
+		if !filter.exclusion {
+			ret++
+		}
+	}
+	return
+}
+
 func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64, getRefsFunc func(id string) *refs) (func(next btree.Item) (over bool), *struct{ IDs []*idType }) {
 	ret := &struct{ IDs []*idType }{}
 	ret.IDs = []*idType{}

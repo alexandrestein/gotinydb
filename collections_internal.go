@@ -357,7 +357,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	}
 
 	// iterate the response tree to get only IDs which has been found in every index queries
-	occurrenceFunc, idsSlice := occurrenceTreeIterator(len(q.filters), q.internalLimit, q.order, getRefFunc)
+	occurrenceFunc, idsSlice := occurrenceTreeIterator(q.nbSelectFilters(), q.internalLimit, q.order, getRefFunc)
 	tree.Ascend(occurrenceFunc)
 
 	// Build the new sorter
