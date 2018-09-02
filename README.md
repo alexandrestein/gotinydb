@@ -37,9 +37,9 @@ Take a look at [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb) for
 
 ## Possible Road Map
 
-* Make a backup service or replication system
+* Make a basic master/slaves replication system for data protection
+* Make a simple web interface
 * Add "has" or "exist" filter
-* Make incremental backups
 * Support float
 * Full text search with [Bleve](http://www.blevesearch.com/)
 
