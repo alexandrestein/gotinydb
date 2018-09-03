@@ -52,18 +52,14 @@ func Example() {
 	}
 
 	// Example struct
-	record := struct {
-		Email     string `json:"email"`
-		NbProject int
-		LastLogin time.Time
-	}{
-		"jonas-90@tlaloc.com",
-		316,
-		time.Time{},
+	record := &User{
+		Email:     "jonas-90@tlaloc.com",
+		ID:        "316",
+		LastLogin: time.Time{},
 	}
 
 	// Save it in DB
-	if err := c.Put("id", record); err != nil {
+	if err := c.Put(record.ID, record); err != nil {
 		log.Print(err)
 		return
 	}
@@ -104,7 +100,7 @@ func Example() {
 	// Display the result
 	fmt.Println(id, retrievedRecord)
 
-	// Output: id &{ jonas-90@tlaloc.com 0 <nil> 0 0001-01-01 00:00:00 +0000 UTC}
+	// Output: 316 {"ID":"316","email":"jonas-90@tlaloc.com","Balance":0,"Address":null,"Age":0,"LastLogin":"0001-01-01T00:00:00Z"}
 }
 
 func ExampleResponse_All() {
