@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - The test has been fully remade to get it more relevant: [#7](https://github.com/alexandrestein/gotinydb/issues/7)
 
+### Fixes
+
+- Clean tests after complete. Fixes [#1](https://github.com/alexandrestein/gotinydb/issues/1).
+
 ## [0.0.7] - 2018-08-16
 
 ### Added
