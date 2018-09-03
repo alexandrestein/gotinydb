@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -389,8 +390,8 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 		}
 
 		response.list[i] = &ResponseElem{
-			ID:             idsSlice.IDs[i],
-			ContentAsBytes: responsesAsBytes[i],
+			_ID:            idsSlice.IDs[i],
+			contentAsBytes: responsesAsBytes[i],
 		}
 	}
 	return
@@ -563,18 +564,18 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 				continue
 			}
 
-			responseItem.ID = new(idType)
-			responseItem.ID.ID = string(item.Key()[5:])
+			responseItem._ID = new(idType)
+			responseItem._ID.ID = string(item.Key()[5:])
 
 			if !IDsOnly {
 				var err error
-				responseItem.ContentAsBytes, err = item.ValueCopy(responseItem.ContentAsBytes)
+				responseItem.contentAsBytes, err = item.ValueCopy(responseItem.contentAsBytes)
 				if err != nil {
 					return err
 				}
 
 				var corrupted error
-				responseItem.ContentAsBytes, corrupted = c.getAndCheckContent(responseItem.ContentAsBytes)
+				responseItem.contentAsBytes, corrupted = c.getAndCheckContent(responseItem.contentAsBytes)
 				if corrupted != nil {
 					return corrupted
 				}
@@ -615,12 +616,15 @@ newLoop:
 	}
 
 	for _, savedElement := range savedElements {
-		if savedElement.ID.ID == lastID {
+		if savedElement.GetID() == lastID {
 			continue
 		}
 
 		var elem interface{}
-		if jsonErr := json.Unmarshal(savedElement.ContentAsBytes, &elem); jsonErr != nil {
+		decoder := json.NewDecoder(bytes.NewBuffer(savedElement.contentAsBytes))
+		decoder.UseNumber()
+
+		if jsonErr := decoder.Decode(&elem); jsonErr != nil {
 			return jsonErr
 		}
 
@@ -629,7 +633,7 @@ newLoop:
 		ctx2, cancel2 := context.WithTimeout(ctx, c.options.TransactionTimeOut)
 		defer cancel2()
 
-		tr := newTransaction(savedElement.ID.ID)
+		tr := newTransaction(savedElement.GetID())
 		tr.ctx = ctx2
 
 		tr.contentInterface = m

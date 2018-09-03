@@ -114,7 +114,7 @@ func initbenchmark(ctx context.Context) error {
 
 	initBenchmarkDone = true
 
-	testPath := <-getTestPathChan
+	testPath := "benchmarkPath"
 
 	benchmarkDB, _ = Open(ctx, NewDefaultOptions(testPath))
 	benchmarkCollection, _ = benchmarkDB.Use("testCol")
@@ -123,7 +123,7 @@ func initbenchmark(ctx context.Context) error {
 	if err := fillUpDBForBenchmarks(nbInitInsertion); err != nil {
 		return err
 	}
-	users := unmarshalDataSet(dataSet1)
+	users := unmarshalDataset(dataset1)
 
 	iForIds := nbInitInsertion
 	getID = make(chan string, 100)

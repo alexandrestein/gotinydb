@@ -69,6 +69,7 @@ func (d *DB) Use(colName string) (*Collection, error) {
 func (d *DB) SetOptions(options *Options) error {
 	d.options = options
 
+	// Apply the configuration to all collections index stores
 	for _, col := range d.collections {
 		col.options = options
 		for _, index := range col.indexes {
@@ -140,7 +141,6 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	for {
 		ids, err := c.getStoredIDsAndValues("", 1000, true)
 		if err != nil {
-			fmt.Println("ici", err)
 			return err
 		}
 		if len(ids) == 0 {
@@ -149,7 +149,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 
 		err = d.valueStore.Update(func(txn *badger.Txn) error {
 			for _, id := range ids {
-				err := txn.Delete(c.buildStoreID(id.ID.ID))
+				err := txn.Delete(c.buildStoreID(id.GetID()))
 				if err != nil {
 					return err
 				}

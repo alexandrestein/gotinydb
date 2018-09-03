@@ -60,6 +60,10 @@ var (
 	// FilePermission defines the database file permission
 	FilePermission os.FileMode = 0740 // u -> rwx | g -> r-- | o -> ---
 
+	// ErrBadBadgerConfig is returned when opening the database and the issue is from the Badger configuration
+	ErrBadBadgerConfig = fmt.Errorf("Badger configuration is not valid")
+	// ErrRollbackVersionNotFound is returned when rollback is requested but the target value can't be found
+	ErrRollbackVersionNotFound = fmt.Errorf("passed to an other key before hitting the requested version")
 	// ErrWrongType defines the wrong type error
 	ErrWrongType = fmt.Errorf("wrong type")
 	// ErrNotFound defines error when the asked ID is not found
@@ -70,7 +74,6 @@ var (
 	ErrTimeOut = fmt.Errorf("timed out")
 	// ErrDataCorrupted defines the error when the checksum is not valid
 	ErrDataCorrupted = fmt.Errorf("content corrupted")
-
 	// ErrTheResponseIsOver defines error when *Response.One is called and all response has been returned
 	ErrTheResponseIsOver = fmt.Errorf("the response has no more values")
 )

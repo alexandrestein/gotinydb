@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -63,7 +64,10 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 		return contentAsBytes, nil
 	}
 
-	uMarshalErr := json.Unmarshal(contentAsBytes, pointer)
+	decoder := json.NewDecoder(bytes.NewBuffer(contentAsBytes))
+	decoder.UseNumber()
+
+	uMarshalErr := decoder.Decode(pointer)
 	if uMarshalErr != nil {
 		return nil, uMarshalErr
 	}
@@ -182,7 +186,7 @@ func (c *Collection) GetIDs(startID string, limit int) ([]string, error) {
 
 	ret := make([]string, len(records))
 	for i, record := range records {
-		ret[i] = record.ID.ID
+		ret[i] = record.GetID()
 	}
 	return ret, nil
 }
@@ -221,7 +225,7 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 		// Loop to the version
 		for iterator.Seek(c.buildStoreID(id)); iterator.Valid(); iterator.Next() {
 			if !reflect.DeepEqual(c.buildStoreID(id), iterator.Item().Key()) {
-				return fmt.Errorf("passed to an other key before hitting the requested version")
+				return ErrRollbackVersionNotFound
 			} else if previousVersion == 0 {
 				item := iterator.Item()
 				asBytes, valueErr := item.Value()
@@ -229,7 +233,11 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 					return valueErr
 				}
 
-				unmarshalErr := json.Unmarshal(asBytes[8:], &contentAsInterface)
+				// Build a custom decoder to use the number interface instead of float64
+				decoder := json.NewDecoder(bytes.NewBuffer(asBytes[8:]))
+				decoder.UseNumber()
+
+				unmarshalErr := decoder.Decode(&contentAsInterface)
 				if unmarshalErr != nil {
 					return unmarshalErr
 				}

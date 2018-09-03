@@ -62,8 +62,8 @@ type (
 
 	// ResponseElem defines the response as a pointer
 	ResponseElem struct {
-		ID             *idType
-		ContentAsBytes []byte
+		_ID            *idType
+		contentAsBytes []byte
 	}
 )
 
@@ -368,7 +368,7 @@ func (r *Response) First() (i int, id string, objAsByte []byte) {
 	}
 
 	r.actualPosition = 0
-	return 0, r.list[0].ID.String(), r.list[0].ContentAsBytes
+	return 0, r.list[0].GetID(), r.list[0].contentAsBytes
 }
 
 // Next used with First
@@ -385,7 +385,7 @@ func (r *Response) Last() (i int, id string, objAsByte []byte) {
 	}
 
 	r.actualPosition = lastSlot
-	return lastSlot, r.list[lastSlot].ID.String(), r.list[lastSlot].ContentAsBytes
+	return lastSlot, r.list[lastSlot].GetID(), r.list[lastSlot].contentAsBytes
 }
 
 // Prev used with Last
@@ -400,7 +400,7 @@ func (r *Response) next() (i int, id string, objAsByte []byte) {
 		r.actualPosition = 0
 		return -1, "", nil
 	}
-	return r.actualPosition, r.list[r.actualPosition].ID.String(), r.list[r.actualPosition].ContentAsBytes
+	return r.actualPosition, r.list[r.actualPosition].GetID(), r.list[r.actualPosition].contentAsBytes
 }
 
 // All takes a function as argument and permit to unmarshal or to manage recoredes inside the function
@@ -414,7 +414,7 @@ func (r *Response) All(fn func(id string, objAsBytes []byte) error) (n int, err 
 		if n >= len(r.list) {
 			break
 		}
-		err = fn(elem.ID.String(), elem.ContentAsBytes)
+		err = fn(elem.GetID(), elem.contentAsBytes)
 		if err != nil {
 			return
 		}
@@ -431,14 +431,31 @@ func (r *Response) One(destination interface{}) (id string, err error) {
 		return "", ErrTheResponseIsOver
 	}
 
-	id = r.list[r.actualPosition].ID.String()
-	err = json.Unmarshal(r.list[r.actualPosition].ContentAsBytes, destination)
+	id = r.list[r.actualPosition].GetID()
+
+	decoder := json.NewDecoder(bytes.NewBuffer(r.list[r.actualPosition].contentAsBytes))
+	decoder.UseNumber()
+
+	err = decoder.Decode(destination)
 	r.actualPosition++
 
 	return id, err
 }
 
-// GetID return the ID as string of the given element
+// GetID returns the ID as string of the given element
 func (r *ResponseElem) GetID() string {
-	return r.ID.ID
+	return r._ID.ID
+}
+
+// GetContent returns response content as a slice of bytes
+func (r *ResponseElem) GetContent() []byte {
+	return r.contentAsBytes
+}
+
+// Unmarshal tries to unmarshal the content using the JSON package
+func (r *ResponseElem) Unmarshal(pointer interface{}) (err error) {
+	decoder := json.NewDecoder(bytes.NewBuffer(r.contentAsBytes))
+	decoder.UseNumber()
+
+	return decoder.Decode(pointer)
 }

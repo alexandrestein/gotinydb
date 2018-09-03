@@ -14,6 +14,10 @@ func (d *DB) buildPath() error {
 }
 
 func (d *DB) initBadger() error {
+	if d.options.BadgerOptions == nil {
+		return ErrBadBadgerConfig
+	}
+
 	opts := d.options.BadgerOptions
 	opts.Dir = d.options.Path + "/store"
 	opts.ValueDir = d.options.Path + "/store"
