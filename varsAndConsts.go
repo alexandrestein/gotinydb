@@ -12,8 +12,8 @@ import (
 
 // Defines the default values of the database configuration
 var (
-	DefaultTransactionTimeOut = time.Second
-	DefaultQueryTimeOut       = time.Second * 5
+	DefaultTransactionTimeOut = time.Second * 5
+	DefaultQueryTimeOut       = time.Second * 15
 	DefaultQueryLimit         = 100
 	DefaultInternalQueryLimit = 1000
 

@@ -22,6 +22,11 @@ type (
 	dataset []byte
 )
 
+func (u *User) String() string {
+	asBytes, _ := json.Marshal(u)
+	return string(asBytes)
+}
+
 func unmarshalDataset(ds dataset) (users []*User) {
 	json.Unmarshal([]byte(ds), &users)
 	return
