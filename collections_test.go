@@ -163,12 +163,17 @@ func TestCollection_DeleteIndex(t *testing.T) {
 		return
 	}
 
+	var IDs []string
+	var content []interface{}
 	for _, user := range unmarshalDataset(dataset1) {
-		err = c.Put(user.ID, user)
-		if err != nil {
-			t.Error(err)
-			return
-		}
+		IDs = append(IDs, user.ID)
+		content = append(content, user)
+	}
+
+	err = c.PutMulti(IDs, content)
+	if err != nil {
+		t.Error(err)
+		return
 	}
 
 	err = c.DeleteIndex(indexName)
@@ -198,12 +203,19 @@ func TestCollection_GetIDsAndValues(t *testing.T) {
 	}
 
 	users := unmarshalDataset(dataset1)
+
+	var IDs []string
+	var content []interface{}
+
 	for _, user := range users {
-		err = c.Put(user.ID, user)
-		if err != nil {
-			t.Error(err)
-			return
-		}
+		IDs = append(IDs, user.ID)
+		content = append(content, user)
+	}
+
+	err = c.PutMulti(IDs, content)
+	if err != nil {
+		t.Error(err)
+		return
 	}
 
 	var ids []string
