@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for multiple write operation at ones [#11](https://github.com/alexandrestein/gotinydb/issues/11)
+
 ### Changed
 
 - The test has been fully remade to get it more relevant: [#7](https://github.com/alexandrestein/gotinydb/issues/7)
