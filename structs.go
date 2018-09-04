@@ -94,11 +94,14 @@ type (
 	}
 
 	writeTransaction struct {
+		responseChan chan error
+		ctx          context.Context
+		transactions []*writeTransactionElement
+	}
+	writeTransactionElement struct {
 		id               string
 		contentInterface interface{}
 		contentAsBytes   []byte
-		responseChan     chan error
-		ctx              context.Context
 		bin              bool
 	}
 

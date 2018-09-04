@@ -33,12 +33,22 @@ func getIDsAsString(input []*idType) (ret []string) {
 	return ret
 }
 
-func newTransaction(id string) *writeTransaction {
-	tr := new(writeTransaction)
-	tr.id = id
-	tr.responseChan = make(chan error, 0)
+func newTransactionElement(id string, content interface{}) *writeTransactionElement {
+	return &writeTransactionElement{
+		id: id, contentInterface: content,
+	}
+}
 
-	return tr
+func newTransaction(ctx context.Context) *writeTransaction {
+	wt := new(writeTransaction)
+	wt.ctx = ctx
+	wt.responseChan = make(chan error, 0)
+
+	return wt
+}
+
+func (wt *writeTransaction) addTransaction(trElement *writeTransactionElement) {
+	wt.transactions = append(wt.transactions, trElement)
 }
 
 // buildIDInternal builds an ID as a slice of bytes from the given string

@@ -113,31 +113,59 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	wgActions.Add(2)
 	wgCommitted.Add(2)
 
-	// Runs saving into the store
-	go c.putIntoStore(tr.ctx, errChan, wgActions, wgCommitted, tr)
-
-	// Starts the indexing process
-	if !tr.bin {
-		go c.putIntoIndexes(tr.ctx, errChan, wgActions, wgCommitted, tr)
-	} else {
-		go c.onlyCleanRefs(tr.ctx, errChan, wgActions, wgCommitted, tr)
+	if len(tr.transactions) == 1 {
+		c.putTransactionOne(tr.ctx, nil, errChan, wgActions, wgCommitted, tr.transactions[0])
 	}
+
+	// // Runs saving into the store
+	// go c.putIntoStore(tr.ctx, errChan, wgActions, wgCommitted, tr)
+
+	// // Starts the indexing process
+	// if !tr.bin {
+	// 	go c.putIntoIndexes(tr.ctx, errChan, wgActions, wgCommitted, tr)
+	// } else {
+	// 	go c.onlyCleanRefs(tr.ctx, errChan, wgActions, wgCommitted, tr)
+	// }
 
 	// Respond to the caller with the error if any
 	tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
+}
+
+func (c *Collection) putTransactionOne(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) {
+	// Runs saving into the store
+	go c.putIntoStore(ctx, nil, errChan, wgActions, wgCommitted, writeTransaction)
+
+	// Starts the indexing process
+	if !writeTransaction.bin {
+		go c.putIntoIndexes(ctx, nil, errChan, wgActions, wgCommitted, writeTransaction)
+	} else {
+		go c.onlyCleanRefs(ctx, nil, errChan, wgActions, wgCommitted, writeTransaction)
+	}
+}
+
+func (c *Collection) putTransactionMulti(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) {
+
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
 	return []byte(fmt.Sprintf("%s_%s", c.id[:4], id))
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
-	tx, txErr := c.db.Begin(true)
-	if txErr != nil {
-		errChan <- txErr
-		return txErr
+func (c *Collection) putIntoIndexes(ctx context.Context, tx *bolt.Tx, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+	multi := true
+	if tx == nil {
+		multi = false
+		var txErr error
+		tx, txErr = c.db.Begin(true)
+		if txErr != nil {
+			errChan <- txErr
+			return txErr
+		}
+	} else if !tx.Writable() {
+		errChan <- bolt.ErrTxNotWritable
+		return bolt.ErrTxNotWritable
 	}
-	// return c.db.Update(func(tx *bolt.Tx) error {
+
 	err := c.cleanRefs(ctx, tx, writeTransaction.id)
 	if err != nil {
 		errChan <- err
@@ -195,27 +223,34 @@ func (c *Collection) putIntoIndexes(ctx context.Context, errChan chan error, wgA
 		return err
 	}
 
-	return c.endOfIndexUpdate(ctx, tx, errChan, wgActions, wgCommitted)
+	return c.endOfIndexUpdate(ctx, tx, !multi, errChan, wgActions, wgCommitted)
 }
 
-func (c *Collection) onlyCleanRefs(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
-	tx, txErr := c.db.Begin(true)
-	if txErr != nil {
-		errChan <- txErr
-		return txErr
+func (c *Collection) onlyCleanRefs(ctx context.Context, tx *bolt.Tx, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+	multi := true
+	if tx == nil {
+		multi = false
+		var txErr error
+		tx, txErr = c.db.Begin(true)
+		if txErr != nil {
+			errChan <- txErr
+			return txErr
+		}
+	} else if !tx.Writable() {
+		errChan <- bolt.ErrTxNotWritable
+		return bolt.ErrTxNotWritable
 	}
-	// return c.db.Update(func(tx *bolt.Tx) error {
+
 	err := c.cleanRefs(ctx, tx, writeTransaction.id)
 	if err != nil {
 		errChan <- err
 		return err
 	}
 
-	return c.endOfIndexUpdate(ctx, tx, errChan, wgActions, wgCommitted)
-	// })
+	return c.endOfIndexUpdate(ctx, tx, !multi, errChan, wgActions, wgCommitted)
 }
 
-func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, errChan chan error, wgActions, wgCommitted *sync.WaitGroup) error {
+func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, commit bool, errChan chan error, wgActions, wgCommitted *sync.WaitGroup) error {
 	// Tells the rest of the callers that the index is done but not committed
 	wgActions.Done()
 
@@ -226,11 +261,13 @@ func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, errChan 
 		return err
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		errChan <- err
-		tx.Rollback()
-		return err
+	if commit {
+		err = tx.Commit()
+		if err != nil {
+			errChan <- err
+			tx.Rollback()
+			return err
+		}
 	}
 
 	wgCommitted.Done()
@@ -397,9 +434,13 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	return
 }
 
-func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransaction) error {
-	txn := c.store.NewTransaction(true)
-	defer txn.Discard()
+func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+	multi := true
+	if txn == nil {
+		multi = false
+		txn = c.store.NewTransaction(true)
+		defer txn.Discard()
+	}
 
 	hashSignature, _ := intToBytes((highwayhash.Sum64(writeTransaction.contentAsBytes, make([]byte, highwayhash.Size))))
 	contentToWrite := append(hashSignature, writeTransaction.contentAsBytes...)
@@ -421,10 +462,12 @@ func (c *Collection) putIntoStore(ctx context.Context, errChan chan error, wgAct
 		return err
 	}
 
-	// Start the commit of the indexes
-	err = txn.Commit(nil)
-	if err != nil {
-		return err
+	if !multi {
+		// Start the commit of the indexes
+		err = txn.Commit(nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Propagate the commit done status
@@ -606,13 +649,19 @@ func (c *Collection) indexAllValues(i *indexType) error {
 	lastID := ""
 
 newLoop:
-	savedElements, getErr := c.getStoredIDsAndValues(lastID, 10, false)
+	savedElements, getErr := c.getStoredIDsAndValues(lastID, 100, false)
 	if getErr != nil {
 		return getErr
 	}
 
 	if len(savedElements) <= 1 {
 		return nil
+	}
+
+	tx, txErr := c.db.Begin(true)
+	if txErr != nil {
+		errChan <- txErr
+		return txErr
 	}
 
 	for _, savedElement := range savedElements {
@@ -633,23 +682,29 @@ newLoop:
 		ctx2, cancel2 := context.WithTimeout(ctx, c.options.TransactionTimeOut)
 		defer cancel2()
 
-		tr := newTransaction(savedElement.GetID())
-		tr.ctx = ctx2
-
-		tr.contentInterface = m
+		// tr := newTransaction(ctx2)
+		// tr.addTransaction(newTransactionElement(savedElement.GetID(), m))
 
 		fakeWgAction := new(sync.WaitGroup)
 		fakeWgCommitted := new(sync.WaitGroup)
 		fakeWgAction.Add(1)
 		fakeWgCommitted.Add(1)
-		go c.putIntoIndexes(ctx, errChan, fakeWgAction, fakeWgCommitted, tr)
+
+		trElement := newTransactionElement(savedElement.GetID(), m)
+
+		go c.putIntoIndexes(ctx2, tx, errChan, fakeWgAction, fakeWgCommitted, trElement)
 
 		err := waitForDoneErrOrCanceled(ctx2, fakeWgCommitted, errChan)
 		if err != nil {
 			return err
 		}
 
-		lastID = tr.id
+		lastID = savedElement.GetID()
+	}
+
+	err := tx.Commit()
+	if err != nil {
+		return err
 	}
 
 	goto newLoop
