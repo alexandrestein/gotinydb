@@ -24,19 +24,19 @@ func (c *Collection) Put(id string, content interface{}) error {
 	tr := newTransaction(ctx)
 	trElem := newTransactionElement(id, content)
 
-	if bytes, ok := content.([]byte); ok {
-		trElem.bin = true
-		trElem.contentAsBytes = bytes
-	}
+	// if bytes, ok := content.([]byte); ok {
+	// 	trElem.bin = true
+	// 	trElem.contentAsBytes = bytes
+	// }
 
-	if !trElem.bin {
-		jsonBytes, marshalErr := json.Marshal(content)
-		if marshalErr != nil {
-			return marshalErr
-		}
+	// if !trElem.bin {
+	// 	jsonBytes, marshalErr := json.Marshal(content)
+	// 	if marshalErr != nil {
+	// 		return marshalErr
+	// 	}
 
-		trElem.contentAsBytes = jsonBytes
-	}
+	// 	trElem.contentAsBytes = jsonBytes
+	// }
 
 	tr.addTransaction(trElem)
 
@@ -51,7 +51,34 @@ func (c *Collection) Put(id string, content interface{}) error {
 // This must have much better performances than with multiple *Collection.Put().
 // The number of IDs and of content must be equal.
 func (c *Collection) PutMulti(IDs []string, content []interface{}) error {
-	return nil
+	// Check the length of the paramiters
+	if len(IDs) != len(content) {
+		return ErrPutMultiWrongLen
+	}
+
+	ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
+	defer cancel()
+
+	// verify that closing as not been called
+	if !c.isRunning() {
+		return ErrClosedDB
+	}
+
+	tr := newTransaction(ctx)
+	tr.transactions = make([]*writeTransactionElement, len(IDs))
+
+	for i := range IDs {
+		tr.transactions[i] = newTransactionElement(
+			IDs[i],
+			content[i],
+		)
+	}
+
+	// Run the insertion
+	c.writeTransactionChan <- tr
+	// And wait for the end of the insertion
+	s := <-tr.responseChan
+	return s
 }
 
 // Get retrieves the content of the given ID

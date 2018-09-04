@@ -75,6 +75,68 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 	}
 }
 
+func TestCollection_PutMulti(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	testPath := "putMulti"
+	defer os.RemoveAll(testPath)
+
+	db, err := Open(ctx, NewDefaultOptions(testPath))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	c, err := db.Use("user collection")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = c.SetIndex("email", StringIndex, "email")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	var user120 *User
+
+	var IDs []string
+	var content []interface{}
+	for _, user := range unmarshalDataset(dataset1) {
+		IDs = append(IDs, user.ID)
+		content = append(content, user)
+
+		if user.ID == "120" {
+			user120 = user
+		}
+	}
+
+	err = c.PutMulti(IDs, content)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	retrievedUser := &User{}
+	_, err = c.Get("120", retrievedUser)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if !reflect.DeepEqual(user120, retrievedUser) {
+		t.Errorf("both users are not equal but should\n\t%v\n\t%v", user120, retrievedUser)
+		return
+	}
+
+	err = db.Close()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestCollection_PutToCloseDB(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()

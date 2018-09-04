@@ -109,12 +109,13 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	// Used to propagate the error for one or the other function
 	errChan := make(chan error, 1)
 
-	// Increment the tow waiting groups
-	wgActions.Add(2)
-	wgCommitted.Add(2)
-
 	if len(tr.transactions) == 1 {
-		c.putTransactionOne(tr.ctx, nil, errChan, wgActions, wgCommitted, tr.transactions[0])
+		c.putTransactionOne(tr.ctx, errChan, wgActions, wgCommitted, tr.transactions[0])
+
+		// Respond to the caller with the error if any
+		tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
+	} else {
+		tr.responseChan <- c.putTransactionMulti(tr.ctx, errChan, wgActions, wgCommitted, tr)
 	}
 
 	// // Runs saving into the store
@@ -127,24 +128,83 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	// 	go c.onlyCleanRefs(tr.ctx, errChan, wgActions, wgCommitted, tr)
 	// }
 
-	// Respond to the caller with the error if any
-	tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
+	// // Respond to the caller with the error if any
+	// tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
 }
 
-func (c *Collection) putTransactionOne(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) {
+func (c *Collection) putTransactionOne(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wtElem *writeTransactionElement) {
+	// Increment the tow waiting groups
+	wgActions.Add(2)
+	wgCommitted.Add(2)
+
 	// Runs saving into the store
-	go c.putIntoStore(ctx, nil, errChan, wgActions, wgCommitted, writeTransaction)
+	go c.putIntoStore(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
 
 	// Starts the indexing process
-	if !writeTransaction.bin {
-		go c.putIntoIndexes(ctx, nil, errChan, wgActions, wgCommitted, writeTransaction)
+	if !wtElem.bin {
+		go c.putIntoIndexes(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
 	} else {
-		go c.onlyCleanRefs(ctx, nil, errChan, wgActions, wgCommitted, writeTransaction)
+		go c.onlyCleanRefs(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
 	}
 }
 
-func (c *Collection) putTransactionMulti(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) {
+func (c *Collection) putTransactionMulti(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wt *writeTransaction) error {
+	badgerTxn := c.store.NewTransaction(true)
+	defer badgerTxn.Discard()
 
+	boltTx, beginBoltTxErr := c.db.Begin(true)
+	if beginBoltTxErr != nil {
+		errChan <- beginBoltTxErr
+		return beginBoltTxErr
+	}
+
+	// Because there is only one commit for all insertion we add manually 1
+	wgCommitted.Add(1)
+
+	// Loop for every insertion
+	for _, wtElem := range wt.transactions {
+		// Increment the tow waiting groups
+		wgActions.Add(2)
+
+		// Build a new wait group to prevent concurant writes which make Badger panic
+		var wgLoop sync.WaitGroup
+		wgLoop.Add(2)
+
+		// Runs saving into the store
+		go c.putIntoStore(ctx, badgerTxn, errChan, wgActions, &wgLoop, wtElem)
+
+		// Starts the indexing process
+		if !wtElem.bin {
+			go c.putIntoIndexes(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
+		} else {
+			go c.onlyCleanRefs(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
+		}
+
+		// Wait for this to be saved in suspend before commit
+		wgLoop.Wait()
+	}
+
+	// Tells to the rest that commit can be run now
+	wgCommitted.Done()
+
+	// Wait for error if any
+	err := waitForDoneErrOrCanceled(ctx, wgCommitted, errChan)
+	if err == nil {
+		// Commit every thing if no error reported
+		err = badgerTxn.Commit(nil)
+		if err != nil {
+			errChan <- err
+			return err
+		}
+		err = boltTx.Commit()
+		if err != nil {
+			errChan <- err
+			return err
+		}
+	}
+
+	// Respond to the caller with the error if any
+	return nil
 }
 
 func (c *Collection) buildStoreID(id string) []byte {
@@ -466,6 +526,7 @@ func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan 
 		// Start the commit of the indexes
 		err = txn.Commit(nil)
 		if err != nil {
+			errChan <- err
 			return err
 		}
 	}
@@ -681,9 +742,6 @@ newLoop:
 
 		ctx2, cancel2 := context.WithTimeout(ctx, c.options.TransactionTimeOut)
 		defer cancel2()
-
-		// tr := newTransaction(ctx2)
-		// tr.addTransaction(newTransactionElement(savedElement.GetID(), m))
 
 		fakeWgAction := new(sync.WaitGroup)
 		fakeWgCommitted := new(sync.WaitGroup)

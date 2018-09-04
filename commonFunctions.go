@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"sync"
 
 	"github.com/minio/highwayhash"
@@ -33,10 +34,26 @@ func getIDsAsString(input []*idType) (ret []string) {
 	return ret
 }
 
-func newTransactionElement(id string, content interface{}) *writeTransactionElement {
-	return &writeTransactionElement{
+func newTransactionElement(id string, content interface{}) (wtElem *writeTransactionElement) {
+	wtElem = &writeTransactionElement{
 		id: id, contentInterface: content,
 	}
+
+	if bytes, ok := content.([]byte); ok {
+		wtElem.bin = true
+		wtElem.contentAsBytes = bytes
+	}
+
+	if !wtElem.bin {
+		jsonBytes, marshalErr := json.Marshal(content)
+		if marshalErr != nil {
+			return nil
+		}
+
+		wtElem.contentAsBytes = jsonBytes
+	}
+
+	return
 }
 
 func newTransaction(ctx context.Context) *writeTransaction {
