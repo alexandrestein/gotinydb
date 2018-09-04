@@ -12,8 +12,8 @@ import (
 
 // Defines the default values of the database configuration
 var (
-	DefaultTransactionTimeOut = time.Second * 5
-	DefaultQueryTimeOut       = time.Second * 15
+	DefaultTransactionTimeOut = time.Second * 15
+	DefaultQueryTimeOut       = time.Second * 30
 	DefaultQueryLimit         = 100
 	DefaultInternalQueryLimit = 1000
 
@@ -64,6 +64,8 @@ var (
 	ErrBadBadgerConfig = fmt.Errorf("Badger configuration is not valid")
 	// ErrRollbackVersionNotFound is returned when rollback is requested but the target value can't be found
 	ErrRollbackVersionNotFound = fmt.Errorf("passed to an other key before hitting the requested version")
+	// ErrClosedDB is returned when the database is closed but a call has been run
+	ErrClosedDB = fmt.Errorf("data base is closed or on it's way to close")
 	// ErrWrongType defines the wrong type error
 	ErrWrongType = fmt.Errorf("wrong type")
 	// ErrNotFound defines error when the asked ID is not found

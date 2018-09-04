@@ -85,7 +85,7 @@ func putRandRecord(c *Collection, id string) error {
 }
 
 func fillUpDBForBenchmarks(n int) error {
-	fmt.Println("Fill up the database with 1'000'000 records up to 1KB")
+	fmt.Println("Fill up the database with 1'000 records up to 1KB")
 	pourcent := 0
 	for i := 0; i < n; i++ {
 		err := putRandRecord(benchmarkCollection, buildID(fmt.Sprint(i)))
@@ -93,7 +93,7 @@ func fillUpDBForBenchmarks(n int) error {
 			return err
 		}
 
-		if i%100000 == 0 {
+		if i%1000 == 0 {
 			if i != 0 {
 				fmt.Printf("%d0%%\n", pourcent)
 			}
@@ -109,8 +109,7 @@ func initbenchmark(ctx context.Context) error {
 		return nil
 	}
 
-	nbInitInsertion := 1000 * 1000
-	// nbInitInsertion := 100
+	nbInitInsertion := 1000
 
 	initBenchmarkDone = true
 
@@ -216,7 +215,7 @@ func read(b *testing.B, parallel bool) error {
 
 func delete(b *testing.B, parallel bool) error {
 	b.StopTimer()
-	nbOfSamples := 50000
+	nbOfSamples := 1000
 
 	for i := 0; i < nbOfSamples; i++ {
 		err := putRandRecord(deleteCollection, buildID(fmt.Sprintf("test-%d", i)))

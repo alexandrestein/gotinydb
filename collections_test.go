@@ -9,7 +9,7 @@ import (
 )
 
 func TestCollection_PutGetAndDelete(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "putGetAndDelete"
@@ -75,8 +75,38 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 	}
 }
 
+func TestCollection_PutToCloseDB(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	testPath := "putToBadDB"
+	defer os.RemoveAll(testPath)
+
+	db, err := Open(ctx, NewDefaultOptions(testPath))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer db.Close()
+
+	c, err := db.Use("user collection")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	cancel()
+
+	obj := &struct{ Name string }{"Bad Insertion"}
+	err = c.Put("hello", obj)
+	if err != ErrClosedDB {
+		t.Error("The database must return an error but not the one expected", err)
+		return
+	}
+}
+
 func TestCollection_DeleteIndex(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "deleteIndex"
@@ -117,7 +147,7 @@ func TestCollection_DeleteIndex(t *testing.T) {
 }
 
 func TestCollection_GetIDsAndValues(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "getIDsAndValues"
@@ -171,7 +201,7 @@ func TestCollection_GetIDsAndValues(t *testing.T) {
 }
 
 func TestCollection_Rollback(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "rollback"
@@ -260,7 +290,7 @@ func TestCollection_Rollback(t *testing.T) {
 }
 
 func TestCollection_GetIndexesInfo(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "rollback"

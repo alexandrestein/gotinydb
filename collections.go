@@ -16,6 +16,11 @@ func (c *Collection) Put(id string, content interface{}) error {
 	ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
 	defer cancel()
 
+	// verify that closing as not been called
+	if !c.isRunning() {
+		return ErrClosedDB
+	}
+
 	tr := newTransaction(id)
 	tr.ctx = ctx
 	tr.contentInterface = content

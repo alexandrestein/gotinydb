@@ -12,7 +12,7 @@ import (
 )
 
 func TestCollection_Query(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "queryTest"
@@ -40,6 +40,9 @@ func TestCollection_Query(t *testing.T) {
 	for _, dataset := range []dataset{dataset1, dataset2, dataset3} {
 		var wg2 sync.WaitGroup
 		for _, user := range unmarshalDataset(dataset) {
+			wg.Add(1)
+			wg2.Add(1)
+
 			go func(user *User) {
 				defer wg.Done()
 				defer wg2.Done()
@@ -50,8 +53,6 @@ func TestCollection_Query(t *testing.T) {
 					return
 				}
 			}(user)
-			wg.Add(1)
-			wg2.Add(1)
 		}
 		wg2.Wait()
 	}

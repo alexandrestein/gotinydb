@@ -654,3 +654,11 @@ newLoop:
 
 	goto newLoop
 }
+
+func (c *Collection) isRunning() bool {
+	if c.ctx.Err() != nil {
+		return false
+	}
+
+	return true
+}
