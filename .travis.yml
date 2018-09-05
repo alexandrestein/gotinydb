@@ -13,7 +13,7 @@ before_install:
   - go get -t ./...
 
 script:
-  - go test -timeout 1h -v -failfast -coverprofile=coverage.txt -covermode=atomic && go test -timeout 1h -v -failfast -race
+  - go test -timeout 1h -v -failfast -race -coverprofile=coverage.txt -covermode=atomic
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

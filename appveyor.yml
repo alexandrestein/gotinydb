@@ -6,7 +6,7 @@ environment:
   GOPATH: c:\gopath
   # CGO_ENABLED: 1
 
-stack: go 1.10
+stack: go 1.11
 
 before_test:
   - set Path=c:\go\bin;c:\gopath\bin;%PATH%
@@ -17,6 +17,5 @@ before_test:
   - go vet ./...
 
 test_script:
-  - go test -v -failfast -race ./...
-  - go test -v -failfast ./...
+  - go test -v -failfast -race 
   # - vgo test -v -race ./...
