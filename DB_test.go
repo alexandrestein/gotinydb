@@ -10,7 +10,7 @@ import (
 )
 
 func TestOpen(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	t.Run("Simple Opening", func(t *testing.T) {
@@ -50,7 +50,7 @@ func TestOpen(t *testing.T) {
 }
 
 func TestDB_Use(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "use"
@@ -87,7 +87,7 @@ func TestDB_Use(t *testing.T) {
 		}
 
 		c.Put(testID, testContent)
-		
+
 		t.Run("Ask Twice the same collection", func(t *testing.T) {
 			c, err = db.Use(colName)
 			if err != nil {
@@ -138,7 +138,7 @@ func TestDB_Use(t *testing.T) {
 }
 
 func TestDB_SetOptions(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "setOptions"
@@ -161,7 +161,7 @@ func TestDB_SetOptions(t *testing.T) {
 }
 
 func TestDB_DeleteCollection(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	testPath := "deleteCollections"
@@ -267,7 +267,7 @@ func TestDB_DeleteCollection(t *testing.T) {
 func TestDB_Backup_And_Load(t *testing.T) {
 	t0 := time.Now()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	backedUpDBPath := "backedUp"

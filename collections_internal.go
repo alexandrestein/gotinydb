@@ -97,7 +97,7 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 	currentPosition := 0
 	t0 := time.Now()
 
-	var cancel context.CancelFunc
+	// var cancel context.CancelFunc
 
 	go func() {
 		for {
@@ -110,9 +110,7 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 
 					// If the waitting request is nil this initialize it
 					if waittingRequests == nil {
-						var ctx2 context.Context
-						ctx2, cancel = context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
-						waittingRequests = newTransaction(ctx2)
+						waittingRequests = newTransaction(tr.ctx)
 					}
 
 					waittingRequests.addTransaction(tr.transactions...)
@@ -128,9 +126,6 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 					goto emptyTheWaitList
 				}
 			case <-ctx.Done():
-				if cancel != nil {
-					cancel()
-				}
 				return
 			default:
 				time.Sleep(maxHolderDuration)
@@ -167,10 +162,6 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 
 			currentPosition = 0
 			t0 = time.Now()
-
-			if cancel != nil {
-				cancel()
-			}
 		}
 	}()
 }
