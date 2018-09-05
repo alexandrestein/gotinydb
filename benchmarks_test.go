@@ -113,7 +113,7 @@ func initbenchmark(ctx context.Context) error {
 
 	initBenchmarkDone = true
 
-	testPath := "benchmarkPath"
+	testPath := os.TempDir() + "/" + "benchmarkPath"
 
 	benchmarkDB, _ = Open(ctx, NewDefaultOptions(testPath))
 	benchmarkCollection, _ = benchmarkDB.Use("testCol")
