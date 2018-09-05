@@ -5,7 +5,7 @@ go_import_path: github.com/alexandrestein/gotinydb
 sudo: required 
 
 go:
-  - "1.10.x"
+  - "1.11.x"
   - master
   - tip
 
@@ -13,7 +13,7 @@ before_install:
   - go get -t ./...
 
 script:
-  - go test -timeout 1h -v -failfast -race -coverprofile=coverage.txt -covermode=atomic
+  - go test -timeout 1h -v -failfast -coverprofile=coverage.txt -covermode=atomic && go test -timeout 1h -v -failfast -race
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
