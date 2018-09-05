@@ -97,8 +97,6 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 	currentPosition := 0
 	t0 := time.Now()
 
-	// var cancel context.CancelFunc
-
 	go func() {
 		for {
 			select {

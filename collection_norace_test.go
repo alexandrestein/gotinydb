@@ -38,3 +38,4 @@ func TestCollection_PutToCloseDB(t *testing.T) {
 		return
 	}
 }
+
