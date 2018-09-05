@@ -64,7 +64,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 
 	c.options = d.options
 
-	c.initWriteTransactionChan(d.ctx)
+	go c.initWriteTransactionChan(d.ctx)
 
 	if colID == "" && colName == "" {
 		return nil, fmt.Errorf("name and ID can't be empty")

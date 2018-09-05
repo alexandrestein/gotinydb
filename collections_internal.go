@@ -86,82 +86,42 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 }
 
 func (c *Collection) initWriteTransactionChan(ctx context.Context) {
-	waittingRequestLimit := 1000
-	maxHolderDuration := c.options.TransactionTimeOut / 1000
+	limit := 1000
+	c.writeTransactionChan = make(chan *writeTransaction, limit*2)
+	for {
+		select {
+		// A request came up
+		case tr := <-c.writeTransactionChan:
+			waittingForResponseList := []chan error{}
+			waittingForResponseList = append(waittingForResponseList, tr.responseChan)
 
-	c.writeTransactionChan = make(chan *writeTransaction, waittingRequestLimit)
-
-	waittingForResponses := []*writeTransaction{}
-	var waittingRequests *writeTransaction
-
-	currentPosition := 0
-	t0 := time.Now()
-
-	go func() {
-		for {
+			// Try to empty the queue if any
+		tryToGetAnOtherRequest:
 			select {
-			case tr := <-c.writeTransactionChan:
-				// If the list of request is less than the limit and the caching is for less than 1000 times the time out
-				if time.Since(t0) < maxHolderDuration && currentPosition < waittingRequestLimit {
-					// Save the request to permit the response to be returned to the caller
-					waittingForResponses = append(waittingForResponses, tr)
-
-					// If the waitting request is nil this initialize it
-					if waittingRequests == nil {
-						waittingRequests = newTransaction(tr.ctx)
-					}
-
-					waittingRequests.addTransaction(tr.transactions...)
-
-					currentPosition++
-
-					continue
-				} else {
-					if waittingRequests == nil {
-						waittingRequests = tr
-					}
-
-					goto emptyTheWaitList
+			case trBis := <-c.writeTransactionChan:
+				tr.addTransaction(trBis.transactions...)
+				waittingForResponseList = append(waittingForResponseList, trBis.responseChan)
+				if len(tr.transactions) < limit {
+					goto tryToGetAnOtherRequest
 				}
-			case <-ctx.Done():
-				return
 			default:
-				time.Sleep(maxHolderDuration)
-				goto emptyTheWaitList
 			}
 
-		emptyTheWaitList:
-			if waittingRequests == nil {
-				// Start the loop again
-				continue
+			errChan := make(chan error, 1)
+			tr.responseChan = errChan
+			// Run the write operation
+			c.putTransaction(tr)
+
+			err := <-errChan
+			for _, waittingForResponse := range waittingForResponseList {
+				go func(waittingForResponse chan error, err error) {
+					waittingForResponse <- err
+				}(waittingForResponse, err)
 			}
-
-			// It's time to do the requests
-			go c.putTransaction(waittingRequests)
-			responseErr := <-waittingRequests.responseChan
-
-			var wg sync.WaitGroup
-
-			for i := range waittingForResponses {
-				wg.Add(1)
-				go func(i int, responseErr error) {
-					// Send the response
-					waittingForResponses[i].responseChan <- responseErr
-					// Clean the list
-					waittingForResponses[i] = nil
-					wg.Done()
-				}(i, responseErr)
-			}
-
-			wg.Wait()
-			// Clean the list
-			waittingForResponses = []*writeTransaction{}
-			waittingRequests = nil
-
-			currentPosition = 0
-			t0 = time.Now()
+		case <-ctx.Done():
+			return
 		}
-	}()
+	}
 }
 
 func (c *Collection) putTransaction(tr *writeTransaction) {
@@ -173,20 +133,13 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 
 	// Used to propagate the error for one or the other function
 	errChan := make(chan error, 1)
-
 	if len(tr.transactions) == 1 {
 		c.putTransactionOne(tr.ctx, errChan, wgActions, wgCommitted, tr.transactions[0])
 
-		err := waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
-		if err == nil {
-			close(tr.responseChan)
-			return
-		}
 		// Respond to the caller with the error if any
-		tr.responseChan <- err
+		tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
 	} else {
-		err := c.putTransactionMulti(tr.ctx, errChan, wgActions, wgCommitted, tr)
-		tr.responseChan <- err
+		tr.responseChan <- c.putTransactionMulti(tr.ctx, errChan, wgActions, wgCommitted, tr)
 	}
 }
 
@@ -260,7 +213,6 @@ func (c *Collection) putTransactionMulti(ctx context.Context, errChan chan error
 			return err
 		}
 	}
-
 	// Respond to the caller with the error if any
 	return nil
 }

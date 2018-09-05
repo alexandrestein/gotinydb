@@ -1,5 +1,3 @@
-// +build !race
-
 package gotinydb
 
 import (
@@ -37,30 +35,27 @@ func TestCollection_Query(t *testing.T) {
 	c.SetIndex("age", IntIndex, "Age")
 	c.SetIndex("last connection", TimeIndex, "history", "lastConnection")
 
-	var wg sync.WaitGroup
 	// Insert element in concurrent way to test the index system
 	for _, dataset := range []dataset{dataset1, dataset2, dataset3} {
-		wg.Add(1)
-		var wg2 sync.WaitGroup
+		var wg sync.WaitGroup
 		for _, user := range unmarshalDataset(dataset) {
-			wg2.Add(1)
+			wg.Add(1)
+			time.Sleep(time.Millisecond)
 			go func(c *Collection, user *User) {
-				defer func() {
-					wg2.Done()
-				}()
 				err := c.Put(user.ID, user)
 				if err != nil {
+					fmt.Println("err", err)
 					t.Error(err)
 					return
 				}
+				wg.Done()
 			}(c, user)
 		}
 
-		wg2.Wait()
-
-		wg.Done()
+		fmt.Println("wait")
+		wg.Wait()
+		fmt.Println("new loop")
 	}
-	wg.Wait()
 
 	tests := []struct {
 		name         string
