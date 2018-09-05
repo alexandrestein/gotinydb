@@ -86,33 +86,52 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 }
 
 func (c *Collection) initWriteTransactionChan(ctx context.Context) {
+	// Set a limit
 	limit := 1000
+	// Build the queue with 2 times the limit to help writing on disc
+	// in the same order as the operation are called
 	c.writeTransactionChan = make(chan *writeTransaction, limit*2)
+	// Start the infinit loop
+
 	for {
 		select {
 		// A request came up
 		case tr := <-c.writeTransactionChan:
+			// Build a new write request
+			newTr := newTransaction(tr.ctx)
+			// Add the first request to the waiting list
+			newTr.addTransaction(tr.transactions...)
+
+			// Build the slice of chan the writer will respond
 			waittingForResponseList := []chan error{}
+			// Same the first response channel
 			waittingForResponseList = append(waittingForResponseList, tr.responseChan)
 
 			// Try to empty the queue if any
 		tryToGetAnOtherRequest:
 			select {
+			// There is an other request in the queue
 			case trBis := <-c.writeTransactionChan:
-				tr.addTransaction(trBis.transactions...)
+				// Save the request
+				newTr.addTransaction(trBis.transactions...)
+				// And save the response channel
 				waittingForResponseList = append(waittingForResponseList, trBis.responseChan)
-				if len(tr.transactions) < limit {
+
+				// Check if the limit is not reach
+				if len(newTr.transactions) < limit {
+					// If not lets try to empty the queue a bit more
 					goto tryToGetAnOtherRequest
 				}
+				// This release continue if there is no request in the queue
 			default:
 			}
 
-			errChan := make(chan error, 1)
-			tr.responseChan = errChan
 			// Run the write operation
-			c.putTransaction(tr)
+			go c.putTransaction(newTr)
 
-			err := <-errChan
+			// Get the response
+			err := <-newTr.responseChan
+			// And spread the response to all callers in parallel
 			for _, waittingForResponse := range waittingForResponseList {
 				go func(waittingForResponse chan error, err error) {
 					waittingForResponse <- err

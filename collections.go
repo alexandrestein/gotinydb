@@ -29,8 +29,7 @@ func (c *Collection) Put(id string, content interface{}) error {
 	// Run the insertion
 	c.writeTransactionChan <- tr
 	// And wait for the end of the insertion
-	s := <-tr.responseChan
-	return s
+	return <-tr.responseChan
 }
 
 // PutMulti put the given elements in the DB with one single write transaction.

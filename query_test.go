@@ -40,7 +40,6 @@ func TestCollection_Query(t *testing.T) {
 		var wg sync.WaitGroup
 		for _, user := range unmarshalDataset(dataset) {
 			wg.Add(1)
-			time.Sleep(time.Millisecond)
 			go func(c *Collection, user *User) {
 				err := c.Put(user.ID, user)
 				if err != nil {
