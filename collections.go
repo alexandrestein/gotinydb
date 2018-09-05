@@ -24,20 +24,6 @@ func (c *Collection) Put(id string, content interface{}) error {
 	tr := newTransaction(ctx)
 	trElem := newTransactionElement(id, content)
 
-	// if bytes, ok := content.([]byte); ok {
-	// 	trElem.bin = true
-	// 	trElem.contentAsBytes = bytes
-	// }
-
-	// if !trElem.bin {
-	// 	jsonBytes, marshalErr := json.Marshal(content)
-	// 	if marshalErr != nil {
-	// 		return marshalErr
-	// 	}
-
-	// 	trElem.contentAsBytes = jsonBytes
-	// }
-
 	tr.addTransaction(trElem)
 
 	// Run the insertion

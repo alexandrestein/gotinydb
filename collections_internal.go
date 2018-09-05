@@ -86,14 +86,90 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 }
 
 func (c *Collection) initWriteTransactionChan(ctx context.Context) {
-	c.writeTransactionChan = make(chan *writeTransaction, 1000)
+	waittingRequestLimit := 1000
+	maxHolderDuration := c.options.TransactionTimeOut / 1000
+
+	c.writeTransactionChan = make(chan *writeTransaction, waittingRequestLimit)
+
+	waittingForResponses := []*writeTransaction{}
+	var waittingRequests *writeTransaction
+
+	currentPosition := 0
+	t0 := time.Now()
+
+	var cancel context.CancelFunc
+
 	go func() {
 		for {
 			select {
 			case tr := <-c.writeTransactionChan:
-				c.putTransaction(tr)
+				// If the list of request is less than the limit and the caching is for less than 1000 times the time out
+				if time.Since(t0) < maxHolderDuration && currentPosition < waittingRequestLimit {
+					// Save the request to permit the response to be returned to the caller
+					waittingForResponses = append(waittingForResponses, tr)
+
+					// If the waitting request is nil this initialize it
+					if waittingRequests == nil {
+						var ctx2 context.Context
+						ctx2, cancel = context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
+						waittingRequests = newTransaction(ctx2)
+					}
+
+					waittingRequests.addTransaction(tr.transactions...)
+
+					currentPosition++
+
+					continue
+				} else {
+					if waittingRequests == nil {
+						waittingRequests = tr
+					}
+
+					goto emptyTheWaitList
+				}
 			case <-ctx.Done():
+				if cancel != nil {
+					cancel()
+				}
 				return
+			default:
+				time.Sleep(maxHolderDuration)
+				goto emptyTheWaitList
+			}
+
+		emptyTheWaitList:
+			if waittingRequests == nil {
+				// Start the loop again
+				continue
+			}
+
+			// It's time to do the requests
+			go c.putTransaction(waittingRequests)
+			responseErr := <-waittingRequests.responseChan
+
+			var wg sync.WaitGroup
+
+			for i := range waittingForResponses {
+				wg.Add(1)
+				go func(i int, responseErr error) {
+					// Send the response
+					waittingForResponses[i].responseChan <- responseErr
+					// Clean the list
+					waittingForResponses[i] = nil
+					wg.Done()
+				}(i, responseErr)
+			}
+
+			wg.Wait()
+			// Clean the list
+			waittingForResponses = []*writeTransaction{}
+			waittingRequests = nil
+
+			currentPosition = 0
+			t0 = time.Now()
+
+			if cancel != nil {
+				cancel()
 			}
 		}
 	}()
@@ -112,24 +188,17 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	if len(tr.transactions) == 1 {
 		c.putTransactionOne(tr.ctx, errChan, wgActions, wgCommitted, tr.transactions[0])
 
+		err := waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
+		if err == nil {
+			close(tr.responseChan)
+			return
+		}
 		// Respond to the caller with the error if any
-		tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
+		tr.responseChan <- err
 	} else {
-		tr.responseChan <- c.putTransactionMulti(tr.ctx, errChan, wgActions, wgCommitted, tr)
+		err := c.putTransactionMulti(tr.ctx, errChan, wgActions, wgCommitted, tr)
+		tr.responseChan <- err
 	}
-
-	// // Runs saving into the store
-	// go c.putIntoStore(tr.ctx, errChan, wgActions, wgCommitted, tr)
-
-	// // Starts the indexing process
-	// if !tr.bin {
-	// 	go c.putIntoIndexes(tr.ctx, errChan, wgActions, wgCommitted, tr)
-	// } else {
-	// 	go c.onlyCleanRefs(tr.ctx, errChan, wgActions, wgCommitted, tr)
-	// }
-
-	// // Respond to the caller with the error if any
-	// tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
 }
 
 func (c *Collection) putTransactionOne(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wtElem *writeTransactionElement) {
@@ -315,7 +384,7 @@ func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, commit b
 	wgActions.Done()
 
 	// Wait for the store insetion to be completed
-	err := waitForDoneErrOrCanceled(ctx, wgActions, nil)
+	err := waitForDoneErrOrCanceled(ctx, wgActions, errChan)
 	if err != nil {
 		errChan <- err
 		return err
@@ -517,7 +586,7 @@ func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan 
 	wgActions.Done()
 
 	// Wait for the store insetion to be completed
-	err := waitForDoneErrOrCanceled(ctx, wgActions, nil)
+	err := waitForDoneErrOrCanceled(ctx, wgActions, errChan)
 	if err != nil {
 		return err
 	}
@@ -576,7 +645,6 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 
 func (c *Collection) getAndCheckContent(contentAndHashSignatureAsBytes []byte) (content []byte, _ error) {
 	if len(contentAndHashSignatureAsBytes) <= 8 {
-		fmt.Println("contentAndHashSignatureAsBytes", len(contentAndHashSignatureAsBytes), contentAndHashSignatureAsBytes)
 		return nil, ErrDataCorrupted
 	}
 

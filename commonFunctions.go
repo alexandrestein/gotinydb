@@ -14,8 +14,8 @@ import (
 func waitForDoneErrOrCanceled(ctx context.Context, wg *sync.WaitGroup, errChan chan error) error {
 	c := make(chan struct{})
 	go func() {
-		defer close(c)
 		wg.Wait()
+		close(c)
 	}()
 	select {
 	case <-c:
@@ -64,8 +64,8 @@ func newTransaction(ctx context.Context) *writeTransaction {
 	return wt
 }
 
-func (wt *writeTransaction) addTransaction(trElement *writeTransactionElement) {
-	wt.transactions = append(wt.transactions, trElement)
+func (wt *writeTransaction) addTransaction(trElement ...*writeTransactionElement) {
+	wt.transactions = append(wt.transactions, trElement...)
 }
 
 // buildIDInternal builds an ID as a slice of bytes from the given string
