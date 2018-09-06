@@ -65,7 +65,9 @@ func (d *DB) Use(colName string) (*Collection, error) {
 	return c, nil
 }
 
-// SetOptions update the database configurations
+// SetOptions update the database configurations.
+// Some element won't apply before the database restart.
+// For example the PutBufferLimit can't be change after the collection is started.
 func (d *DB) SetOptions(options *Options) error {
 	d.options = options
 
