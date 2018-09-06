@@ -413,68 +413,6 @@ func backupAndRestorSimpleGetValues(ids []string, c1, c2, c3, rc1, rc2, rc3 *Col
 		return err
 	}
 
-	// for _, response := range values {
-	// 	user := &User{}
-	// 	restoredUser := &User{}
-	// 	err = response.Unmarshal(user)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	_, err = rc1.Get(user.ID, restoredUser)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	if !reflect.DeepEqual(user, restoredUser) {
-	// 		return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
-	// 	}
-	// }
-
-	// values, err = c2.GetValues(ids[0], len(ids))
-	// if err != nil {
-	// 	return err
-	// }
-	// for _, response := range values {
-	// 	user := &User{}
-	// 	restoredUser := &User{}
-	// 	err = response.Unmarshal(user)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	_, err = rc2.Get(user.ID, restoredUser)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	if !reflect.DeepEqual(user, restoredUser) {
-	// 		return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
-	// 	}
-	// }
-
-	// values, err = c3.GetValues(ids[0], len(ids))
-	// if err != nil {
-	// 	return err
-	// }
-	// for _, response := range values {
-	// 	user := &User{}
-	// 	restoredUser := &User{}
-	// 	err = response.Unmarshal(user)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	_, err = rc3.Get(user.ID, restoredUser)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	if !reflect.DeepEqual(user, restoredUser) {
-	// 		return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
-	// 	}
-	// }
-
 	return nil
 }
 
@@ -490,7 +428,7 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 			NewFilter(Equal).SetSelector("email").CompareTo(user.Email),
 		).SetLimits(1, 1)
 
-		response, err = restoredCol.Query(q)
+		response, _ = restoredCol.Query(q)
 		response.One(gettedUser)
 
 		if !reflect.DeepEqual(user, gettedUser) {
@@ -503,7 +441,7 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 			NewFilter(Equal).SetSelector("Age").CompareTo(user.Age),
 		).SetLimits(1, 1)
 
-		response, err = restoredCol.Query(q)
+		response, _ = restoredCol.Query(q)
 		response.One(gettedUser)
 
 		if !reflect.DeepEqual(user, gettedUser) {

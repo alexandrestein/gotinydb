@@ -209,10 +209,10 @@ func TestCollection_GetIDsAndValues(t *testing.T) {
 	}
 
 	var ids []string
-	ids, err = c.GetIDs("", len(users))
+	ids, _ = c.GetIDs("", len(users))
 
 	var values []*ResponseElem
-	values, err = c.GetValues("", len(users))
+	values, _ = c.GetValues("", len(users))
 
 	if len(users) != len(ids) || len(users) != len(values) {
 		t.Errorf("the length of the returned elements are not what is expected\n\tnumbers of users: %d\n\tnumbers of ids: %d\n\tnumbers of values: %d", len(users), len(ids), len(values))
