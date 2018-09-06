@@ -254,9 +254,6 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *bolt.Tx, errChan ch
 			errChan <- txErr
 			return txErr
 		}
-	} else if !tx.Writable() {
-		errChan <- bolt.ErrTxNotWritable
-		return bolt.ErrTxNotWritable
 	}
 
 	err := c.cleanRefs(ctx, tx, writeTransaction.id)
