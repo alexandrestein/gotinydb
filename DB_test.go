@@ -361,71 +361,119 @@ func TestDB_Backup_And_Load(t *testing.T) {
 
 func backupAndRestorSimpleGetValues(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection) (err error) {
 	var values []*ResponseElem
+
+	testValues := func(values []*ResponseElem, rc *Collection) error {
+		if err != nil {
+			return err
+		}
+		for _, response := range values {
+			user := &User{}
+			restoredUser := &User{}
+			err = response.Unmarshal(user)
+			if err != nil {
+				return err
+			}
+
+			_, err = rc.Get(user.ID, restoredUser)
+			if err != nil {
+				return err
+			}
+
+			if !reflect.DeepEqual(user, restoredUser) {
+				return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
+			}
+		}
+		return nil
+	}
+
 	values, err = c1.GetValues(ids[0], len(ids))
 	if err != nil {
 		return err
 	}
-	for _, response := range values {
-		user := &User{}
-		restoredUser := &User{}
-		err = response.Unmarshal(user)
-		if err != nil {
-			return err
-		}
-
-		_, err = rc1.Get(user.ID, restoredUser)
-		if err != nil {
-			return err
-		}
-
-		if !reflect.DeepEqual(user, restoredUser) {
-			return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
-		}
+	err = testValues(values, rc1)
+	if err != nil {
+		return err
 	}
 
 	values, err = c2.GetValues(ids[0], len(ids))
 	if err != nil {
 		return err
 	}
-	for _, response := range values {
-		user := &User{}
-		restoredUser := &User{}
-		err = response.Unmarshal(user)
-		if err != nil {
-			return err
-		}
-
-		_, err = rc2.Get(user.ID, restoredUser)
-		if err != nil {
-			return err
-		}
-
-		if !reflect.DeepEqual(user, restoredUser) {
-			return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
-		}
+	err = testValues(values, rc2)
+	if err != nil {
+		return err
 	}
 
 	values, err = c3.GetValues(ids[0], len(ids))
 	if err != nil {
 		return err
 	}
-	for _, response := range values {
-		user := &User{}
-		restoredUser := &User{}
-		err = response.Unmarshal(user)
-		if err != nil {
-			return err
-		}
-
-		_, err = rc3.Get(user.ID, restoredUser)
-		if err != nil {
-			return err
-		}
-
-		if !reflect.DeepEqual(user, restoredUser) {
-			return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
-		}
+	err = testValues(values, rc3)
+	if err != nil {
+		return err
 	}
+
+	// for _, response := range values {
+	// 	user := &User{}
+	// 	restoredUser := &User{}
+	// 	err = response.Unmarshal(user)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	_, err = rc1.Get(user.ID, restoredUser)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	if !reflect.DeepEqual(user, restoredUser) {
+	// 		return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
+	// 	}
+	// }
+
+	// values, err = c2.GetValues(ids[0], len(ids))
+	// if err != nil {
+	// 	return err
+	// }
+	// for _, response := range values {
+	// 	user := &User{}
+	// 	restoredUser := &User{}
+	// 	err = response.Unmarshal(user)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	_, err = rc2.Get(user.ID, restoredUser)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	if !reflect.DeepEqual(user, restoredUser) {
+	// 		return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
+	// 	}
+	// }
+
+	// values, err = c3.GetValues(ids[0], len(ids))
+	// if err != nil {
+	// 	return err
+	// }
+	// for _, response := range values {
+	// 	user := &User{}
+	// 	restoredUser := &User{}
+	// 	err = response.Unmarshal(user)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	_, err = rc3.Get(user.ID, restoredUser)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	if !reflect.DeepEqual(user, restoredUser) {
+	// 		return fmt.Errorf("restored element and saved element are not equal: \n\t%v\n\t%v", user, restoredUser)
+	// 	}
+	// }
 
 	return nil
 }
