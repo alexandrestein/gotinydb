@@ -33,17 +33,7 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 		return
 	}
 
-	u := &User{
-		Age:       10,
-		Email:     "test@test.com",
-		Balance:   2186,
-		ID:        "test ID",
-		LastLogin: time.Now().Truncate(time.Millisecond),
-		Address: &Address{
-			City:    "San Francisco",
-			ZipCode: 94102,
-		},
-	}
+	u := testUser
 
 	err = c.Put(u.ID, u)
 	if err != nil {

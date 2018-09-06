@@ -58,17 +58,7 @@ func TestDB_Use(t *testing.T) {
 
 	colName := "testCol"
 	testID := "testID"
-	testContent := &User{
-		ID:        testID,
-		Age:       10,
-		Email:     "test@test.com",
-		Balance:   2186,
-		LastLogin: time.Now().Truncate(time.Millisecond),
-		Address: &Address{
-			City:    "San Francisco",
-			ZipCode: 94102,
-		},
-	}
+	testContent := testUser
 
 	var c *Collection
 
