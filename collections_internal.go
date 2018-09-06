@@ -431,34 +431,38 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 		return nil, fmt.Errorf("no index found")
 	}
 
-	incrementTreeFunc := func(id *idType, nb int) {
-		// Try to get the id from the tree
-		fromTree := tree.Get(id)
-		if fromTree == nil {
-			// If not in the tree add it
-			id.Increment(nb)
-			tree.ReplaceOrInsert(id)
-			return
-		}
-		// if already increment the counter
-		fromTree.(*idType).Increment(nb)
-	}
+	// incrementTreeFunc := func(id *idType, nb int) {
+	// 	// Try to get the id from the tree
+	// 	fromTree := tree.Get(id)
+	// 	if fromTree == nil {
+	// 		// If not in the tree add it
+	// 		id.Increment(nb)
+	// 		tree.ReplaceOrInsert(id)
+	// 		return
+	// 	}
+	// 	// if already increment the counter
+	// 	fromTree.(*idType).Increment(nb)
+	// }
 
 	// Loop every response from the index query
+	return c.queryGetIDsLoop(ctx, tree, finishedChan, excludeFinishedChan, nbToDo)
+}
+
+func (c *Collection) queryGetIDsLoop(ctx context.Context, tree *btree.BTree, finishedChan, excludeFinishedChan chan *idsType, nbToDo int) (*btree.BTree, error) {
 	for {
 		select {
 		case tmpIDs := <-finishedChan:
 			if tmpIDs != nil {
 				// Add IDs into the response tree
 				for _, id := range tmpIDs.IDs {
-					incrementTreeFunc(id, 1)
+					c.queryGetIDsLoopIncrementFuncfunc(tree, id, 1)
 				}
 			}
 		case tmpIDs := <-excludeFinishedChan:
 			if tmpIDs != nil {
 				// Add IDs into the response tree
 				for _, id := range tmpIDs.IDs {
-					incrementTreeFunc(id, -1)
+					c.queryGetIDsLoopIncrementFuncfunc(tree, id, -1)
 				}
 			}
 		case <-ctx.Done():
@@ -473,6 +477,19 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 			return tree, nil
 		}
 	}
+}
+
+func (c *Collection) queryGetIDsLoopIncrementFuncfunc(tree *btree.BTree, id *idType, nb int) {
+	// Try to get the id from the tree
+	fromTree := tree.Get(id)
+	if fromTree == nil {
+		// If not in the tree add it
+		id.Increment(nb)
+		tree.ReplaceOrInsert(id)
+		return
+	}
+	// if already increment the counter
+	fromTree.(*idType).Increment(nb)
 }
 
 func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btree.BTree) (response *Response, _ error) {
