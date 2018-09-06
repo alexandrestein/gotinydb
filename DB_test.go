@@ -14,7 +14,7 @@ func TestOpen(t *testing.T) {
 	defer cancel()
 
 	t.Run("Simple Opening", func(t *testing.T) {
-		testPath := "openingTest"
+		testPath := os.TempDir() + "/" + "openingTest"
 		defer os.RemoveAll(testPath)
 
 		db, err := Open(ctx, NewDefaultOptions(testPath))
@@ -37,7 +37,7 @@ func TestOpen(t *testing.T) {
 	})
 
 	t.Run("Opening With No Badger Config", func(t *testing.T) {
-		testPath := "openingNoBadgerConfigTest"
+		testPath := os.TempDir() + "/" + "openingNoBadgerConfigTest"
 		defer os.RemoveAll(testPath)
 
 		options := NewDefaultOptions(testPath)
@@ -53,7 +53,7 @@ func TestDB_Use(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "use"
+	testPath := os.TempDir() + "/" + "use"
 	defer os.RemoveAll(testPath)
 
 	colName := "testCol"
@@ -131,7 +131,7 @@ func TestDB_SetOptions(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "setOptions"
+	testPath := os.TempDir() + "/" + "setOptions"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
@@ -154,7 +154,7 @@ func TestDB_DeleteCollection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "deleteCollections"
+	testPath := os.TempDir() + "/" + "deleteCollections"
 	defer os.RemoveAll(testPath)
 
 	t.Run("Delete Empty Collections", func(t *testing.T) {
@@ -260,9 +260,9 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	backedUpDBPath := "backedUp"
-	backupArchivePath := "bkpArchive"
-	restoredDBPath := "restored"
+	backedUpDBPath := os.TempDir() + "/" + "backedUp"
+	backupArchivePath := os.TempDir() + "/" + "bkpArchive"
+	restoredDBPath := os.TempDir() + "/" + "restored"
 
 	defer os.RemoveAll(backedUpDBPath)
 	defer os.RemoveAll(backupArchivePath)

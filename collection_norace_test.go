@@ -13,7 +13,7 @@ func TestCollection_PutToCloseDB(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "putToBadDB"
+	testPath := os.TempDir() + "/" + "putToBadDB"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
@@ -38,4 +38,3 @@ func TestCollection_PutToCloseDB(t *testing.T) {
 		return
 	}
 }
-

@@ -12,7 +12,7 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "putGetAndDelete"
+	testPath := os.TempDir() + "/" + "putGetAndDelete"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
@@ -69,7 +69,7 @@ func TestCollection_PutMulti(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "putMulti"
+	testPath := os.TempDir() + "/" + "putMulti"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
@@ -131,7 +131,7 @@ func TestCollection_DeleteIndex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "deleteIndex"
+	testPath := os.TempDir() + "/" + "deleteIndex"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
@@ -177,7 +177,7 @@ func TestCollection_GetIDsAndValues(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "getIDsAndValues"
+	testPath := os.TempDir() + "/" + "getIDsAndValues"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
@@ -238,7 +238,7 @@ func TestCollection_Rollback(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "rollback"
+	testPath := os.TempDir() + "/" + "rollback"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
@@ -327,7 +327,7 @@ func TestCollection_GetIndexesInfo(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "rollback"
+	testPath := os.TempDir() + "/" + "rollback"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
