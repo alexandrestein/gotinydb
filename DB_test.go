@@ -255,8 +255,6 @@ func TestDB_DeleteCollection(t *testing.T) {
 }
 
 func TestDB_Backup_And_Load(t *testing.T) {
-	t0 := time.Now()
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
@@ -275,35 +273,28 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	}
 	defer db.Close()
 
-	name1 := "collection test 1"
-	name2 := "collection test 2"
-	name3 := "collection test 3"
+	names := make([]string, 3)
+	baseCols := make([]*Collection, 3)
+	for i, n := range []int{1, 2, 3} {
+		names[i] = fmt.Sprintf("collection test %d", n)
 
-	var c1, c2, c3 *Collection
+		var tmpC *Collection
+		tmpC, err = db.Use(names[i])
+		if err != nil {
+			t.Error(err)
+			return
+		}
 
-	c1, err = db.Use(name1)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	c2, err = db.Use(name2)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	c3, err = db.Use(name3)
-	if err != nil {
-		t.Error(err)
-		return
+		baseCols[i] = tmpC
 	}
 
 	addIndexesFunc := func(c *Collection) {
 		c.SetIndex("email", StringIndex, "email")
 		c.SetIndex("age", IntIndex, "Age")
 	}
-	addIndexesFunc(c1)
-	addIndexesFunc(c2)
-	addIndexesFunc(c3)
+	addIndexesFunc(baseCols[0])
+	addIndexesFunc(baseCols[1])
+	addIndexesFunc(baseCols[2])
 
 	addContentFunc := func(c *Collection, ds dataset) {
 		for _, user := range unmarshalDataset(ds) {
@@ -314,22 +305,14 @@ func TestDB_Backup_And_Load(t *testing.T) {
 			}
 		}
 	}
-	addContentFunc(c1, dataset1)
-	addContentFunc(c2, dataset2)
-	addContentFunc(c3, dataset3)
-
-	if testing.Verbose() {
-		t.Logf("Initial database fill up done %s after the begin of the test", time.Since(t0).String())
-	}
+	addContentFunc(baseCols[0], dataset1)
+	addContentFunc(baseCols[1], dataset2)
+	addContentFunc(baseCols[2], dataset3)
 
 	err = db.Backup(backupArchivePath, 0)
 	if err != nil {
 		t.Error(err)
 		return
-	}
-
-	if testing.Verbose() {
-		t.Logf("Backup done %s after the begin of the test", time.Since(t0).String())
 	}
 
 	var restoredDB *DB
@@ -345,25 +328,16 @@ func TestDB_Backup_And_Load(t *testing.T) {
 		return
 	}
 
-	if testing.Verbose() {
-		t.Logf("Loading done %s after the begin of the test", time.Since(t0).String())
-	}
+	restoredCols := make([]*Collection, 3)
+	for i := range []int{1, 2, 3} {
+		var tmpC *Collection
+		tmpC, err = restoredDB.Use(names[i])
+		if err != nil {
+			t.Error(err)
+			return
+		}
 
-	var rc1, rc2, rc3 *Collection
-	rc1, err = restoredDB.Use(name1)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	rc2, err = restoredDB.Use(name2)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	rc3, err = restoredDB.Use(name3)
-	if err != nil {
-		t.Error(err)
-		return
+		restoredCols[i] = tmpC
 	}
 
 	var ids []string
@@ -371,23 +345,14 @@ func TestDB_Backup_And_Load(t *testing.T) {
 		ids = append(ids, user.ID)
 	}
 
-	if testing.Verbose() {
-		t.Logf("Start checking restoration %s after the begin of the test", time.Since(t0).String())
-	}
-
 	// Test simple get values
-	err = backupAndRestorSimpleGetValues(ids, c1, c2, c3, rc1, rc2, rc3)
+	err = backupAndRestorSimpleGetValues(ids, baseCols[0], baseCols[1], baseCols[2], restoredCols[0], restoredCols[1], restoredCols[2])
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if testing.Verbose() {
-		t.Logf("Get check is done %s after the begin of the test", time.Since(t0).String())
-		t.Logf("Starting check by querying the indexes")
-	}
-
-	err = backupAndRestorQueries(ids, c1, c2, c3, rc1, rc2, rc3)
+	err = backupAndRestorQueries(ids, baseCols[0], baseCols[1], baseCols[2], restoredCols[0], restoredCols[1], restoredCols[2])
 	if err != nil {
 		t.Error(err)
 		return
