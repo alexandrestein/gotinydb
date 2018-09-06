@@ -93,6 +93,10 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 	c.writeTransactionChan = make(chan *writeTransaction, limit*2)
 	// Start the infinit loop
 
+	go c.waittingWriteLoop(ctx, limit)
+}
+
+func (c *Collection) waittingWriteLoop(ctx context.Context, limit int) {
 	for {
 		select {
 		// A request came up

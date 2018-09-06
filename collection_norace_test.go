@@ -39,25 +39,25 @@ func TestCollection_PutToCloseDB(t *testing.T) {
 	}
 }
 
-func TestDB_SetOptions(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
-	defer cancel()
+// func TestDB_SetOptions(t *testing.T) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+// 	defer cancel()
 
-	testPath := os.TempDir() + "/" + "setOptions"
-	defer os.RemoveAll(testPath)
+// 	testPath := os.TempDir() + "/" + "setOptions"
+// 	defer os.RemoveAll(testPath)
 
-	db, err := Open(ctx, NewDefaultOptions(testPath))
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer db.Close()
+// 	db, err := Open(ctx, NewDefaultOptions(testPath))
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	defer db.Close()
 
-	_, err = db.Use("testCol")
-	if err != nil {
-		t.Error(err)
-		return
-	}
+// 	_, err = db.Use("testCol")
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
 
-	db.SetOptions(NewDefaultOptions(testPath))
-}
+// 	db.SetOptions(NewDefaultOptions(testPath))
+// }
