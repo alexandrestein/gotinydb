@@ -327,7 +327,7 @@ func TestCollection_GetIndexesInfo(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := os.TempDir() + "/" + "rollback"
+	testPath := os.TempDir() + "/" + "getIndexInfo"
 	defer os.RemoveAll(testPath)
 
 	db, err := Open(ctx, NewDefaultOptions(testPath))
