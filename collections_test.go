@@ -256,22 +256,11 @@ func TestCollection_Rollback(t *testing.T) {
 	users := unmarshalDataset(dataset1)
 	users2 := unmarshalDataset(dataset2)
 	users3 := unmarshalDataset(dataset3)
+
 	for i, user := range users {
-		err = c.Put(user.ID, user)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		err = c.Put(user.ID, users2[i])
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		err = c.Put(user.ID, users3[i])
-		if err != nil {
-			t.Error(err)
-			return
-		}
+		c.Put(user.ID, user)
+		c.Put(user.ID, users2[i])
+		c.Put(user.ID, users3[i])
 	}
 
 	for i := 0; i < len(users); i++ {
