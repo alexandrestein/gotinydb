@@ -62,6 +62,15 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 		nextFunc = iter.Prev
 	}
 
+	return i.getIDsForRangeOfValuesLoop(ctx, allIDs, nextFunc, filterValue, limit, keepEqual)
+}
+
+func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context,
+	allIDs *idsType,
+	nextFunc func() (key []byte, value []byte),
+	filterValue, limit []byte,
+	keepEqual bool,
+) (*idsType, error) {
 	for {
 		indexedValue, idsAsByte := nextFunc()
 		if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
@@ -98,6 +107,7 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 			break
 		}
 	}
+
 	return allIDs, nil
 }
 
