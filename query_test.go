@@ -15,10 +15,14 @@ func TestCollection_Query(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := os.TempDir() + "/" + "queryTest"
+	testPath := "queryTest"
 	defer os.RemoveAll(testPath)
 
-	db, err := Open(ctx, NewDefaultOptions(testPath))
+	conf := NewDefaultOptions(testPath)
+	// This limit the queue to prevent the race overflow during test
+	conf.PutBufferLimit = 50
+
+	db, err := Open(ctx, conf)
 	if err != nil {
 		t.Error(err)
 		return
@@ -43,7 +47,6 @@ func TestCollection_Query(t *testing.T) {
 			go func(c *Collection, user *User) {
 				err := c.Put(user.ID, user)
 				if err != nil {
-					fmt.Println("err", err)
 					t.Error(err)
 					return
 				}
@@ -51,9 +54,7 @@ func TestCollection_Query(t *testing.T) {
 			}(c, user)
 		}
 
-		fmt.Println("wait")
 		wg.Wait()
-		fmt.Println("new loop")
 	}
 
 	tests := []struct {

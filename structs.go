@@ -26,6 +26,8 @@ type (
 		Path                             string
 		TransactionTimeOut, QueryTimeOut time.Duration
 		InternalQueryLimit               int
+		// This define the limit which apply to the serialization of the writes
+		PutBufferLimit int
 
 		BadgerOptions *badger.Options
 		BoltOptions   *bolt.Options

@@ -87,7 +87,7 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 
 func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 	// Set a limit
-	limit := 1000
+	limit := c.options.PutBufferLimit
 	// Build the queue with 2 times the limit to help writing on disc
 	// in the same order as the operation are called
 	c.writeTransactionChan = make(chan *writeTransaction, limit*2)

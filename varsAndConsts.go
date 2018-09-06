@@ -16,6 +16,7 @@ var (
 	DefaultQueryTimeOut       = time.Second * 30
 	DefaultQueryLimit         = 100
 	DefaultInternalQueryLimit = 1000
+	DefaultPutBufferLimit     = 1000
 
 	DefaultBadgerOptions = &badger.Options{
 		DoNotCompact:        false,
@@ -50,6 +51,7 @@ func NewDefaultOptions(path string) *Options {
 		TransactionTimeOut: DefaultTransactionTimeOut,
 		QueryTimeOut:       DefaultQueryTimeOut,
 		InternalQueryLimit: DefaultQueryLimit,
+		PutBufferLimit:     DefaultPutBufferLimit,
 
 		BadgerOptions: DefaultBadgerOptions,
 		BoltOptions:   DefaultBoltOptions,
