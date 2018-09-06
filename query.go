@@ -96,9 +96,9 @@ func (iMs *idsTypeMultiSorter) less(i, j int) bool {
 		return true
 	case 1:
 		return false
-		// If equal compare the ID
 	case 0:
-		switch p.ID < q.ID {
+		// If equal compare the ID
+		switch p.ID > q.ID {
 		case true:
 			return true
 		case false:

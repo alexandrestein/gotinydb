@@ -429,19 +429,6 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 		return nil, fmt.Errorf("no index found")
 	}
 
-	// incrementTreeFunc := func(id *idType, nb int) {
-	// 	// Try to get the id from the tree
-	// 	fromTree := tree.Get(id)
-	// 	if fromTree == nil {
-	// 		// If not in the tree add it
-	// 		id.Increment(nb)
-	// 		tree.ReplaceOrInsert(id)
-	// 		return
-	// 	}
-	// 	// if already increment the counter
-	// 	fromTree.(*idType).Increment(nb)
-	// }
-
 	// Loop every response from the index query
 	return c.queryGetIDsLoop(ctx, tree, finishedChan, excludeFinishedChan, nbToDo)
 }
