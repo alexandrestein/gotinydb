@@ -43,10 +43,8 @@ func (c *Collection) init(name string) error {
 		if confBucket == nil {
 			return fmt.Errorf("bucket does not exist")
 		}
-		if nameErr := confBucket.Put([]byte("name"), []byte(name)); nameErr != nil {
-			return nameErr
-		}
-		return nil
+
+		return confBucket.Put([]byte("name"), []byte(name))
 	})
 }
 
