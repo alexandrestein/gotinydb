@@ -36,7 +36,7 @@ func (c *Collection) Put(id string, content interface{}) error {
 // This must have much better performances than with multiple *Collection.Put().
 // The number of IDs and of content must be equal.
 func (c *Collection) PutMulti(IDs []string, content []interface{}) error {
-	// Check the length of the paramiters
+	// Check the length of the parameters
 	if len(IDs) != len(content) {
 		return ErrPutMultiWrongLen
 	}

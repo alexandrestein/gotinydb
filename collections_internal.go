@@ -91,7 +91,7 @@ func (c *Collection) initWriteTransactionChan(ctx context.Context) {
 	// Build the queue with 2 times the limit to help writing on disc
 	// in the same order as the operation are called
 	c.writeTransactionChan = make(chan *writeTransaction, limit*2)
-	// Start the infinit loop
+	// Start the infinite loop
 
 	go c.waittingWriteLoop(ctx, limit)
 }

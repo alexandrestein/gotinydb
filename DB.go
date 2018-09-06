@@ -1,5 +1,5 @@
 /*
-Package gotinydb provides a simple but powerfull NoSQL database.
+Package gotinydb provides a simple but powerful NoSQL database.
 
 The goal is to have a simple way to store, order and retrieve values from storage.
 It can handel big binnary files as structured objects with fields and subfields indexation.
