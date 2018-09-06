@@ -30,7 +30,7 @@ func TestOpen(t *testing.T) {
 	})
 
 	t.Run("Opening Wrong Path", func(t *testing.T) {
-		_, err := Open(ctx, NewDefaultOptions("/path/does/not/exist"))
+		_, err := Open(ctx, NewDefaultOptions(os.DevNull))
 		if err == nil {
 			t.Errorf("database opened but path does not exist")
 		}
