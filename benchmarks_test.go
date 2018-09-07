@@ -37,10 +37,8 @@ func Benchmark(b *testing.B) {
 		os.Exit(1)
 	}
 
-	time.Sleep(time.Second)
-
-	// b.Run("BenchmarkInsert", benchmarkInsert)
-	// b.Run("BenchmarkInsertParallel", benchmarkInsertParallel)
+	b.Run("BenchmarkInsert", benchmarkInsert)
+	b.Run("BenchmarkInsertParallel", benchmarkInsertParallel)
 	b.Run("BenchmarkInsertWithOneIndex", benchmarkInsertWithOneIndex)
 	b.Run("BenchmarkInsertParallelWithOneIndex", benchmarkInsertParallelWithOneIndex)
 	b.Run("BenchmarkInsertWithSixIndexes", benchmarkInsertWithSixIndexes)
@@ -131,9 +129,6 @@ func initbenchmark(ctx context.Context) error {
 		return nil
 	}
 
-	nbInitInsertion := 1000
-	// nbInitInsertion := 1000 * 1000
-
 	initBenchmarkDone = true
 
 	testPath := "benchmarkPath"
@@ -143,12 +138,9 @@ func initbenchmark(ctx context.Context) error {
 	benchmarkCollection, _ = benchmarkDB.Use("testCol")
 	deleteCollection, _ = benchmarkDB.Use("test del")
 
-	if err := fillUpDBForBenchmarks(nbInitInsertion); err != nil {
-		return err
-	}
 	users := unmarshalDataset(dataset1)
 
-	iForIds := nbInitInsertion
+	iForIds := 0
 	getID = make(chan string, 100)
 	go func() {
 		for {
@@ -167,7 +159,7 @@ func initbenchmark(ctx context.Context) error {
 		for {
 			select {
 			case getExistingID <- buildID(fmt.Sprint(i)):
-				if i >= nbInitInsertion {
+				if i >= iForIds {
 					i = 0
 				}
 			case <-ctx.Done():
@@ -204,9 +196,7 @@ func insert(b *testing.B, parallel bool) error {
 		})
 	} else {
 		for i := 0; i < b.N; i++ {
-			id := <-getID
-			content := <-getContent
-			err := benchmarkCollection.Put(id, content)
+			err := benchmarkCollection.Put(<-getID, <-getContent)
 			if err != nil {
 				return err
 			}
@@ -347,7 +337,7 @@ func setSixIndex() {
 	benchmarkCollection.SetIndex("balance", IntIndex, "Balance")
 	benchmarkCollection.SetIndex("city", StringIndex, "Address", "City")
 	benchmarkCollection.SetIndex("zip", IntIndex, "Address", "ZipCode")
-	benchmarkCollection.SetIndex("age", IntIndex, "Age")
+	benchmarkCollection.SetIndex("age", UIntIndex, "Age")
 	benchmarkCollection.SetIndex("last login", TimeIndex, "LastLogin")
 }
 func delSixIndex() {
@@ -378,6 +368,7 @@ func benchmarkInsertParallel(b *testing.B) {
 func benchmarkInsertWithOneIndex(b *testing.B) {
 	setOneIndex()
 
+	b.ResetTimer()
 	err := insert(b, false)
 	if err != nil {
 		b.Error(err)
@@ -391,6 +382,7 @@ func benchmarkInsertWithOneIndex(b *testing.B) {
 func benchmarkInsertParallelWithOneIndex(b *testing.B) {
 	setOneIndex()
 
+	b.ResetTimer()
 	err := insert(b, true)
 	if err != nil {
 		b.Error(err)
@@ -404,6 +396,7 @@ func benchmarkInsertParallelWithOneIndex(b *testing.B) {
 func benchmarkInsertWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
+	b.ResetTimer()
 	err := insert(b, false)
 	if err != nil {
 		b.Error(err)
@@ -417,6 +410,7 @@ func benchmarkInsertWithSixIndexes(b *testing.B) {
 func benchmarkInsertParallelWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
+	b.ResetTimer()
 	err := insert(b, true)
 	if err != nil {
 		b.Error(err)
@@ -446,6 +440,7 @@ func benchmarkReadParallel(b *testing.B) {
 func benchmarkReadWithOneIndex(b *testing.B) {
 	setOneIndex()
 
+	b.ResetTimer()
 	err := read(b, false)
 	if err != nil {
 		b.Error(err)
@@ -459,6 +454,7 @@ func benchmarkReadWithOneIndex(b *testing.B) {
 func benchmarkReadParallelWithOneIndex(b *testing.B) {
 	setOneIndex()
 
+	b.ResetTimer()
 	err := read(b, true)
 	if err != nil {
 		b.Error(err)
@@ -472,6 +468,7 @@ func benchmarkReadParallelWithOneIndex(b *testing.B) {
 func benchmarkReadWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
+	b.ResetTimer()
 	err := read(b, false)
 	if err != nil {
 		b.Error(err)
@@ -485,6 +482,7 @@ func benchmarkReadWithSixIndexes(b *testing.B) {
 func benchmarkReadParallelWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
+	b.ResetTimer()
 	err := read(b, true)
 	if err != nil {
 		b.Error(err)
@@ -514,6 +512,7 @@ func benchmarkDeleteParallel(b *testing.B) {
 func benchmarkDeleteWithOneIndex(b *testing.B) {
 	setOneIndex()
 
+	b.ResetTimer()
 	err := delete(b, false)
 	if err != nil {
 		b.Error(err)
@@ -527,6 +526,7 @@ func benchmarkDeleteWithOneIndex(b *testing.B) {
 func benchmarkDeleteParallelWithOneIndex(b *testing.B) {
 	setOneIndex()
 
+	b.ResetTimer()
 	err := delete(b, true)
 	if err != nil {
 		b.Error(err)
@@ -540,6 +540,7 @@ func benchmarkDeleteParallelWithOneIndex(b *testing.B) {
 func benchmarkDeleteWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
+	b.ResetTimer()
 	err := delete(b, false)
 	if err != nil {
 		b.Error(err)
@@ -553,6 +554,7 @@ func benchmarkDeleteWithSixIndexes(b *testing.B) {
 func benchmarkDeleteParallelWithSixIndexes(b *testing.B) {
 	setSixIndex()
 
+	b.ResetTimer()
 	err := delete(b, true)
 	if err != nil {
 		b.Error(err)
@@ -565,6 +567,8 @@ func benchmarkDeleteParallelWithSixIndexes(b *testing.B) {
 
 func benchmarkQuery(b *testing.B) {
 	setSixIndex()
+
+	b.ResetTimer()
 	err := query(b, false, true)
 	if err != nil {
 		b.Error(err)
@@ -576,6 +580,8 @@ func benchmarkQuery(b *testing.B) {
 
 func benchmarkQueryParallel(b *testing.B) {
 	setSixIndex()
+
+	b.ResetTimer()
 	err := query(b, true, true)
 	if err != nil {
 		b.Error(err)
@@ -588,6 +594,7 @@ func benchmarkQueryParallel(b *testing.B) {
 func benchmarkQueryComplex(b *testing.B) {
 	setSixIndex()
 
+	b.ResetTimer()
 	err := query(b, false, false)
 	if err != nil {
 		b.Error(err)
@@ -601,6 +608,7 @@ func benchmarkQueryComplex(b *testing.B) {
 func benchmarkQueryParallelComplex(b *testing.B) {
 	setSixIndex()
 
+	b.ResetTimer()
 	err := query(b, true, false)
 	if err != nil {
 		b.Error(err)
