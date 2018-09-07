@@ -425,9 +425,10 @@ func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, e
 	// Goes through all index of the collection to define which index
 	// will take care of the given filter
 	for _, index := range c.indexes {
-		for _, filter := range q.filters {
+		for _, filterInterface := range q.filters {
+			filter := filterInterface.getFilterBase()
 			if index.doesFilterApplyToIndex(filter) {
-				if !filter.getFilterBase().exclusion {
+				if !filter.exclusion {
 					go index.query(ctx, filter, finishedChan)
 				} else {
 					go index.query(ctx, filter, excludeFinishedChan)

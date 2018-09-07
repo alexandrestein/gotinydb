@@ -16,6 +16,7 @@ func NewEqualFilter(value interface{}, s ...string) Filter {
 		operator: Equal,
 	}
 	ret.CompareTo(value)
+	ret.SetSelector(s...)
 	return Filter(ret)
 }
 
@@ -24,6 +25,7 @@ func NewGreaterFilter(value interface{}, s ...string) Filter {
 		operator: Greater,
 	}
 	ret.CompareTo(value)
+	ret.SetSelector(s...)
 	return Filter(ret)
 }
 
@@ -32,6 +34,7 @@ func NewLessFilter(value interface{}, s ...string) Filter {
 		operator: Less,
 	}
 	ret.CompareTo(value)
+	ret.SetSelector(s...)
 	return Filter(ret)
 }
 
@@ -40,6 +43,7 @@ func NewBetweenFilter(from, to interface{}, s ...string) Filter {
 		operator: Between,
 	}
 	ret.CompareTo(from).CompareTo(to)
+	ret.SetSelector(s...)
 	return Filter(ret)
 }
 

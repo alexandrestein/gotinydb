@@ -162,7 +162,7 @@ func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bo
 }
 
 // query do the given filter and ad it to the tree
-func (i *indexType) query(ctx context.Context, filter Filter, finishedChan chan *idsType) {
+func (i *indexType) query(ctx context.Context, filter *filterBase, finishedChan chan *idsType) {
 	done := false
 	defer func() {
 		// Make sure to reply as done
