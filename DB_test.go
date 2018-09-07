@@ -441,7 +441,10 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 			NewFilter(Equal).SetSelector("Age").CompareTo(user.Age),
 		).SetLimits(1, 1)
 
-		response, _ = restoredCol.Query(q)
+		response, err = restoredCol.Query(q)
+		if err != nil {
+			return err
+		}
 		response.One(gettedUser)
 
 		if !reflect.DeepEqual(user, gettedUser) {

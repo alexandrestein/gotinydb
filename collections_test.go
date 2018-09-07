@@ -41,7 +41,7 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 		return
 	}
 
-	retrievedUser := &User{}
+	retrievedUser := new(User)
 	_, err = c.Get(u.ID, retrievedUser)
 	if err != nil {
 		t.Error(err)
@@ -56,6 +56,22 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 	err = c.Delete(u.ID)
 	if err != nil {
 		t.Error(err)
+		return
+	}
+
+	_, err = c.Get(u.ID, nil)
+	if err == nil {
+		t.Errorf("element has been removed and didn't get any error")
+		return
+	}
+
+	_, err = c.Query(
+		NewQuery().SetFilter(
+			NewFilter(Equal).CompareTo("clement-38@thurmond.com").SetSelector("email"),
+		),
+	)
+	if err != ErrNotFound {
+		t.Errorf("this must return an not found error")
 		return
 	}
 

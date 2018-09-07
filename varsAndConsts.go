@@ -74,6 +74,8 @@ var (
 	ErrWrongType = fmt.Errorf("wrong type")
 	// ErrNotFound defines error when the asked ID is not found
 	ErrNotFound = fmt.Errorf("not found")
+	// ErrIndexNotFound is returned when no index match the query
+	ErrIndexNotFound = fmt.Errorf("index not found")
 	// ErrEmptyID defines error when the given id is empty
 	ErrEmptyID = fmt.Errorf("empty ID")
 	// ErrTimeOut defines the error when the query is timed out

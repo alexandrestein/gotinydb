@@ -121,7 +121,6 @@ func (i *indexType) queryEqual(ctx context.Context, ids *idsType, filter *Filter
 
 		for _, tmpID := range tmpIDs.IDs {
 			tmpID.values[i.SelectorHash] = value.Bytes()
-
 		}
 
 		ids.AddIDs(tmpIDs)
