@@ -426,7 +426,7 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 
 		q := NewQuery().SetFilter(
 			NewFilter(Equal).SetSelector("email").CompareTo(user.Email),
-		).SetLimits(1, 1)
+		).SetLimits(1, 0)
 
 		response, _ = restoredCol.Query(q)
 		response.One(gettedUser)
@@ -439,12 +439,10 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 
 		q = NewQuery().SetFilter(
 			NewFilter(Equal).SetSelector("Age").CompareTo(user.Age),
-		).SetLimits(1, 1)
+		).SetLimits(1, 0)
 
-		response, err = restoredCol.Query(q)
-		if err != nil {
-			return err
-		}
+		gettedUser = new(User)
+		response, _ = restoredCol.Query(q)
 		response.One(gettedUser)
 
 		if !reflect.DeepEqual(user, gettedUser) {

@@ -640,39 +640,6 @@ func (c *Collection) deleteItemFromIndexes(ctx context.Context, id string) error
 	return c.db.Update(func(tx *bolt.Tx) (err error) {
 		return c.cleanRefs(ctx, tx, id)
 	})
-
-	// tx, err := c.db.Begin(true)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// err = c.cleanRefs(ctx, tx, id)
-	// if err != nil {
-	// 	return
-	// }
-
-	// return
-
-	// return c.db.Update(func(tx *bolt.Tx) error {
-	// 	refs, getRefsErr := c.getRefs(tx, id)
-	// 	if getRefsErr != nil {
-	// 		return getRefsErr
-	// 	}
-
-	// 	for _, ref := range refs.Refs {
-	// 		indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(ref.IndexName))
-	// 		ids, err := newIDs(ctx, 0, nil, indexBucket.Get(ref.IndexedValue))
-	// 		if err != nil {
-	// 			return err
-	// 		}
-
-	// 		ids.RmID(id)
-
-	// 		indexBucket.Put(ref.IndexedValue, ids.MustMarshal())
-	// 	}
-
-	// 	return nil
-	// })
 }
 
 func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
