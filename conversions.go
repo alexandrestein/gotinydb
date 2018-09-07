@@ -2,7 +2,9 @@ package gotinydb
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"math"
+	"strconv"
 	"time"
 )
 
@@ -24,7 +26,19 @@ func intToBytes(input interface{}) ([]byte, error) {
 	switch input.(type) {
 	case int, int8, int16, int32, int64:
 		typedValue = convertIntToAbsoluteUint(input)
+	default:
+		return nil, ErrWrongType
+	}
 
+	bs := make([]byte, 8)
+	binary.BigEndian.PutUint64(bs, typedValue)
+	return bs, nil
+}
+func uintToBytes(input interface{}) ([]byte, error) {
+	typedValue := uint64(0)
+	switch input.(type) {
+	// case int, int8, int16, int32, int64:
+	// 	typedValue = convertIntToAbsoluteUint(input)
 	case uint:
 		typedValue = uint64(input.(uint))
 	case uint8:
@@ -35,6 +49,14 @@ func intToBytes(input interface{}) ([]byte, error) {
 		typedValue = uint64(input.(uint32))
 	case uint64:
 		typedValue = input.(uint64)
+	case json.Number:
+		iAsString := input.(json.Number).String()
+
+		var err error
+		typedValue, err = strconv.ParseUint(iAsString, 10, 64)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, ErrWrongType
 	}

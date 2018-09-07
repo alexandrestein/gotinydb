@@ -145,6 +145,8 @@ func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bo
 		conversionFunc = stringToBytes
 	case IntIndex:
 		conversionFunc = intToBytes
+	case UIntIndex:
+		conversionFunc = uintToBytes
 	case TimeIndex:
 		conversionFunc = timeToBytes
 	default:
@@ -250,6 +252,8 @@ func (i *IndexInfo) GetType() string {
 		return StringIndexString
 	case IntIndex:
 		return IntIndexString
+	case UIntIndex:
+		return UIntIndexString
 	case TimeIndex:
 		return TimeIndexString
 	default:

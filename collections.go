@@ -139,7 +139,7 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 		return errSetingIndexIntoConfig
 	}
 
-	return c.indexAllValues(i)
+	return c.indexAllValues()
 }
 
 // DeleteIndex remove the index from the collection

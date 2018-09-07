@@ -537,7 +537,7 @@ func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan 
 		defer txn.Discard()
 	}
 
-	hashSignature, _ := intToBytes((highwayhash.Sum64(writeTransaction.contentAsBytes, make([]byte, highwayhash.Size))))
+	hashSignature, _ := uintToBytes((highwayhash.Sum64(writeTransaction.contentAsBytes, make([]byte, highwayhash.Size))))
 	contentToWrite := append(hashSignature, writeTransaction.contentAsBytes...)
 
 	storeID := c.buildStoreID(writeTransaction.id)
@@ -616,7 +616,7 @@ func (c *Collection) getAndCheckContent(contentAndHashSignatureAsBytes []byte) (
 
 	savedSignature := contentAndHashSignatureAsBytes[:8]
 	contentAsBytes := contentAndHashSignatureAsBytes[8:]
-	retrievedSignature, _ := intToBytes(highwayhash.Sum64(contentAsBytes, make([]byte, highwayhash.Size)))
+	retrievedSignature, _ := uintToBytes(highwayhash.Sum64(contentAsBytes, make([]byte, highwayhash.Size)))
 
 	if !reflect.DeepEqual(savedSignature, retrievedSignature) {
 		return nil, ErrDataCorrupted
@@ -718,7 +718,8 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 	return response, nil
 }
 
-func (c *Collection) indexAllValues(i *indexType) error {
+func (c *Collection) indexAllValues() error {
+	// func (c *Collection) indexAllValues(i *indexType) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

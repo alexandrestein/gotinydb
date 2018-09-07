@@ -17,8 +17,10 @@ func newfilterValue(value interface{}) (*filterValue, error) {
 	switch value.(type) {
 	case string:
 		t = StringIndex
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+	case int, int8, int16, int32, int64:
 		t = IntIndex
+	case uint, uint8, uint16, uint32, uint64:
+		t = UIntIndex
 	case time.Time:
 		t = TimeIndex
 	default:
@@ -91,6 +93,8 @@ func (f *filterValue) Bytes() []byte {
 		bytes, _ = stringToBytes(f.Value)
 	case IntIndex:
 		bytes, _ = intToBytes(f.Value)
+	case UIntIndex:
+		bytes, _ = uintToBytes(f.Value)
 	case TimeIndex:
 		bytes, _ = timeToBytes(f.Value)
 	default:

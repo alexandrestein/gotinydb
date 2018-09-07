@@ -206,7 +206,6 @@ func insert(b *testing.B, parallel bool) error {
 		for i := 0; i < b.N; i++ {
 			id := <-getID
 			content := <-getContent
-			fmt.Println(id, content)
 			err := benchmarkCollection.Put(id, content)
 			if err != nil {
 				return err
@@ -318,23 +317,19 @@ func query(b *testing.B, parallel bool, simple bool) error {
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				responseQuery, err := benchmarkCollection.Query(query)
+				_, err := benchmarkCollection.Query(query)
 				if err != nil {
 					b.Fatal(err)
 					return
 				}
-
-				fmt.Println("responseQuery", responseQuery.Len())
 			}
 		})
 	} else {
 		for i := 0; i < b.N; i++ {
-			responseQuery, err := benchmarkCollection.Query(query)
+			_, err := benchmarkCollection.Query(query)
 			if err != nil {
 				return err
 			}
-
-			fmt.Println("responseQuery", responseQuery.Len())
 		}
 	}
 

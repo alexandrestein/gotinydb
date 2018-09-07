@@ -290,7 +290,7 @@ func TestDB_Backup_And_Load(t *testing.T) {
 
 	addIndexesFunc := func(c *Collection) {
 		c.SetIndex("email", StringIndex, "email")
-		c.SetIndex("age", IntIndex, "Age")
+		c.SetIndex("age", UIntIndex, "Age")
 	}
 	addIndexesFunc(baseCols[0])
 	addIndexesFunc(baseCols[1])
@@ -445,8 +445,8 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 		response, _ = restoredCol.Query(q)
 		response.One(gettedUser)
 
-		if !reflect.DeepEqual(user, gettedUser) {
-			return fmt.Errorf("user in original database and in restored database are not equal\n\t%v\n\t%v", user, gettedUser)
+		if user.Age != gettedUser.Age {
+			return fmt.Errorf("query did not returned value with the same age:\n\t%v\n\t%v", user, gettedUser)
 		}
 
 		return nil

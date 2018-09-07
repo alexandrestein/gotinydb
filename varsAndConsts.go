@@ -98,9 +98,11 @@ const (
 const (
 	StringIndex IndexType = iota
 	IntIndex
+	UIntIndex
 	TimeIndex
 
 	StringIndexString string = "string"
 	IntIndexString    string = "int"
+	UIntIndexString   string = "uint"
 	TimeIndexString   string = "time"
 )
