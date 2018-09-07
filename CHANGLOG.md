@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.8] - 2018-09-07
+
 ### Added
 
 - Add support for multiple write operation at ones [#11](https://github.com/alexandrestein/gotinydb/issues/11).
 
 ### Changed
 
+- Filters have been rethink to be more user friendly.
 - The test has been fully remade to get it more relevant: [#7](https://github.com/alexandrestein/gotinydb/issues/7)
 - Make a queue to serialize the write when possible. This is related to [#11](https://github.com/alexandrestein/gotinydb/issues/11)
 - Make a specific index type for unsigned integer values
