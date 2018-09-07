@@ -4,11 +4,43 @@ import (
 	"time"
 )
 
-// NewFilter returns a new Action pointer with the given FilterOperator
-func NewFilter(t FilterOperator) *Filter {
-	return &Filter{
-		operator: t,
+// // NewFilter returns a new Action pointer with the given FilterOperator
+// func NewFilter(t FilterOperator) *filterBase {
+// 	return &filterBase{
+// 		operator: t,
+// 	}
+// }
+
+func NewEqualFilter(value interface{}, s ...string) Filter {
+	ret := &filterBase{
+		operator: Equal,
 	}
+	ret.CompareTo(value)
+	return Filter(ret)
+}
+
+func NewGreaterFilter(value interface{}, s ...string) Filter {
+	ret := &filterBase{
+		operator: Greater,
+	}
+	ret.CompareTo(value)
+	return Filter(ret)
+}
+
+func NewLessFilter(value interface{}, s ...string) Filter {
+	ret := &filterBase{
+		operator: Less,
+	}
+	ret.CompareTo(value)
+	return Filter(ret)
+}
+
+func NewBetweenFilter(from, to interface{}, s ...string) Filter {
+	ret := &filterBase{
+		operator: Between,
+	}
+	ret.CompareTo(from).CompareTo(to)
+	return Filter(ret)
 }
 
 // newfilterValue build a new filter value to be used inside the filters
@@ -35,7 +67,7 @@ func newfilterValue(value interface{}) (*filterValue, error) {
 }
 
 // CompareTo defines the value you want to compare to
-func (f *Filter) CompareTo(val interface{}) *Filter {
+func (f *filterBase) CompareTo(val interface{}) *filterBase {
 	// Build the value if possible
 	filterValuePointer, parseErr := newfilterValue(val)
 	// If any error the value is not added
@@ -61,27 +93,31 @@ func (f *Filter) CompareTo(val interface{}) *Filter {
 }
 
 // GetType returns the type of the filter given at the initialization
-func (f *Filter) GetType() FilterOperator {
+func (f *filterBase) GetType() FilterOperator {
 	return f.operator
 }
 
 // EqualWanted defines if the exact corresponding key is retrieved or not.
-func (f *Filter) EqualWanted() *Filter {
+func (f *filterBase) EqualWanted() Filter {
 	f.equal = true
 	return f
 }
 
 // ExclusionFilter set the given Filter to be used as a cleaner filter.
 // When IDs are retrieved by those filters the IDs will not be returned at response.
-func (f *Filter) ExclusionFilter() *Filter {
+func (f *filterBase) ExclusionFilter() Filter {
 	f.exclusion = true
 	return f
 }
 
 // SetSelector defines the configurable limit of IDs.
-func (f *Filter) SetSelector(s ...string) *Filter {
+func (f *filterBase) SetSelector(s ...string) *filterBase {
 	f.selector = s
 	f.selectorHash = buildSelectorHash(s)
+	return f
+}
+
+func (f *filterBase) getFilterBase() *filterBase {
 	return f
 }
 

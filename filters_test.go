@@ -48,7 +48,7 @@ func TestAction_ValueToCompareAsBytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := new(Filter)
+			f := new(filterBase)
 			f.CompareTo(tt.filterValue)
 			if got := f.values[0].Bytes(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Action.ValueToCompareAsBytes() = %v, want %v", got, tt.want)

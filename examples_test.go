@@ -68,18 +68,14 @@ func Example() {
 	queryPointer := NewQuery()
 
 	// Build the filter
-	queryFilter := NewFilter(Equal).
-		SetSelector("email").
-		CompareTo("jonas-90@tlaloc.com")
+	queryFilter := NewEqualFilter("jonas-90@tlaloc.com", "email")
 
 	// Add the filter to the query pointer
 	queryPointer.SetFilter(queryFilter)
 
 	// Or this could be:
 	queryPointer = NewQuery().SetFilter(
-		NewFilter(Equal).
-			SetSelector("email").
-			CompareTo("jonas-90@tlaloc.com"),
+		NewEqualFilter("jonas-90@tlaloc.com", "email"),
 	)
 
 	// Query the collection to get the struct based on the email field
@@ -190,7 +186,7 @@ func ExampleResponse_One() {
 func ExampleNewQuery() {
 	// Build a new query
 	q := NewQuery().SetFilter(
-		NewFilter(Equal).SetSelector("email").CompareTo("jonas-90@tlaloc.com"),
+		NewEqualFilter("jonas-90@tlaloc.com", "email"),
 	)
 
 	// Initialize an struct to get the value using One method

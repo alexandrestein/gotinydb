@@ -66,7 +66,7 @@ func TestCollection_Query(t *testing.T) {
 		{
 			name: "Equal String Limit 1",
 			args: NewQuery().SetFilter(
-				NewFilter(Equal).CompareTo("estrada-21@allie.com").SetSelector("email"),
+				NewEqualFilter("estrada-21@allie.com", "email"),
 			).SetLimits(1, 0),
 			wantResponse: []*User{
 				{ID: "13", Email: "estrada-21@allie.com", Balance: 2923864648279932937, Address: &Address{City: "Nellie", ZipCode: 83}, Age: 10, LastLogin: mustParseTime("2016-11-20T08:59:24.779282825+01:00")},
@@ -76,7 +76,7 @@ func TestCollection_Query(t *testing.T) {
 		{
 			name: "Equal Int Limit 10",
 			args: NewQuery().SetFilter(
-				NewFilter(Equal).CompareTo(uint(19)).SetSelector("Age"),
+				NewEqualFilter(uint(19), "Age"),
 			).SetLimits(10, 0),
 			wantResponse: []*User{
 				{ID: "100", Email: "ferguson-85@leroy.com", Balance: 4447977972181900834, Address: &Address{City: "Maserati", ZipCode: 56}, Age: 19, LastLogin: mustParseTime("2017-03-17T17:38:44.77944231+01:00")},
@@ -94,7 +94,7 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Greater Int Limit 5 No Order",
 			args: NewQuery().SetFilter(
-				NewFilter(Greater).CompareTo(uint(19)).SetSelector("Age").EqualWanted(),
+				NewGreaterFilter(uint(19), "Age").EqualWanted(),
 			).SetLimits(5, 0),
 			wantResponse: []*User{
 				{ID: "100", Email: "ferguson-85@leroy.com", Balance: 4447977972181900834, Address: &Address{City: "Maserati", ZipCode: 56}, Age: 19, LastLogin: mustParseTime("2017-03-17T17:38:44.77944231+01:00")},
@@ -107,7 +107,7 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Greater Int Limit 5 With Order",
 			args: NewQuery().SetFilter(
-				NewFilter(Greater).CompareTo(uint(19)).SetSelector("Age").EqualWanted(),
+				NewGreaterFilter(uint(19), "Age").EqualWanted(),
 			).SetLimits(5, 0).SetOrder(true, "Age"),
 			wantResponse: []*User{
 				{ID: "79", Email: "katharine-15@torres.com", Balance: 6167440685671547817, Address: &Address{City: "Callie", ZipCode: 31}, Age: 19, LastLogin: mustParseTime("2017-06-20T18:35:28.779405337+02:00")},
@@ -120,7 +120,7 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Less Time Limit 5 With Order",
 			args: NewQuery().SetFilter(
-				NewFilter(Less).CompareTo(time.Now()).SetSelector("LastLogin"),
+				NewLessFilter(time.Now(), "LastLogin"),
 			).SetLimits(5, 0).SetOrder(false, "LastLogin"),
 			wantResponse: []*User{
 				{ID: "174", Email: "woodstock-67@lavonne.com", Balance: -7207283129708867248, Address: &Address{City: "Kroger", ZipCode: 88}, Age: 17, LastLogin: mustParseTime("2018-06-19T02:03:53.779584878+02:00")},
@@ -133,7 +133,7 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Between Int Limit 5 Order",
 			args: NewQuery().SetFilter(
-				NewFilter(Between).CompareTo(uint(5)).CompareTo(uint(10)).SetSelector("Age"),
+				NewBetweenFilter(uint(5), uint(10), "Age"),
 			).SetLimits(5, 0).SetOrder(true, "Age"),
 			wantResponse: []*User{
 				{ID: "283", Email: "bonhoeffer-67@agatha.com", Balance: 6915424560435208594, Address: &Address{City: "Lon", ZipCode: 96}, Age: 6, LastLogin: mustParseTime("2016-12-15T19:17:56.779778796+01:00")},
@@ -146,7 +146,7 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Between Int Limit 5 Equal Wanted Order",
 			args: NewQuery().SetFilter(
-				NewFilter(Between).CompareTo(uint(5)).CompareTo(uint(10)).SetSelector("Age").EqualWanted(),
+				NewBetweenFilter(uint(5), uint(10), "Age").EqualWanted(),
 			).SetLimits(5, 0).SetOrder(true, "Age"),
 			wantResponse: []*User{
 				{ID: "224", Email: "gustavus-91@godzilla.com", Balance: 157473026907431221, Address: &Address{City: "Ishim", ZipCode: 6}, Age: 5, LastLogin: mustParseTime("2017-07-24T03:46:50.779668183+02:00")},

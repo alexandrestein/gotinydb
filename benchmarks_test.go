@@ -295,13 +295,13 @@ func query(b *testing.B, parallel bool, simple bool) error {
 	var query *Query
 
 	if simple {
-		query = NewQuery().SetFilter(NewFilter(Greater).SetSelector("email").CompareTo("a"))
+		query = NewQuery().SetFilter(NewEqualFilter("a", "email"))
 	} else {
 		query = NewQuery().
-			SetFilter(NewFilter(Between).SetSelector("email").CompareTo("a").CompareTo("b")).
-			SetFilter(NewFilter(Equal).SetSelector("Age").CompareTo(10)).
-			SetFilter(NewFilter(Greater).SetSelector("Balance").CompareTo(10000)).
-			SetFilter(NewFilter(Less).SetSelector("Balance").CompareTo(-100000))
+			SetFilter(NewBetweenFilter("a", "b", "email")).
+			SetFilter(NewEqualFilter(10, "Age")).
+			SetFilter(NewGreaterFilter(10000, "Balance")).
+			SetFilter(NewLessFilter(-100000, "Balance"))
 	}
 
 	if parallel {

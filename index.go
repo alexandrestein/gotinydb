@@ -93,14 +93,14 @@ func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex []
 }
 
 // doesFilterApplyToIndex only check if the filter belongs to the index
-func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
+func (i *indexType) doesFilterApplyToIndex(filter Filter) (ok bool) {
 	// Check the selector
-	if filter.selectorHash != i.SelectorHash {
+	if filter.getFilterBase().selectorHash != i.SelectorHash {
 		return false
 	}
 
 	// If at least one of the value has the right type the index need to be queried
-	for _, value := range filter.values {
+	for _, value := range filter.getFilterBase().values {
 		if value.Type == i.Type {
 			return true
 		}
@@ -162,7 +162,7 @@ func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bo
 }
 
 // query do the given filter and ad it to the tree
-func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
+func (i *indexType) query(ctx context.Context, filter Filter, finishedChan chan *idsType) {
 	done := false
 	defer func() {
 		// Make sure to reply as done
@@ -172,9 +172,9 @@ func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan
 		}
 	}()
 
-	ids, _ := newIDs(ctx, filter.selectorHash, nil, nil)
+	ids, _ := newIDs(ctx, filter.getFilterBase().selectorHash, nil, nil)
 
-	switch filter.GetType() {
+	switch filter.getFilterBase().GetType() {
 	// If equal just this leave will be send
 	case Equal:
 		i.queryEqual(ctx, ids, filter)

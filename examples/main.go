@@ -77,18 +77,14 @@ func Basic() error {
 	queryPointer := gotinydb.NewQuery()
 
 	// Build the filter
-	queryFilter := gotinydb.NewFilter(gotinydb.Equal).
-		SetSelector("Email").
-		CompareTo("jonas-90@tlaloc.com")
+	queryFilter := gotinydb.NewEqualFilter("jonas-90@tlaloc.com", "Email")
 
 	// Add the filter to the query pointer
 	queryPointer.SetFilter(queryFilter)
 
 	// Or this could be:
 	queryPointer = gotinydb.NewQuery().SetFilter(
-		gotinydb.NewFilter(gotinydb.Equal).
-			SetSelector("Email").
-			CompareTo("jonas-90@tlaloc.com"),
+		gotinydb.NewEqualFilter("jonas-90@tlaloc.com", "Email"),
 	)
 
 	// Query the collection to get the struct based on the Email field

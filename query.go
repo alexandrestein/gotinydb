@@ -13,7 +13,7 @@ import (
 type (
 	// Query defines the object to request index query.
 	Query struct {
-		filters []*Filter
+		filters []Filter
 
 		orderSelector []string
 		order         uint64 // is the selector hash representation
@@ -150,9 +150,9 @@ func (q *Query) SetOrder(ascendent bool, selector ...string) *Query {
 }
 
 // SetFilter defines the action to perform to get IDs
-func (q *Query) SetFilter(f *Filter) *Query {
+func (q *Query) SetFilter(f Filter) *Query {
 	if q.filters == nil {
-		q.filters = []*Filter{}
+		q.filters = []Filter{}
 
 	}
 	q.filters = append(q.filters, f)
@@ -161,7 +161,7 @@ func (q *Query) SetFilter(f *Filter) *Query {
 
 func (q *Query) nbSelectFilters() (ret int) {
 	for _, filter := range q.filters {
-		if !filter.exclusion {
+		if !filter.getFilterBase().exclusion {
 			ret++
 		}
 	}

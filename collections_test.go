@@ -67,7 +67,7 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 
 	_, err = c.Query(
 		NewQuery().SetFilter(
-			NewFilter(Equal).CompareTo("clement-38@thurmond.com").SetSelector("email"),
+			NewEqualFilter("clement-38@thurmond.com", "email"),
 		),
 	)
 	if err != ErrNotFound {
