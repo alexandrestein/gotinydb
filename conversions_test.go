@@ -41,23 +41,26 @@ func TestIntConversion(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if _, err := intToBytes(uint(31497863415)); err != nil {
+}
+
+func TestUIntConversion(t *testing.T) {
+	if _, err := uintToBytes(uint(31497863415)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := intToBytes(uint8(117)); err != nil {
+	if _, err := uintToBytes(uint8(117)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := intToBytes(uint16(3847)); err != nil {
+	if _, err := uintToBytes(uint16(3847)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := intToBytes(uint32(7842245)); err != nil {
+	if _, err := uintToBytes(uint32(7842245)); err != nil {
 		t.Error(err)
 		return
 	}
-	if _, err := intToBytes(uint64(22416315751)); err != nil {
+	if _, err := uintToBytes(uint64(22416315751)); err != nil {
 		t.Error(err)
 		return
 	}

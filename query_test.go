@@ -36,7 +36,7 @@ func TestCollection_Query(t *testing.T) {
 	}
 
 	c.SetIndex("email", StringIndex, "email")
-	c.SetIndex("age", IntIndex, "Age")
+	c.SetIndex("age", UIntIndex, "Age")
 	c.SetIndex("last connection", TimeIndex, "LastLogin")
 
 	// Insert element in concurrent way to test the index system
