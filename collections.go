@@ -22,7 +22,7 @@ func (c *Collection) Put(id string, content interface{}) error {
 	}
 
 	tr := newTransaction(ctx)
-	trElem := newTransactionElement(id, content)
+	trElem := newTransactionElement(id, content, true)
 
 	tr.addTransaction(trElem)
 
@@ -56,6 +56,7 @@ func (c *Collection) PutMulti(IDs []string, content []interface{}) error {
 		tr.transactions[i] = newTransactionElement(
 			IDs[i],
 			content[i],
+			true,
 		)
 	}
 
@@ -102,20 +103,23 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 
 // Delete removes the corresponding object if the given ID
 func (c *Collection) Delete(id string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), c.options.TransactionTimeOut)
+	ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
 	defer cancel()
 
-	if id == "" {
-		return ErrEmptyID
+	// verify that closing as not been called
+	if !c.isRunning() {
+		return ErrClosedDB
 	}
 
-	if rmStoreErr := c.store.Update(func(txn *badger.Txn) error {
-		return txn.Delete(c.buildStoreID(id))
-	}); rmStoreErr != nil {
-		return rmStoreErr
-	}
+	tr := newTransaction(ctx)
+	trElem := newTransactionElement(id, nil, false)
 
-	return c.deleteItemFromIndexes(ctx, id)
+	tr.addTransaction(trElem)
+
+	// Run the insertion
+	c.writeTransactionChan <- tr
+	// And wait for the end of the insertion
+	return <-tr.responseChan
 }
 
 // SetIndex enable the collection to index field or sub field

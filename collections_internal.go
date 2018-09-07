@@ -129,7 +129,7 @@ func (c *Collection) waittingWriteLoop(ctx context.Context, limit int) {
 			}
 
 			// Run the write operation
-			go c.putTransaction(newTr)
+			go c.writeTransactions(newTr)
 
 			// Get the response
 			err := <-newTr.responseChan
@@ -145,7 +145,7 @@ func (c *Collection) waittingWriteLoop(ctx context.Context, limit int) {
 	}
 }
 
-func (c *Collection) putTransaction(tr *writeTransaction) {
+func (c *Collection) writeTransactions(tr *writeTransaction) {
 	// Build a waiting groups
 	// This group is to make internal functions wait the otherone
 	wgActions := new(sync.WaitGroup)
@@ -155,32 +155,38 @@ func (c *Collection) putTransaction(tr *writeTransaction) {
 	// Used to propagate the error for one or the other function
 	errChan := make(chan error, 1)
 	if len(tr.transactions) == 1 {
-		c.putTransactionOne(tr.ctx, errChan, wgActions, wgCommitted, tr.transactions[0])
+		c.writeOneTransaction(tr.ctx, errChan, wgActions, wgCommitted, tr.transactions[0])
 
 		// Respond to the caller with the error if any
 		tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
 	} else {
-		tr.responseChan <- c.putTransactionMulti(tr.ctx, errChan, wgActions, wgCommitted, tr)
+		tr.responseChan <- c.writeMultipleTransaction(tr.ctx, errChan, wgActions, wgCommitted, tr)
 	}
 }
 
-func (c *Collection) putTransactionOne(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wtElem *writeTransactionElement) {
+func (c *Collection) writeOneTransaction(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wtElem *writeTransactionElement) {
 	// Increment the tow waiting groups
 	wgActions.Add(2)
 	wgCommitted.Add(2)
 
-	// Runs saving into the store
-	go c.putIntoStore(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
+	if wtElem.isInsertion {
+		// Runs saving into the store
+		go c.putIntoStore(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
 
-	// Starts the indexing process
-	if !wtElem.bin {
-		go c.putIntoIndexes(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
+		// Starts the indexing process
+		if !wtElem.bin {
+			go c.putIntoIndexes(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
+		} else {
+			go c.onlyCleanRefs(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
+		}
 	} else {
+		// Else is because it's a deletation
+		go c.delFromStore(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
 		go c.onlyCleanRefs(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
 	}
 }
 
-func (c *Collection) putTransactionMulti(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wt *writeTransaction) error {
+func (c *Collection) writeMultipleTransaction(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wt *writeTransaction) error {
 	badgerTxn := c.store.NewTransaction(true)
 	defer badgerTxn.Discard()
 
@@ -202,13 +208,19 @@ func (c *Collection) putTransactionMulti(ctx context.Context, errChan chan error
 		var wgLoop sync.WaitGroup
 		wgLoop.Add(2)
 
-		// Runs saving into the store
-		go c.putIntoStore(ctx, badgerTxn, errChan, wgActions, &wgLoop, wtElem)
+		if wtElem.isInsertion {
+			// Runs saving into the store
+			go c.putIntoStore(ctx, badgerTxn, errChan, wgActions, &wgLoop, wtElem)
 
-		// Starts the indexing process
-		if !wtElem.bin {
-			go c.putIntoIndexes(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
+			// Starts the indexing process
+			if !wtElem.bin {
+				go c.putIntoIndexes(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
+			} else {
+				go c.onlyCleanRefs(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
+			}
 		} else {
+			// Else is because it's a deletation
+			go c.delFromStore(ctx, badgerTxn, errChan, wgActions, &wgLoop, wtElem)
 			go c.onlyCleanRefs(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
 		}
 
@@ -529,7 +541,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	return
 }
 
-func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, isInsertion bool, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
 	multi := true
 	if txn == nil {
 		multi = false
@@ -541,9 +553,15 @@ func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan 
 	contentToWrite := append(hashSignature, writeTransaction.contentAsBytes...)
 
 	storeID := c.buildStoreID(writeTransaction.id)
-	setErr := txn.Set(storeID, contentToWrite)
-	if setErr != nil {
-		err := fmt.Errorf("error inserting %q: %s", writeTransaction.id, setErr.Error())
+
+	var writeErr error
+	if isInsertion {
+		writeErr = txn.Set(storeID, contentToWrite)
+	} else {
+		writeErr = txn.Delete(storeID)
+	}
+	if writeErr != nil {
+		err := fmt.Errorf("error writing %q: %s", writeTransaction.id, writeErr.Error())
 		errChan <- err
 		return err
 	}
@@ -570,6 +588,13 @@ func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan 
 	wgCommitted.Done()
 
 	return nil
+}
+func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+	return c.insertOrDeleteStore(ctx, txn, true, errChan, wgActions, wgCommitted, writeTransaction)
+}
+
+func (c *Collection) delFromStore(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+	return c.insertOrDeleteStore(ctx, txn, false, errChan, wgActions, wgCommitted, writeTransaction)
 }
 
 func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
@@ -636,11 +661,11 @@ func (c *Collection) loadIndex() error {
 	return nil
 }
 
-func (c *Collection) deleteItemFromIndexes(ctx context.Context, id string) error {
-	return c.db.Update(func(tx *bolt.Tx) (err error) {
-		return c.cleanRefs(ctx, tx, id)
-	})
-}
+// func (c *Collection) deleteItemFromIndexes(ctx context.Context, id string) error {
+// 	return c.db.Update(func(tx *bolt.Tx) (err error) {
+// 		return c.cleanRefs(ctx, tx, id)
+// 	})
+// }
 
 func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
 	refsBucket := tx.Bucket([]byte("refs"))
@@ -766,7 +791,7 @@ newLoop:
 		fakeWgAction.Add(1)
 		fakeWgCommitted.Add(1)
 
-		trElement := newTransactionElement(savedElement.GetID(), m)
+		trElement := newTransactionElement(savedElement.GetID(), m, true)
 
 		go c.putIntoIndexes(ctx2, tx, errChan, fakeWgAction, fakeWgCommitted, trElement)
 

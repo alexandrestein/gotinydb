@@ -105,6 +105,7 @@ type (
 		contentInterface interface{}
 		contentAsBytes   []byte
 		bin              bool
+		isInsertion      bool
 	}
 
 	// Archive defines the way archives are saved inside the zip file

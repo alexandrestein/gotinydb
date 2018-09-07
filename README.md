@@ -12,7 +12,8 @@
 The goal is to have a fairly simple database which is light and don't needs to fit in RAM. It supports indexing for:
 
 - string
-- int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64
+- int, uint, int8, uint8, int16, 
+- uint16, int32, uint32, int64, uint64
 - time.Time
 
 If the selector point to an array values inside the array are indexed.

@@ -34,9 +34,13 @@ func getIDsAsString(input []*idType) (ret []string) {
 	return ret
 }
 
-func newTransactionElement(id string, content interface{}) (wtElem *writeTransactionElement) {
+func newTransactionElement(id string, content interface{}, isInsertion bool) (wtElem *writeTransactionElement) {
 	wtElem = &writeTransactionElement{
-		id: id, contentInterface: content,
+		id: id, contentInterface: content, isInsertion: isInsertion,
+	}
+
+	if !isInsertion {
+		return
 	}
 
 	if bytes, ok := content.([]byte); ok {
