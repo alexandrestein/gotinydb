@@ -82,8 +82,8 @@ var (
 	ErrTimeOut = fmt.Errorf("timed out")
 	// ErrDataCorrupted defines the error when the checksum is not valid
 	ErrDataCorrupted = fmt.Errorf("content corrupted")
-	// ErrTheResponseIsOver defines error when *Response.One is called and all response has been returned
-	ErrTheResponseIsOver = fmt.Errorf("the response has no more values")
+	// ErrResponseOver defines error when *Response.One is called and all response has been returned
+	ErrResponseOver = fmt.Errorf("the response has no more values")
 )
 
 // Those constants defines the different types of filter to perform at query

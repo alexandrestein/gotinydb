@@ -83,11 +83,6 @@ func (f *filterBase) CompareTo(val interface{}) *filterBase {
 		return f
 	}
 
-	// Limit the numbers of 2 filters
-	if len(f.values) >= 2 {
-		f.values[1] = filterValuePointer
-	}
-
 	// Add the second value if it's between filter
 	f.values = append(f.values, filterValuePointer)
 	return f

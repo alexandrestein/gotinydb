@@ -55,4 +55,15 @@ func TestAction_ValueToCompareAsBytes(t *testing.T) {
 			}
 		})
 	}
+
+	fv, err := newfilterValue(0.5)
+	if err == nil {
+		t.Error("must return an error")
+	}
+
+	fv = new(filterValue)
+	fv.Type = -1
+	if fv.Bytes() != nil {
+		t.Error("must return nil")
+	}
 }

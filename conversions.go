@@ -37,8 +37,6 @@ func intToBytes(input interface{}) ([]byte, error) {
 func uintToBytes(input interface{}) ([]byte, error) {
 	typedValue := uint64(0)
 	switch input.(type) {
-	// case int, int8, int16, int32, int64:
-	// 	typedValue = convertIntToAbsoluteUint(input)
 	case uint:
 		typedValue = uint64(input.(uint))
 	case uint8:
@@ -52,11 +50,7 @@ func uintToBytes(input interface{}) ([]byte, error) {
 	case json.Number:
 		iAsString := input.(json.Number).String()
 
-		var err error
-		typedValue, err = strconv.ParseUint(iAsString, 10, 64)
-		if err != nil {
-			return nil, err
-		}
+		typedValue, _ = strconv.ParseUint(iAsString, 10, 64)
 	default:
 		return nil, ErrWrongType
 	}

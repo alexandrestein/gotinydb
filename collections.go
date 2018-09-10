@@ -230,7 +230,6 @@ func (c *Collection) GetValues(startID string, limit int) ([]*ResponseElem, erro
 // Everytime this function is called a new version is added.
 func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64, err error) {
 	var contentAsInterface interface{}
-	found := false
 
 	err = c.store.View(func(txn *badger.Txn) error {
 		// Init the iterator
@@ -268,7 +267,6 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 				}
 
 				timestamp = item.Version()
-				found = true
 				return nil
 			}
 			previousVersion--
@@ -277,10 +275,6 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 	})
 	if err != nil {
 		return 0, err
-	}
-
-	if !found {
-		return 0, fmt.Errorf("the prior version %d was not found", previousVersion)
 	}
 
 	putErr := c.Put(id, contentAsInterface)

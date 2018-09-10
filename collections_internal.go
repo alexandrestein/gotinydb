@@ -66,17 +66,7 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 		indexes := []*indexType{}
 		json.Unmarshal(indexesAsBytes, &indexes)
 
-		found := false
-		for i, tmpIndex := range indexes {
-			if tmpIndex.Name == index.Name {
-				indexes[i] = index
-				found = true
-				break
-			}
-		}
-		if !found {
-			indexes = append(indexes, index)
-		}
+		indexes = append(indexes, index)
 
 		indexesAsBytes, _ = json.Marshal(indexes)
 		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
@@ -662,11 +652,6 @@ func (c *Collection) loadIndex() error {
 	return nil
 }
 
-// func (c *Collection) deleteItemFromIndexes(ctx context.Context, id string) error {
-// 	return c.db.Update(func(tx *bolt.Tx) (err error) {
-// 		return c.cleanRefs(ctx, tx, id)
-// 	})
-// }
 
 func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
 	refsBucket := tx.Bucket([]byte("refs"))

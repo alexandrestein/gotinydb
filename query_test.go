@@ -127,13 +127,13 @@ func TestCollection_Query(t *testing.T) {
 			name: "Less Time Limit 5 With Order",
 			args: NewQuery().SetFilter(
 				NewLessFilter(time.Now(), "LastLogin"),
-			).SetLimits(5, 0).SetOrder(false, "LastLogin"),
+			).SetLimits(5, 0).SetOrder(false, "Age"),
 			wantResponse: []*User{
-				{ID: "174", Email: "woodstock-67@lavonne.com", Balance: -7207283129708867248, Address: &Address{City: "Kroger", ZipCode: 88}, Age: 17, LastLogin: mustParseTime("2018-06-19T02:03:53.779584878+02:00")},
-				{ID: "182", Email: "travolta-38@atkins.com", Balance: -657472957981999921, Address: &Address{City: "McFarland", ZipCode: 27}, Age: 3, LastLogin: mustParseTime("2018-06-14T03:55:14.779596482+02:00")},
-				{ID: "10", Email: "glastonbury-16@ferguson.com", Balance: 2238062777506547327, Address: &Address{City: "Lyme", ZipCode: 92}, Age: 12, LastLogin: mustParseTime("2018-05-26T20:10:17.779277588+02:00")},
-				{ID: "20", Email: "bloomingdale-95@baidu.com", Balance: 5734714954518056234, Address: &Address{City: "Rosales", ZipCode: 36}, Age: 1, LastLogin: mustParseTime("2018-05-26T11:18:33.779297231+02:00")},
-				{ID: "152", Email: "clementine-18@beeton.com", Balance: 5159224772251481170, Address: &Address{City: "Eloise", ZipCode: 0}, Age: 4, LastLogin: mustParseTime("2018-05-21T05:27:47.779552052+02:00")},
+				{ID: "127", Email: "prensa-56@dedekind.com", Balance: 4495937405735533066, Address: &Address{City: "Cymbeline", ZipCode: 80}, Age: 19, LastLogin: mustParseTime("2018-01-23T09:31:19.77949703+01:00")},
+				{ID: "154", Email: "depp-88@christa.com", Balance: 7172349605666936298, Address: &Address{City: "Staubach", ZipCode: 50}, Age: 19, LastLogin: mustParseTime("2018-03-10T22:14:40.779554928+01:00")},
+				{ID: "111", Email: "sarnoff-84@amie.com", Balance: 4059682463746307250, Address: &Address{City: "Herring", ZipCode: 58}, Age: 18, LastLogin: mustParseTime("2017-12-12T23:10:51.779471556+01:00")},
+				{ID: "166", Email: "mirzam-53@carmelo.com", Balance: 4727539390372795700, Address: &Address{City: "Pribilof", ZipCode: 42}, Age: 18, LastLogin: mustParseTime("2017-10-31T22:41:07.779573284+01:00")},
+				{ID: "155", Email: "gonzalez-41@gillette.com", Balance: 7233813973658996658, Address: &Address{City: "Schlesinger", ZipCode: 3}, Age: 17, LastLogin: mustParseTime("2018-03-30T23:46:47.779556355+02:00")},
 			},
 			wantErr: false,
 		}, {
@@ -171,6 +171,53 @@ func TestCollection_Query(t *testing.T) {
 				testUser,
 			},
 			wantErr: false,
+		}, {
+			name: "Exclude Filter",
+			args: NewQuery().SetFilter(
+				NewBetweenFilter(uint(15), uint(19), "Age"),
+				NewEqualFilter(uint(17), "Age").ExclusionFilter(),
+			).SetLimits(30, 0).SetOrder(false, "Age").SetTimeout(time.Hour),
+			wantResponse: []*User{
+				{ID: "111", Email: "sarnoff-84@amie.com", Balance: 4059682463746307250, Address: &Address{City: "Herring", ZipCode: 58}, Age: 18, LastLogin: mustParseTime("2017-12-12T23:10:51.779471556+01:00")},
+				{ID: "133", Email: "citibank-38@css.com", Balance: 7414564314151778346, Address: &Address{City: "Byers", ZipCode: 49}, Age: 18, LastLogin: mustParseTime("2017-07-20T07:00:58.77950965+02:00")},
+				{ID: "141", Email: "lollobrigida-65@sachs.com", Balance: -2887694497990240143, Address: &Address{City: "Loyd", ZipCode: 0}, Age: 18, LastLogin: mustParseTime("2017-07-19T22:27:58.779521946+02:00")},
+				{ID: "166", Email: "mirzam-53@carmelo.com", Balance: 4727539390372795700, Address: &Address{City: "Pribilof", ZipCode: 42}, Age: 18, LastLogin: mustParseTime("2017-10-31T22:41:07.779573284+01:00")},
+				{ID: "167", Email: "abrams-66@anshan.com", Balance: 5515393226037987824, Address: &Address{City: "Rene", ZipCode: 46}, Age: 18, LastLogin: mustParseTime("2016-06-28T09:07:52.779574645+02:00")},
+				{ID: "205", Email: "ruby-14@benacerraf.com", Balance: 6184224934393451725, Address: &Address{City: "Malinda", ZipCode: 11}, Age: 18, LastLogin: mustParseTime("2017-02-06T06:21:05.779638538+01:00")},
+				{ID: "215", Email: "sancho-18@huck.com", Balance: 5048282887095334907, Address: &Address{City: "Stu", ZipCode: 11}, Age: 18, LastLogin: mustParseTime("2016-09-10T07:10:53.779653263+02:00")},
+				{ID: "226", Email: "macedon-22@haynes.com", Balance: 4476138898591813535, Address: &Address{City: "Deana", ZipCode: 96}, Age: 18, LastLogin: mustParseTime("2018-05-19T04:27:19.779671191+02:00")},
+				{ID: "252", Email: "burks-55@gall.com", Balance: 6076085708776753791, Address: &Address{City: "Frazier", ZipCode: 22}, Age: 18, LastLogin: mustParseTime("2017-09-05T13:33:42.779724269+02:00")},
+				{ID: "279", Email: "weinberg-70@maiman.com", Balance: 7662368864092731685, Address: &Address{City: "Sumeria", ZipCode: 44}, Age: 18, LastLogin: mustParseTime("2016-07-13T16:55:14.779772384+02:00")},
+				{ID: "30", Email: "ashikaga-75@enrico.com", Balance: 8366614557447705283, Address: &Address{City: "Oneal", ZipCode: 31}, Age: 18, LastLogin: mustParseTime("2017-06-26T18:06:00.779318686+02:00")},
+				{ID: "46", Email: "troilus-1@holden.com", Balance: 7322141660272070715, Address: &Address{City: "Avis", ZipCode: 76}, Age: 18, LastLogin: mustParseTime("2016-09-18T03:33:21.779344696+02:00")},
+				{ID: "71", Email: "le-79@farley.com", Balance: 5517544624163890337, Address: &Address{City: "Lipton", ZipCode: 84}, Age: 18, LastLogin: mustParseTime("2016-09-27T00:03:51.779391608+02:00")},
+				{ID: "75", Email: "atria-52@upton.com", Balance: 7097996370098280725, Address: &Address{City: "Maxine", ZipCode: 87}, Age: 18, LastLogin: mustParseTime("2017-05-29T08:50:29.7793998+02:00")},
+				{ID: "81", Email: "carpathians-29@rudy.com", Balance: 3491889029470832159, Address: &Address{City: "Kaitlin", ZipCode: 18}, Age: 18, LastLogin: mustParseTime("2016-07-12T21:58:49.779409146+02:00")},
+				{ID: "84", Email: "mckay-7@mintaka.com", Balance: 5712585702400064801, Address: &Address{City: "Ashlee", ZipCode: 57}, Age: 18, LastLogin: mustParseTime("2017-09-26T06:18:59.779414363+02:00")},
+				{ID: "109", Email: "serena-76@walker.com", Balance: -3911797094884793372, Address: &Address{City: "Bobbie", ZipCode: 98}, Age: 16, LastLogin: mustParseTime("2017-10-12T15:29:31.779467973+02:00")},
+				{ID: "114", Email: "bayes-78@encarta.com", Balance: -5042870714656659092, Address: &Address{City: "Peg", ZipCode: 35}, Age: 16, LastLogin: mustParseTime("2018-03-16T12:18:21.779475892+01:00")},
+				{ID: "123", Email: "honecker-34@mallomars.com", Balance: 7920457748727249657, Address: &Address{City: "Iva", ZipCode: 26}, Age: 16, LastLogin: mustParseTime("2017-08-13T06:14:56.779491141+02:00")},
+				{ID: "129", Email: "sargasso-25@trekkie.com", Balance: 844975672684268522, Address: &Address{City: "Effie", ZipCode: 95}, Age: 16, LastLogin: mustParseTime("2018-05-02T13:27:38.77950351+02:00")},
+				{ID: "134", Email: "calderon-25@nosferatu.com", Balance: 6860872600828982654, Address: &Address{City: "Willis", ZipCode: 19}, Age: 16, LastLogin: mustParseTime("2017-03-03T07:36:17.779511263+01:00")},
+				{ID: "143", Email: "rowland-96@sihanouk.com", Balance: 5198477152645610974, Address: &Address{City: "Surya", ZipCode: 88}, Age: 16, LastLogin: mustParseTime("2018-02-23T10:49:59.779524702+01:00")},
+				{ID: "151", Email: "ramos-70@eleazar.com", Balance: 7355085083107302895, Address: &Address{City: "Schiaparelli", ZipCode: 95}, Age: 16, LastLogin: mustParseTime("2017-07-07T07:50:50.779550626+02:00")},
+				{ID: "16", Email: "sony-85@pynchon.com", Balance: 1241694766499487797, Address: &Address{City: "Ernie", ZipCode: 12}, Age: 16, LastLogin: mustParseTime("2018-03-22T13:08:26.779287787+01:00")},
+				{ID: "172", Email: "tide-13@traci.com", Balance: 4385233418122245928, Address: &Address{City: "Jaclyn", ZipCode: 40}, Age: 16, LastLogin: mustParseTime("2016-09-06T10:25:26.779581821+02:00")},
+				{ID: "19", Email: "elvia-78@joy.com", Balance: 433762869939193238, Address: &Address{City: "Samuelson", ZipCode: 47}, Age: 16, LastLogin: mustParseTime("2018-04-02T21:21:33.779294954+02:00")},
+				{ID: "194", Email: "kelsey-8@vijayawada.com", Balance: 6322222817173288818, Address: &Address{City: "Lamont", ZipCode: 71}, Age: 16, LastLogin: mustParseTime("2017-10-25T09:16:41.779619116+02:00")},
+				{ID: "211", Email: "alex-45@toynbee.com", Balance: 2562818978838785098, Address: &Address{City: "Claudio", ZipCode: 93}, Age: 16, LastLogin: mustParseTime("2017-04-15T06:11:00.779647659+02:00")},
+				{ID: "212", Email: "tabitha-90@amadeus.com", Balance: 3328391776107726397, Address: &Address{City: "Hermosillo", ZipCode: 73}, Age: 16, LastLogin: mustParseTime("2016-07-14T18:14:45.779649013+02:00")},
+				{ID: "230", Email: "rydberg-95@domingo.com", Balance: 2061015192054309365, Address: &Address{City: "Carr", ZipCode: 10}, Age: 16, LastLogin: mustParseTime("2016-08-08T21:31:45.77967697+02:00")},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Nothing To Do",
+			args: NewQuery(),
+			wantResponse: []*User{
+				testUser,
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -179,6 +226,10 @@ func TestCollection_Query(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Collection.Query() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr {
 				return
 			}
 
@@ -204,6 +255,15 @@ func TestCollection_Query(t *testing.T) {
 				t.Errorf("\n%v\n%v", printSliceOfUsers(users), printSliceOfUsers(tt.wantResponse))
 			}
 		})
+	}
+
+	_, err = c.Query(
+		NewQuery().SetFilter(
+			NewEqualFilter("estrada-21@allie.com", "email"),
+		).SetLimits(1, 0).SetTimeout(time.Nanosecond),
+	)
+	if err == nil {
+		t.Errorf("the query must timeout")
 	}
 
 	queryResponses(t, c)
@@ -240,7 +300,6 @@ func queryResponses(t *testing.T, c *Collection) {
 			NewEqualFilter(uint(19), "Age"),
 		).SetLimits(10, 0),
 	)
-
 	for i, _, v := responseQuery.First(); i >= 0; i, _, v = responseQuery.Next() {
 		tmpObj := new(Type)
 		json.Unmarshal(v, tmpObj)
@@ -264,6 +323,39 @@ func queryResponses(t *testing.T, c *Collection) {
 			t.Errorf("not the expected response: \n\t%v\n\t%v", tmpObj, expectedResponseList[i])
 			return
 		}
+	}
+
+	responseQuery, _ = c.Query(
+		NewQuery().SetFilter(
+			NewEqualFilter(uint(19), "Age"),
+		).SetLimits(10, 0),
+	)
+	_, err := responseQuery.All(func(id string, contentAsBytes []byte) error {
+		if id == "11" {
+			return fmt.Errorf("fake")
+		}
+		return nil
+	})
+	if err == nil {
+		t.Errorf("the All function should return the \"fake\" error")
+		return
+	}
+
+	responseQuery, _ = c.Query(
+		NewQuery().SetFilter(
+			NewEqualFilter("estrada-21@allie.com", "email"),
+		),
+	)
+	tmpU := new(User)
+	_, err = responseQuery.One(tmpU)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = responseQuery.One(tmpU)
+	if err != ErrResponseOver {
+		t.Errorf("the response is over and an error must be returned")
+		return
 	}
 }
 
@@ -294,4 +386,12 @@ func TestIndexInfo(t *testing.T) {
 	if ii.GetType() != "" {
 		t.Errorf("expected empty string but had %s", ii.GetType())
 	}
+}
+
+func TestIDType(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	id := newID(ctx, "id")
+	id.treeItem()
 }

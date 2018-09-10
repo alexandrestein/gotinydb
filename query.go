@@ -91,21 +91,16 @@ func (iMs *idsTypeMultiSorter) less(i, j int) bool {
 	p, q := iMs.IDs[i], iMs.IDs[j]
 
 	// Compare the order value
-	switch comp := bytes.Compare(p.values[p.selectorHash], q.values[q.selectorHash]); comp {
+	comp := bytes.Compare(p.values[p.selectorHash], q.values[q.selectorHash])
+	switch comp {
 	case -1:
 		return true
 	case 1:
 		return false
-	case 0:
-		// If equal compare the ID
-		switch p.ID > q.ID {
-		case true:
-			return true
-		case false:
-			return false
-		}
 	}
-	return false
+
+	// If equal compare the ID
+	return p.ID > q.ID
 }
 
 // NewQuery build a new query object.
@@ -150,12 +145,12 @@ func (q *Query) SetOrder(ascendent bool, selector ...string) *Query {
 }
 
 // SetFilter defines the action to perform to get IDs
-func (q *Query) SetFilter(f Filter) *Query {
+func (q *Query) SetFilter(f ...Filter) *Query {
 	if q.filters == nil {
 		q.filters = []Filter{}
 
 	}
-	q.filters = append(q.filters, f)
+	q.filters = append(q.filters, f...)
 	return q
 }
 
@@ -176,10 +171,8 @@ func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64
 			return false
 		}
 
-		nextAsID, ok := next.(*idType)
-		if !ok {
-			return false
-		}
+		nextAsID := next.(*idType)
+
 		// Check that there is as must occurrences that the number of filters
 		if nextAsID.Occurrences(nbFilters) {
 			nextAsID.selectorHash = orderSelectorHash
@@ -254,10 +247,7 @@ func (i *idType) Occurrences(target int) bool {
 // Less implements the btree.Item interface. It can be an indexation
 // on the ID or on the value
 func (i *idType) Less(compareToItem btree.Item) bool {
-	compareTo, ok := compareToItem.(*idType)
-	if !ok {
-		return false
-	}
+	compareTo := compareToItem.(*idType)
 
 	return (i.ID < compareTo.ID)
 }
@@ -363,10 +353,6 @@ func (r *Response) Len() int {
 
 // First used with Next
 func (r *Response) First() (i int, id string, objAsByte []byte) {
-	if len(r.list) <= 0 {
-		return -1, "", nil
-	}
-
 	r.actualPosition = 0
 	return 0, r.list[0].GetID(), r.list[0].contentAsBytes
 }
@@ -380,9 +366,6 @@ func (r *Response) Next() (i int, id string, objAsByte []byte) {
 // Last used with Prev
 func (r *Response) Last() (i int, id string, objAsByte []byte) {
 	lastSlot := len(r.list) - 1
-	if lastSlot < 0 {
-		return -1, "", nil
-	}
 
 	r.actualPosition = lastSlot
 	return lastSlot, r.list[lastSlot].GetID(), r.list[lastSlot].contentAsBytes
@@ -405,20 +388,11 @@ func (r *Response) next() (i int, id string, objAsByte []byte) {
 
 // All takes a function as argument and permit to unmarshal or to manage recoredes inside the function
 func (r *Response) All(fn func(id string, objAsBytes []byte) error) (n int, err error) {
-	n = 0
-	if r == nil {
-		return 0, ErrNotFound
-	}
-
 	for _, elem := range r.list {
-		if n >= len(r.list) {
-			break
-		}
 		err = fn(elem.GetID(), elem.contentAsBytes)
 		if err != nil {
 			return
 		}
-		n++
 	}
 	return
 }
@@ -428,7 +402,7 @@ func (r *Response) All(fn func(id string, objAsBytes []byte) error) (n int, err 
 func (r *Response) One(destination interface{}) (id string, err error) {
 	if r.actualPosition >= len(r.list) {
 		r.actualPosition = 0
-		return "", ErrTheResponseIsOver
+		return "", ErrResponseOver
 	}
 
 	id = r.list[r.actualPosition].GetID()

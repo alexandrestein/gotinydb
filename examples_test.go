@@ -172,7 +172,7 @@ func ExampleResponse_One() {
 		tmpObj := new(Type)
 		_, err := responseQuery.One(tmpObj)
 		if err != nil {
-			if err == ErrTheResponseIsOver {
+			if err == ErrResponseOver {
 				break
 			}
 			// Handler error

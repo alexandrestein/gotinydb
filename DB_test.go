@@ -22,6 +22,8 @@ func TestOpen(t *testing.T) {
 			return
 		}
 
+		db.GetCollections()
+
 		err = db.Close()
 		if err != nil {
 			t.Error(err)
@@ -140,11 +142,15 @@ func TestDB_SetOptions(t *testing.T) {
 	}
 	defer db.Close()
 
-	_, err = db.Use("testCol")
+	var c *Collection
+	c, err = db.Use("testCol")
 	if err != nil {
 		t.Error(err)
 		return
 	}
+
+	// To test index option update
+	c.SetIndex("test", StringIndex, "nil")
 
 	db.SetOptions(NewDefaultOptions(testPath))
 }

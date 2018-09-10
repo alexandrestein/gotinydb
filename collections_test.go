@@ -2,8 +2,10 @@ package gotinydb
 
 import (
 	"context"
+	"crypto/rand"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 )
@@ -30,6 +32,11 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 	err = c.SetIndex("email", StringIndex, "email")
 	if err != nil {
 		t.Error(err)
+		return
+	}
+	err = c.SetIndex("email", StringIndex, "email")
+	if err == nil {
+		t.Errorf("must return error")
 		return
 	}
 
@@ -78,6 +85,84 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 	err = db.Close()
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestCollection_PutGetAndDeleteBin(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	testPath := os.TempDir() + "/" + "binTests"
+	defer os.RemoveAll(testPath)
+
+	db, err := Open(ctx, NewDefaultOptions(testPath))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	c, err := db.Use("bins collection")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = c.SetIndex("email", StringIndex, "email")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	contentID := "id"
+	content := make([]byte, 1024)
+	rand.Read(content)
+
+	err = c.Put(contentID, content)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	var retBytes []byte
+	retBytes, err = c.Get(contentID, nil)
+
+	if !reflect.DeepEqual(retBytes, content) {
+		t.Errorf("the bin content are not equal")
+		return
+	}
+
+	// Test to update with a index element
+	c.Put(contentID, testUser)
+	userFromQuery := new(User)
+	response, _ := c.Query(NewQuery().SetFilter(
+		NewEqualFilter(testUser.Email, "email"),
+	))
+	response.One(userFromQuery)
+	if !reflect.DeepEqual(userFromQuery, testUser) {
+		t.Errorf("save user is not equal")
+		return
+	}
+
+	// Add an an other bin
+	rand.Read(content)
+	err = c.Put(contentID, content)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = c.Query(NewQuery().SetFilter(
+		NewEqualFilter(testUser.Email, "email"),
+	))
+	if err != ErrNotFound {
+		t.Errorf("the element is not present any more")
+		return
+	}
+
+	retBytes, err = c.Get(contentID, nil)
+	if !reflect.DeepEqual(retBytes, content) {
+		t.Errorf("the bin content are not equal")
+		return
 	}
 }
 
@@ -143,6 +228,44 @@ func TestCollection_PutMulti(t *testing.T) {
 	}
 }
 
+func TestCollection_MultiPutAndDelete(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	testPath := os.TempDir() + "/" + "putMulti"
+	defer os.RemoveAll(testPath)
+
+	db, err := Open(ctx, NewDefaultOptions(testPath))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	c, err := db.Use("user collection")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Tries to run delete and put in the same time to test mixed write request
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		c.Put("id", []byte("empty"))
+		wg.Done()
+	}()
+	go func() {
+		c.Delete("id")
+		wg.Done()
+	}()
+	go func() {
+		c.Put("id", []byte("empty"))
+		wg.Done()
+	}()
+
+	wg.Wait()
+}
+
 func TestCollection_DeleteIndex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
@@ -185,6 +308,11 @@ func TestCollection_DeleteIndex(t *testing.T) {
 	err = c.DeleteIndex(indexName)
 	if err != nil {
 		t.Error(err)
+		return
+	}
+	err = c.DeleteIndex(indexName)
+	if err == nil {
+		t.Error("the index does not exist and this must return an error")
 		return
 	}
 }

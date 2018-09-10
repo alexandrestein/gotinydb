@@ -64,6 +64,11 @@ func TestUIntConversion(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+	if _, err := uintToBytes(math.MaxInt64); err == nil {
+		t.Error("this must return an error")
+		return
+	}
 }
 
 func TestIntOrdering(t *testing.T) {

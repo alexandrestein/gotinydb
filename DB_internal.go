@@ -66,9 +66,7 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 
 	c.initWriteTransactionChan(d.ctx)
 
-	if colID == "" && colName == "" {
-		return nil, fmt.Errorf("name and ID can't be empty")
-	} else if colID == "" {
+	if colID == "" {
 		colID = buildID(colName)
 	}
 
