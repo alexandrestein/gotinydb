@@ -13,9 +13,10 @@ type (
 		Address   *Address
 		Age       uint
 		LastLogin time.Time
+		Related   []int `json:"related,omitempty"`
 	}
 	Address struct {
-		City    string
+		City    string `json:"city"`
 		ZipCode uint
 	}
 

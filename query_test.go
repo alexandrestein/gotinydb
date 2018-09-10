@@ -37,7 +37,12 @@ func TestCollection_Query(t *testing.T) {
 
 	c.SetIndex("email", StringIndex, "email")
 	c.SetIndex("age", UIntIndex, "Age")
+	c.SetIndex("balance", IntIndex, "Balance")
 	c.SetIndex("last connection", TimeIndex, "LastLogin")
+	c.SetIndex("multiple level index", StringIndex, "Address", "city")
+	c.SetIndex("test slice of integers", IntIndex, "related")
+
+	c.SetIndex("never called", StringIndex, "neverMatch")
 
 	// Insert element in concurrent way to test the index system
 	for _, dataset := range []dataset{dataset1, dataset2, dataset3} {
@@ -56,6 +61,7 @@ func TestCollection_Query(t *testing.T) {
 
 		wg.Wait()
 	}
+	c.Put(testUser.ID, testUser)
 
 	tests := []struct {
 		name         string
@@ -154,6 +160,15 @@ func TestCollection_Query(t *testing.T) {
 				{ID: "214", Email: "eugenie-68@jerrod.com", Balance: 5805317582471799175, Address: &Address{City: "Lynne", ZipCode: 18}, Age: 5, LastLogin: mustParseTime("2016-07-01T13:47:45.779651797+02:00")},
 				{ID: "203", Email: "miltown-26@velez.com", Balance: 4278560190771696982, Address: &Address{City: "Eeyore", ZipCode: 67}, Age: 5, LastLogin: mustParseTime("2016-10-04T09:38:19.779635629+02:00")},
 				{ID: "198", Email: "oneal-12@olive.com", Balance: 5986049212808166631, Address: &Address{City: "Laramie", ZipCode: 9}, Age: 5, LastLogin: mustParseTime("2016-09-05T13:26:01.779624982+02:00")},
+			},
+			wantErr: false,
+		}, {
+			name: "Slice query",
+			args: NewQuery().SetFilter(
+				NewGreaterFilter(10, "related"),
+			),
+			wantResponse: []*User{
+				testUser,
 			},
 			wantErr: false,
 		},

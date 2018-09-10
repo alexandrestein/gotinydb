@@ -36,6 +36,7 @@ func (i *indexType) apply(object interface{}) (contentToIndex [][]byte, ok bool)
 func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex [][]byte, ok bool) {
 	var field *structs.Field
 	for j, fieldName := range i.Selector {
+		// If this is a first level selector
 		if j == 0 {
 			field, ok = object.FieldOk(fieldName)
 			// Check the JSON tag
@@ -59,10 +60,11 @@ func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex [][]by
 }
 
 func (i *indexType) testJSONTag(fields []*structs.Field, fieldName string) (field *structs.Field, ok bool) {
-	for _, tagField := range fields {
-		if tagField.Tag("json") == fieldName {
+	for _, fieldToTryWithJSONTags := range fields {
+		JSONTag := fieldToTryWithJSONTags.Tag("json")
+		if JSONTag == fieldName || JSONTag == fieldName+",omitempty" {
 			ok = true
-			field = tagField
+			field = fieldToTryWithJSONTags
 			return
 		}
 	}

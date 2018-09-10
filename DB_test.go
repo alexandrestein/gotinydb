@@ -291,6 +291,7 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	addIndexesFunc := func(c *Collection) {
 		c.SetIndex("email", StringIndex, "email")
 		c.SetIndex("age", UIntIndex, "Age")
+		c.SetIndex("city", StringIndex, "Address", "city")
 	}
 	addIndexesFunc(baseCols[0])
 	addIndexesFunc(baseCols[1])
@@ -435,8 +436,6 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 			return fmt.Errorf("user in original database and in restored database are not equal\n\t%v\n\t%v", user, gettedUser)
 		}
 
-		baseCol.Get(id, user)
-
 		q = NewQuery().SetFilter(
 			NewEqualFilter(user.Age, "Age"),
 		).SetLimits(1, 0)
@@ -447,6 +446,18 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 
 		if user.Age != gettedUser.Age {
 			return fmt.Errorf("query did not returned value with the same age:\n\t%v\n\t%v", user, gettedUser)
+		}
+
+		q = NewQuery().SetFilter(
+			NewEqualFilter(user.Address.City, "Address", "city"),
+		).SetLimits(1, 0)
+
+		gettedUser = new(User)
+		response, _ = restoredCol.Query(q)
+		response.One(gettedUser)
+
+		if user.Address.City != gettedUser.Address.City {
+			return fmt.Errorf("query did not returned value with the same city:\n\t%v\n\t%v", user, gettedUser)
 		}
 
 		return nil

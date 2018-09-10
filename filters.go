@@ -4,13 +4,7 @@ import (
 	"time"
 )
 
-// // NewFilter returns a new Action pointer with the given FilterOperator
-// func NewFilter(t FilterOperator) *filterBase {
-// 	return &filterBase{
-// 		operator: t,
-// 	}
-// }
-
+// NewEqualFilter builds a Filter interface for equal query
 func NewEqualFilter(value interface{}, s ...string) Filter {
 	ret := &filterBase{
 		operator: Equal,
@@ -20,6 +14,7 @@ func NewEqualFilter(value interface{}, s ...string) Filter {
 	return Filter(ret)
 }
 
+// NewGreaterFilter builds a Filter interface for greater query
 func NewGreaterFilter(value interface{}, s ...string) Filter {
 	ret := &filterBase{
 		operator: Greater,
@@ -29,6 +24,7 @@ func NewGreaterFilter(value interface{}, s ...string) Filter {
 	return Filter(ret)
 }
 
+// NewLessFilter builds a Filter interface for less query
 func NewLessFilter(value interface{}, s ...string) Filter {
 	ret := &filterBase{
 		operator: Less,
@@ -38,6 +34,7 @@ func NewLessFilter(value interface{}, s ...string) Filter {
 	return Filter(ret)
 }
 
+// NewBetweenFilter builds a Filter interface for between query
 func NewBetweenFilter(from, to interface{}, s ...string) Filter {
 	ret := &filterBase{
 		operator: Between,
