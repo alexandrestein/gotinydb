@@ -266,3 +266,32 @@ func queryResponses(t *testing.T, c *Collection) {
 		}
 	}
 }
+
+func TestIndexInfo(t *testing.T) {
+	ii := new(IndexInfo)
+
+	ii.Type = StringIndex
+	if ii.GetType() != StringIndexString {
+		t.Errorf("expected %s but had %s", StringIndexString, ii.GetType())
+	}
+
+	ii.Type = IntIndex
+	if ii.GetType() != IntIndexString {
+		t.Errorf("expected %s but had %s", IntIndexString, ii.GetType())
+	}
+
+	ii.Type = UIntIndex
+	if ii.GetType() != UIntIndexString {
+		t.Errorf("expected %s but had %s", UIntIndexString, ii.GetType())
+	}
+
+	ii.Type = TimeIndex
+	if ii.GetType() != TimeIndexString {
+		t.Errorf("expected %s but had %s", TimeIndexString, ii.GetType())
+	}
+
+	ii.Type = -1
+	if ii.GetType() != "" {
+		t.Errorf("expected empty string but had %s", ii.GetType())
+	}
+}
