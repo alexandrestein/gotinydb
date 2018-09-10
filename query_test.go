@@ -205,6 +205,8 @@ func TestCollection_Query(t *testing.T) {
 			}
 		})
 	}
+
+	queryResponses(t, c)
 }
 
 func mustParseTime(input string) time.Time {
@@ -217,4 +219,50 @@ func printSliceOfUsers(input []*User) (ret string) {
 		ret = fmt.Sprintf("%s%d\t%s\n", ret, i, user.String())
 	}
 	return
+}
+
+func queryResponses(t *testing.T, c *Collection) {
+	expectedResponseList := []*User{
+		{ID: "100", Email: "ferguson-85@leroy.com", Balance: 4447977972181900834, Address: &Address{City: "Maserati", ZipCode: 56}, Age: 19, LastLogin: mustParseTime("2017-03-17T17:38:44.77944231+01:00")},
+		{ID: "107", Email: "huntington-25@selectric.com", Balance: 8348423686594443311, Address: &Address{City: "Clarice", ZipCode: 51}, Age: 19, LastLogin: mustParseTime("2017-08-14T01:12:14.779462865+02:00")},
+		{ID: "11", Email: "vesalius-32@rowland.com", Balance: 3550438342716738513, Address: &Address{City: "Mazola", ZipCode: 97}, Age: 19, LastLogin: mustParseTime("2016-08-03T00:56:02.779279525+02:00")},
+		{ID: "119", Email: "hofstadter-76@oranjestad.com", Balance: 2241106655799453235, Address: &Address{City: "Rodriguez", ZipCode: 90}, Age: 19, LastLogin: mustParseTime("2017-03-07T01:18:58.77948378+01:00")},
+		{ID: "127", Email: "prensa-56@dedekind.com", Balance: 4495937405735533066, Address: &Address{City: "Cymbeline", ZipCode: 80}, Age: 19, LastLogin: mustParseTime("2018-01-23T09:31:19.77949703+01:00")},
+		{ID: "14", Email: "wigner-79@salisbury.com", Balance: 3372068499639092378, Address: &Address{City: "Roscoe", ZipCode: 7}, Age: 19, LastLogin: mustParseTime("2017-03-10T11:26:43.77928466+01:00")},
+		{ID: "154", Email: "depp-88@christa.com", Balance: 7172349605666936298, Address: &Address{City: "Staubach", ZipCode: 50}, Age: 19, LastLogin: mustParseTime("2018-03-10T22:14:40.779554928+01:00")},
+		{ID: "186", Email: "philippe-62@sellers.com", Balance: 6945390690498606599, Address: &Address{City: "Aurelio", ZipCode: 20}, Age: 19, LastLogin: mustParseTime("2016-07-22T10:29:35.779602878+02:00")},
+		{ID: "188", Email: "michelob-87@loyd.com", Balance: 8819151968236029214, Address: &Address{City: "Alisha", ZipCode: 89}, Age: 19, LastLogin: mustParseTime("2017-07-15T17:55:02.779607813+02:00")},
+		{ID: "193", Email: "bela-24@stephanie.com", Balance: 7418882447566429223, Address: &Address{City: "Lazaro", ZipCode: 43}, Age: 19, LastLogin: mustParseTime("2017-08-14T20:31:52.779617536+02:00")},
+	}
+
+	responseQuery, _ := c.Query(
+		NewQuery().SetFilter(
+			NewEqualFilter(uint(19), "Age"),
+		).SetLimits(10, 0),
+	)
+
+	for i, _, v := responseQuery.First(); i >= 0; i, _, v = responseQuery.Next() {
+		tmpObj := new(Type)
+		json.Unmarshal(v, tmpObj)
+
+		if reflect.DeepEqual(tmpObj, expectedResponseList[i]) {
+			t.Errorf("not the expected response: \n\t%v\n\t%v", tmpObj, expectedResponseList[i])
+			return
+		}
+	}
+
+	responseQuery, _ = c.Query(
+		NewQuery().SetFilter(
+			NewEqualFilter(uint(19), "Age"),
+		).SetLimits(10, 0),
+	)
+	for i, _, v := responseQuery.Last(); i >= 0; i, _, v = responseQuery.Prev() {
+		tmpObj := new(Type)
+		json.Unmarshal(v, tmpObj)
+
+		if reflect.DeepEqual(tmpObj, expectedResponseList[i]) {
+			t.Errorf("not the expected response: \n\t%v\n\t%v", tmpObj, expectedResponseList[i])
+			return
+		}
+	}
 }

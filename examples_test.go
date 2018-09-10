@@ -141,7 +141,6 @@ func ExampleResponse_First() {
 	}
 	// Slice is filled up your code goes here
 }
-
 func ExampleResponse_Prev() {
 	for i, _, v := responseQuery.Last(); i >= 0; i, _, v = responseQuery.Prev() {
 		tmpObj := new(Type)
