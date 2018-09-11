@@ -210,8 +210,7 @@ func TestCollection_Query(t *testing.T) {
 				{ID: "230", Email: "rydberg-95@domingo.com", Balance: 2061015192054309365, Address: &Address{City: "Carr", ZipCode: 10}, Age: 16, LastLogin: mustParseTime("2016-08-08T21:31:45.77967697+02:00")},
 			},
 			wantErr: false,
-		},
-		{
+		}, {
 			name: "Nothing To Do",
 			args: NewQuery(),
 			wantResponse: []*User{

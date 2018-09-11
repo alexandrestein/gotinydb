@@ -219,7 +219,7 @@ func (i *idType) incrementLoop(ctx context.Context) {
 				i.occurrences = i.occurrences + indice
 			}
 		case <-ctx.Done():
-			i.occurrences = 0
+			close(i.ch)
 			i.ch = nil
 			return
 		}
