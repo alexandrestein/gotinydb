@@ -3,55 +3,53 @@ package gotinydb
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
 	"github.com/minio/highwayhash"
 )
 
 func (c *Collection) loadInfos() error {
-	return c.db.View(func(tx *bolt.Tx) error {
-
-		bucket := tx.Bucket([]byte("config"))
-		if bucket == nil {
-			return ErrNotFound
+	return c.store.View(func(txn *badger.Txn) error {
+		id := c.buildIDWhitPrefixConfig([]byte("name"))
+		item, err := txn.Get(id)
+		if err != nil {
+			return err
 		}
 
-		name := string(bucket.Get([]byte("name")))
-		c.name = name
-
+		c.name = item.String()
 		return nil
 	})
 }
 
 func (c *Collection) init(name string) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		bucketsToCreate := []string{"config", "indexes", "refs"}
-		for _, bucketName := range bucketsToCreate {
-			if _, err := tx.CreateBucketIfNotExists([]byte(bucketName)); err != nil {
-				return err
-			}
-		}
-
-		confBucket := tx.Bucket([]byte("config"))
-		if confBucket == nil {
-			return fmt.Errorf("bucket does not exist")
-		}
-
-		return confBucket.Put([]byte("name"), []byte(name))
+	return c.store.Update(func(txn *badger.Txn) error {
+		id := c.buildIDWhitPrefixConfig([]byte("name"))
+		return txn.Set(id, []byte(name))
 	})
 }
 
 func (c *Collection) getIndexesFromConfigBucket() []*indexType {
 	indexes := []*indexType{}
-	c.db.View(func(tx *bolt.Tx) error {
-		indexesAsBytes := tx.Bucket([]byte("config")).Get([]byte("indexesList"))
+	c.store.View(func(txn *badger.Txn) error {
+		id := c.buildIDWhitPrefixConfig([]byte("indexesList"))
+		indexesAsItem, err := txn.Get(id)
+		if err != nil {
+			return err
+		}
+
+		var indexesAsBytes []byte
+		indexesAsBytes, err = indexesAsItem.Value()
+		if err != nil {
+			return err
+		}
+
 		json.Unmarshal(indexesAsBytes, &indexes)
 
 		return nil
@@ -60,16 +58,24 @@ func (c *Collection) getIndexesFromConfigBucket() []*indexType {
 }
 
 func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		confBucket := tx.Bucket([]byte("config"))
-		indexesAsBytes := confBucket.Get([]byte("indexesList"))
+	return c.store.Update(func(tx *badger.Txn) error {
+		id := c.buildIDWhitPrefixConfig([]byte("indexesList"))
+		item, err := tx.Get(id)
+		if err != nil {
+			return err
+		}
+
+		var indexesAsBytes []byte
+		indexesAsBytes, err = item.Value()
+
 		indexes := []*indexType{}
 		json.Unmarshal(indexesAsBytes, &indexes)
 
 		indexes = append(indexes, index)
 
 		indexesAsBytes, _ = json.Marshal(indexes)
-		return confBucket.Put([]byte("indexesList"), indexesAsBytes)
+
+		return tx.Set(id, indexesAsBytes)
 	})
 }
 
@@ -142,50 +148,45 @@ func (c *Collection) writeTransactions(tr *writeTransaction) {
 	// This group defines the waitgroup to consider that all have been done correctly.
 	wgCommitted := new(sync.WaitGroup)
 
+	// Start the new transaction
+	txn := c.store.NewTransaction(true)
+	defer txn.Discard()
+
 	// Used to propagate the error for one or the other function
 	errChan := make(chan error, 1)
 	if len(tr.transactions) == 1 {
-		c.writeOneTransaction(tr.ctx, errChan, wgActions, wgCommitted, tr.transactions[0])
+		c.writeOneTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr.transactions[0])
 
 		// Respond to the caller with the error if any
 		tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
 	} else {
-		tr.responseChan <- c.writeMultipleTransaction(tr.ctx, errChan, wgActions, wgCommitted, tr)
+		tr.responseChan <- c.writeMultipleTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr)
 	}
 }
 
-func (c *Collection) writeOneTransaction(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wtElem *writeTransactionElement) {
+func (c *Collection) writeOneTransaction(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wtElem *writeTransactionElement) {
 	// Increment the tow waiting groups
 	wgActions.Add(2)
 	wgCommitted.Add(2)
 
 	if wtElem.isInsertion {
 		// Runs saving into the store
-		go c.putIntoStore(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
+		go c.putIntoStore(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
 
 		// Starts the indexing process
 		if !wtElem.bin {
-			go c.putIntoIndexes(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
+			go c.putIntoIndexes(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
 		} else {
-			go c.onlyCleanRefs(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
+			go c.onlyCleanRefs(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
 		}
 	} else {
 		// Else is because it's a deletation
-		go c.delFromStore(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
-		go c.onlyCleanRefs(ctx, nil, errChan, wgActions, wgCommitted, wtElem)
+		go c.delFromStore(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
+		go c.onlyCleanRefs(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
 	}
 }
 
-func (c *Collection) writeMultipleTransaction(ctx context.Context, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wt *writeTransaction) error {
-	badgerTxn := c.store.NewTransaction(true)
-	defer badgerTxn.Discard()
-
-	boltTx, beginBoltTxErr := c.db.Begin(true)
-	if beginBoltTxErr != nil {
-		errChan <- beginBoltTxErr
-		return beginBoltTxErr
-	}
-
+func (c *Collection) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wt *writeTransaction) error {
 	// Because there is only one commit for all insertion we add manually 1
 	wgCommitted.Add(1)
 
@@ -200,18 +201,18 @@ func (c *Collection) writeMultipleTransaction(ctx context.Context, errChan chan 
 
 		if wtElem.isInsertion {
 			// Runs saving into the store
-			go c.putIntoStore(ctx, badgerTxn, errChan, wgActions, &wgLoop, wtElem)
+			go c.putIntoStore(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
 
 			// Starts the indexing process
 			if !wtElem.bin {
-				go c.putIntoIndexes(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
+				go c.putIntoIndexes(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
 			} else {
-				go c.onlyCleanRefs(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
+				go c.onlyCleanRefs(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
 			}
 		} else {
 			// Else is because it's a deletation
-			go c.delFromStore(ctx, badgerTxn, errChan, wgActions, &wgLoop, wtElem)
-			go c.onlyCleanRefs(ctx, boltTx, errChan, wgActions, &wgLoop, wtElem)
+			go c.delFromStore(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
+			go c.onlyCleanRefs(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
 		}
 
 		// Wait for this to be saved in suspend before commit
@@ -225,12 +226,7 @@ func (c *Collection) writeMultipleTransaction(ctx context.Context, errChan chan 
 	err := waitForDoneErrOrCanceled(ctx, wgCommitted, errChan)
 	if err == nil {
 		// Commit every thing if no error reported
-		err = badgerTxn.Commit(nil)
-		if err != nil {
-			errChan <- err
-			return err
-		}
-		err = boltTx.Commit()
+		err = txn.Commit(nil)
 		if err != nil {
 			errChan <- err
 			return err
@@ -240,21 +236,40 @@ func (c *Collection) writeMultipleTransaction(ctx context.Context, errChan chan 
 	return nil
 }
 
-func (c *Collection) buildStoreID(id string) []byte {
-	return []byte(fmt.Sprintf("%s_%s", c.id[:4], id))
+func (c *Collection) buildIDWhitPrefixData(id []byte) []byte {
+	// prefixSpacer := make([]byte, 8)
+	ret := []byte{c.prefix, prefixData}
+	// ret = append(ret, prefixSpacer...)
+	return append(ret, id...)
+}
+func (c *Collection) buildIDWhitPrefixConfig(id []byte) []byte {
+	// prefixSpacer := make([]byte, 8)
+	ret := []byte{c.prefix, prefixConfig}
+	// ret = append(ret, prefixSpacer...)
+	return append(ret, id...)
+}
+func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
+	ret := []byte{c.prefix, prefixIndexes}
+	ret = append(ret, indexName...)
+
+	bs := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bs, highwayhash.Sum64(id, nil))
+
+	return append(ret, bs...)
+}
+func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
+	// prefixSpacer := make([]byte, 8)
+	ret := []byte{c.prefix, prefixRefs}
+	// ret = append(ret, prefixSpacer...)
+	return append(ret, id...)
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, tx *bolt.Tx, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+func (c *Collection) buildStoreID(id string) []byte {
+	return c.buildIDWhitPrefixData([]byte(id))
+}
+
+func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
 	multi := true
-	if tx == nil {
-		multi = false
-		var txErr error
-		tx, txErr = c.db.Begin(true)
-		if txErr != nil {
-			errChan <- txErr
-			return txErr
-		}
-	}
 
 	err := c.cleanRefs(ctx, tx, writeTransaction.id)
 	if err != nil {
@@ -262,8 +277,20 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *bolt.Tx, errChan ch
 		return err
 	}
 
-	refsBucket := tx.Bucket([]byte("refs"))
-	refsAsBytes := refsBucket.Get(buildBytesID(writeTransaction.id))
+	refID := c.buildIDWhitPrefixRefs([]byte(writeTransaction.id))
+	item, err := tx.Get(refID)
+	if err != nil {
+		errChan <- err
+		return err
+	}
+
+	var refsAsBytes []byte
+	refsAsBytes, err = item.Value()
+	if err != nil {
+		errChan <- err
+		return err
+	}
+
 	refs := newRefs()
 	if refsAsBytes != nil && len(refsAsBytes) > 0 {
 		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
@@ -281,12 +308,26 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *bolt.Tx, errChan ch
 
 	for _, index := range c.indexes {
 		if indexedValues, apply := index.apply(writeTransaction.contentInterface); apply {
-			indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
+			// indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
 
 			// If the selector hit a slice.
 			// apply can returns more than one value to index
 			for _, indexedValue := range indexedValues {
-				idsAsBytes := indexBucket.Get(indexedValue)
+				indexedValueID := c.buildIDWhitPrefixIndex([]byte(index.Name), indexedValue)
+
+				idsAsItem, err := tx.Get(indexedValueID)
+				if err != nil {
+					errChan <- err
+					return err
+				}
+
+				var idsAsBytes []byte
+				idsAsBytes, err = idsAsItem.Value()
+				if err != nil {
+					errChan <- err
+					return err
+				}
+
 				ids, parseIDsErr := newIDs(ctx, 0, nil, idsAsBytes)
 				if parseIDsErr != nil {
 					errChan <- parseIDsErr
@@ -297,7 +338,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *bolt.Tx, errChan ch
 				ids.AddID(id)
 				idsAsBytes = ids.MustMarshal()
 
-				if err := indexBucket.Put(indexedValue, idsAsBytes); err != nil {
+				if err := tx.Set(indexedValueID, idsAsBytes); err != nil {
 					errChan <- err
 					return err
 				}
@@ -307,7 +348,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *bolt.Tx, errChan ch
 		}
 	}
 
-	putErr := refsBucket.Put(refs.IDasBytes(), refs.asBytes())
+	putErr := tx.Set(refID, refs.asBytes())
 	if putErr != nil {
 		errChan <- err
 		return err
@@ -316,20 +357,8 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *bolt.Tx, errChan ch
 	return c.endOfIndexUpdate(ctx, tx, !multi, errChan, wgActions, wgCommitted)
 }
 
-func (c *Collection) onlyCleanRefs(ctx context.Context, tx *bolt.Tx, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+func (c *Collection) onlyCleanRefs(ctx context.Context, tx *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
 	multi := true
-	if tx == nil {
-		multi = false
-		var txErr error
-		tx, txErr = c.db.Begin(true)
-		if txErr != nil {
-			errChan <- txErr
-			return txErr
-		}
-	} else if !tx.Writable() {
-		errChan <- bolt.ErrTxNotWritable
-		return bolt.ErrTxNotWritable
-	}
 
 	err := c.cleanRefs(ctx, tx, writeTransaction.id)
 	if err != nil {
@@ -340,7 +369,7 @@ func (c *Collection) onlyCleanRefs(ctx context.Context, tx *bolt.Tx, errChan cha
 	return c.endOfIndexUpdate(ctx, tx, !multi, errChan, wgActions, wgCommitted)
 }
 
-func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, commit bool, errChan chan error, wgActions, wgCommitted *sync.WaitGroup) error {
+func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *badger.Txn, commit bool, errChan chan error, wgActions, wgCommitted *sync.WaitGroup) error {
 	// Tells the rest of the callers that the index is done but not committed
 	wgActions.Done()
 
@@ -352,10 +381,10 @@ func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, commit b
 	}
 
 	if commit {
-		err = tx.Commit()
+		err = tx.Commit(nil)
 		if err != nil {
+			tx.Discard()
 			errChan <- err
-			tx.Rollback()
 			return err
 		}
 	}
@@ -365,12 +394,20 @@ func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *bolt.Tx, commit b
 	return nil
 }
 
-func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString string) error {
-	indexBucket := tx.Bucket([]byte("indexes"))
-	refsBucket := tx.Bucket([]byte("refs"))
+func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString string) error {
+	// indexBucket := tx.Bucket([]byte("indexes"))
+	// refsBucket := tx.Bucket([]byte("refs"))
 
 	// Get the references of the given ID
-	refsAsBytes := refsBucket.Get(buildBytesID(idAsString))
+	refsAsItem, err := tx.Get(c.buildIDWhitPrefixRefs([]byte(idAsString)))
+	if err != nil {
+		return err
+	}
+	var refsAsBytes []byte
+	refsAsBytes, err = refsAsItem.Value()
+	if err != nil {
+		return err
+	}
 	refs := newRefs()
 	if refsAsBytes != nil && len(refsAsBytes) > 0 {
 		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
@@ -382,16 +419,24 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *bolt.Tx, idAsString stri
 	for _, ref := range refs.Refs {
 		for _, index := range c.indexes {
 			if index.Name == ref.IndexName {
+				refIDAsBytes := c.buildIDWhitPrefixIndex([]byte(index.Name), ref.IndexedValue)
+				indexedValueAsItem, err := tx.Get(refIDAsBytes)
+				if err != nil {
+					return err
+				}
+				var indexedValueAsBytes []byte
+				indexedValueAsBytes, err = indexedValueAsItem.Value()
+				if err != nil {
+					return err
+				}
 				// If reference present in this index the reference is cleaned
-				ids, newIDErr := newIDs(ctx, 0, nil, indexBucket.Bucket([]byte(index.Name)).Get(ref.IndexedValue))
+				ids, newIDErr := newIDs(ctx, 0, nil, indexedValueAsBytes)
 				if newIDErr != nil {
 					return newIDErr
 				}
 				ids.RmID(idAsString)
 				// And saved again after the clean
-				if err := indexBucket.Bucket([]byte(index.Name)).Put(ref.IndexedValue, ids.MustMarshal()); err != nil {
-					return err
-				}
+				return tx.Set(refIDAsBytes, ids.MustMarshal())
 			}
 		}
 	}
@@ -485,7 +530,7 @@ func (c *Collection) queryGetIDsLoopIncrementFuncfunc(tree *btree.BTree, id *idT
 
 func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btree.BTree) (response *Response, _ error) {
 	getRefFunc := func(id string) (refs *refs) {
-		c.db.View(func(tx *bolt.Tx) error {
+		c.store.View(func(tx *badger.Txn) error {
 			refs, _ = c.getRefs(tx, id)
 			return nil
 		})
@@ -645,18 +690,26 @@ func (c *Collection) loadIndex() error {
 	indexes := c.getIndexesFromConfigBucket()
 	for _, index := range indexes {
 		index.options = c.options
-		index.getTx = c.db.Begin
+		index.getTx = c.store.NewTransaction
+		index.getIDBuilder = func(id []byte) []byte {
+			return c.buildIDWhitPrefixIndex([]byte(index.Name), id)
+		}
 	}
 	c.indexes = indexes
 
 	return nil
 }
 
-
-func (c *Collection) getRefs(tx *bolt.Tx, id string) (*refs, error) {
-	refsBucket := tx.Bucket([]byte("refs"))
-
-	refsAsBytes := refsBucket.Get(buildBytesID(id))
+func (c *Collection) getRefs(tx *badger.Txn, id string) (*refs, error) {
+	refsAsItem, err := tx.Get(c.buildIDWhitPrefixRefs([]byte(id)))
+	if err != nil {
+		return nil, err
+	}
+	var refsAsBytes []byte
+	refsAsBytes, err = refsAsItem.Value()
+	if err != nil {
+		return nil, err
+	}
 	refs := newRefsFromDB(refsAsBytes)
 	if refs == nil {
 		return nil, fmt.Errorf("references mal formed: %s", string(refsAsBytes))
@@ -748,11 +801,8 @@ newLoop:
 		return nil
 	}
 
-	tx, txErr := c.db.Begin(true)
-	if txErr != nil {
-		errChan <- txErr
-		return txErr
-	}
+	tx := c.store.NewTransaction(true)
+	defer tx.Discard()
 
 	for _, savedElement := range savedElements {
 		if savedElement.GetID() == lastID {
@@ -789,7 +839,7 @@ newLoop:
 		lastID = savedElement.GetID()
 	}
 
-	err := tx.Commit()
+	err := tx.Commit(nil)
 	if err != nil {
 		return err
 	}

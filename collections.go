@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
 )
 
@@ -126,17 +125,21 @@ func (c *Collection) Delete(id string) error {
 func (c *Collection) SetIndex(name string, t IndexType, selector ...string) error {
 	i := newIndex(name, t, selector...)
 	i.options = c.options
-	i.getTx = c.db.Begin
-
-	if updateErr := c.db.Update(func(tx *bolt.Tx) error {
-		_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
-		if createErr != nil {
-			return createErr
-		}
-		return nil
-	}); updateErr != nil {
-		return updateErr
+	i.getTx = c.store.NewTransaction
+	i.getIDBuilder = func(id []byte) []byte {
+		return c.buildIDWhitPrefixIndex([]byte(i.Name), id)
 	}
+
+	// if updateErr := c.store.Update(func(tx *badger.Txn) error {
+	// 	tx.
+	// 	_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
+	// 	if createErr != nil {
+	// 		return createErr
+	// 	}
+	// 	return nil
+	// }); updateErr != nil {
+	// 	return updateErr
+	// }
 
 	c.indexes = append(c.indexes, i)
 	if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
@@ -148,6 +151,8 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 
 // DeleteIndex remove the index from the collection
 func (c *Collection) DeleteIndex(name string) error {
+	tx := c.store.NewTransaction(true)
+	defer tx.Discard()
 	// Find the correct index from the list
 	for i, activeIndex := range c.indexes {
 		if activeIndex.Name == name {
@@ -156,10 +161,21 @@ func (c *Collection) DeleteIndex(name string) error {
 			c.indexes[len(c.indexes)-1] = nil
 			c.indexes = c.indexes[:len(c.indexes)-1]
 
-			// Remove the all index from indexes database
-			return c.db.Update(func(tx *bolt.Tx) error {
-				return tx.Bucket([]byte("indexes")).DeleteBucket([]byte(name))
-			})
+			// Remove all indexed values from database
+			iteratorOptions := badger.DefaultIteratorOptions
+			iteratorOptions.PrefetchValues = false
+			iterator := tx.NewIterator(iteratorOptions)
+			defer iterator.Close()
+
+			indexPrefix := c.buildIDWhitPrefixIndex([]byte(name), nil)
+			for iterator.Seek(indexPrefix); iterator.ValidForPrefix(indexPrefix); iterator.Next() {
+				err := tx.Delete(iterator.Item().Key())
+				if err != nil {
+					return err
+				}
+			}
+
+			return tx.Commit(nil)
 		}
 	}
 

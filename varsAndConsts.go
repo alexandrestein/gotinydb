@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
 	"github.com/dgraph-io/badger/options"
 )
@@ -17,6 +16,9 @@ var (
 	DefaultQueryLimit         = 100
 	DefaultInternalQueryLimit = 1000
 	DefaultPutBufferLimit     = 1000
+
+	// FilePermission defines the database file permission
+	FilePermission os.FileMode = 0740 // u -> rwx | g -> r-- | o -> ---
 
 	DefaultBadgerOptions = &badger.Options{
 		DoNotCompact:        false,
@@ -40,8 +42,6 @@ var (
 		ValueThreshold:     32,
 		Truncate:           false,
 	}
-
-	DefaultBoltOptions = bolt.DefaultOptions
 )
 
 // NewDefaultOptions build default options with a path
@@ -54,14 +54,11 @@ func NewDefaultOptions(path string) *Options {
 		PutBufferLimit:     DefaultPutBufferLimit,
 
 		BadgerOptions: DefaultBadgerOptions,
-		BoltOptions:   DefaultBoltOptions,
 	}
 }
 
+// Defines the errors
 var (
-	// FilePermission defines the database file permission
-	FilePermission os.FileMode = 0740 // u -> rwx | g -> r-- | o -> ---
-
 	// ErrBadBadgerConfig is returned when opening the database and the issue is from the Badger configuration
 	ErrBadBadgerConfig = fmt.Errorf("Badger configuration is not valid")
 	// ErrRollbackVersionNotFound is returned when rollback is requested but the target value can't be found
@@ -94,6 +91,16 @@ const (
 	Between FilterOperator = "bw"
 )
 
+// Those constants defines the prefix used to split different element of the collection
+// into the store
+const (
+	prefixCollectionsInfo byte = iota
+	prefixData
+	prefixConfig
+	prefixIndexes
+	prefixRefs
+)
+
 // Those define the different type of indexes
 const (
 	StringIndex IndexType = iota
@@ -101,8 +108,8 @@ const (
 	UIntIndex
 	TimeIndex
 
-	StringIndexString string = "string"
-	IntIndexString    string = "int"
-	UIntIndexString   string = "uint"
-	TimeIndexString   string = "time"
+	StringIndexString FilterOperator = "string"
+	IntIndexString    FilterOperator = "int"
+	UIntIndexString   FilterOperator = "uint"
+	TimeIndexString   FilterOperator = "time"
 )

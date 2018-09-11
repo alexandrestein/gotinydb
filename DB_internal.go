@@ -2,16 +2,13 @@ package gotinydb
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
-	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
 )
 
-func (d *DB) buildPath() error {
-	return os.MkdirAll(d.options.Path+"/collections", FilePermission)
-}
+// func (d *DB) buildPath() error {
+// 	return os.MkdirAll(d.options.Path+"/collections", FilePermission)
+// }
 
 func (d *DB) initBadger() error {
 	if d.options.BadgerOptions == nil {
@@ -74,12 +71,6 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 	c.name = colName
 	c.ctx = d.ctx
 
-	db, openDBErr := bolt.Open(d.options.Path+"/collections/"+colID, FilePermission, d.options.BoltOptions)
-	if openDBErr != nil {
-		return nil, openDBErr
-	}
-	c.db = db
-
 	// Try to load the collection information
 	if err := c.loadInfos(); err != nil {
 		// If not exists try to build it
@@ -104,14 +95,26 @@ func (d *DB) getCollection(colID, colName string) (*Collection, error) {
 }
 
 func (d *DB) getCollectionsIDs() ([]string, error) {
-	files, err := ioutil.ReadDir(d.options.Path + "/collections")
-	if err != nil {
-		return nil, err
-	}
-
 	ret := []string{}
-	for _, f := range files {
-		ret = append(ret, f.Name())
-	}
+
+	d.valueStore.View(func(txn *badger.Txn) error {
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchValues = false
+		it := txn.NewIterator(opt)
+		colPrefix := []byte{prefixCollectionsInfo}
+		for it.Seek(colPrefix); it.ValidForPrefix(colPrefix); it.Next() {
+			ret = append(ret, string(it.Item().Key()))
+		}
+		return nil
+	})
+	// files, err := ioutil.ReadDir(d.options.Path + "/collections")
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// for _, f := range files {
+	// 	ret = append(ret, f.Name())
+	// }
+
 	return ret, nil
 }

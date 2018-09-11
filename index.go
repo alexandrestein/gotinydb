@@ -218,10 +218,10 @@ func newRefsFromDB(input []byte) *refs {
 	return refs
 }
 
-// IDasBytes returns the ID of the coresponding object as a slice of bytes
-func (r *refs) IDasBytes() []byte {
-	return []byte(r.ObjectHashID)
-}
+// // IDasBytes returns the ID of the coresponding object as a slice of bytes
+// func (r *refs) IDasBytes() []byte {
+// 	return []byte(r.ObjectHashID)
+// }
 
 // setIndexedValue add to the list of references this one.
 // The indexName define the index it belongs to and indexedVal defines what value
@@ -248,7 +248,7 @@ func (r *refs) asBytes() []byte {
 }
 
 // GetType returns the string representation of the index type
-func (i *IndexInfo) GetType() string {
+func (i *IndexInfo) GetType() FilterOperator {
 	switch i.Type {
 	case StringIndex:
 		return StringIndexString

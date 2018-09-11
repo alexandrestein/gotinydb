@@ -18,7 +18,7 @@
   version = "v1.3.1"
 
 [[projects]]
-  digest = "1:e69eed3a095cfa14010241bec50ed52af765480899ac95ffd5687f35091f9e09"
+  digest = "1:21ac9938fb1098b3a7b0dd909fb30878d33231177fac11a2821114eb9c1088ff"
   name = "github.com/dgraph-io/badger"
   packages = [
     ".",
@@ -90,7 +90,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cedc1a3a48e70dec85168f8c19de5433bf54a75da94c4d165c4cbf400b6a1e49"
+  digest = "1:a7b3aa11890fbe342ed4bf76a27986473d13103ae14796dcf2b55521c93e2547"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -102,7 +102,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:70656e26ab4a96e683a21d677630edb5239a3d60b2d54bdc861c808ab5aa42c7"
+  digest = "1:bb0fe59917bdd5b89f49b9a8b26e5f465e325d9223b3a8e32254314bdf51e0f1"
   name = "golang.org/x/sys"
   packages = [
     "cpu",

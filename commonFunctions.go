@@ -84,10 +84,10 @@ func buildID(id string) string {
 	return base64.RawURLEncoding.EncodeToString(buildIDInternal(id))
 }
 
-// buildBytesID convert the given ID to an hash as byte definition
-func buildBytesID(id string) []byte {
-	return []byte(buildID(id))
-}
+// // buildBytesID convert the given ID to an hash as byte definition
+// func buildBytesID(id string) []byte {
+// 	return []byte(buildID(id))
+// }
 
 // buildSelectorHash returns a string hash of the selector
 func buildSelectorHash(selector []string) uint64 {

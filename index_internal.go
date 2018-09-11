@@ -5,17 +5,23 @@ import (
 	"context"
 	"log"
 	"reflect"
+
+	"github.com/dgraph-io/badger"
 )
 
 func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids *idsType, err error) {
-	tx, getTxErr := i.getTx(false)
-	if getTxErr != nil {
-		return nil, getTxErr
-	}
-	defer tx.Rollback()
+	tx := i.getTx(false)
+	defer tx.Discard()
 
-	bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
-	asBytes := bucket.Get(indexedValue)
+	asItem, err := tx.Get(i.getIDBuilder(indexedValue))
+	if err != nil {
+		return nil, err
+	}
+	var asBytes []byte
+	asBytes, err = asItem.Value()
+	if err != nil {
+		return nil, err
+	}
 
 	ids, err = newIDs(ctx, i.SelectorHash, indexedValue, asBytes)
 	if err != nil {
@@ -25,17 +31,24 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 }
 
 func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, limit []byte, keepEqual, increasing bool) (allIDs *idsType, err error) {
-	tx, getTxErr := i.getTx(false)
-	if getTxErr != nil {
-		return nil, getTxErr
-	}
-	defer tx.Rollback()
+	tx := i.getTx(false)
+	defer tx.Discard()
 
-	bucket := tx.Bucket([]byte("indexes")).Bucket([]byte(i.Name))
-	// Initiate the cursor (iterator)
-	iter := bucket.Cursor()
+	// Initiate the iterator
+	iterOptions := badger.DefaultIteratorOptions
+	if !increasing {
+		iterOptions.Reverse = true
+	}
+	iter := tx.NewIterator(badger.DefaultIteratorOptions)
+
 	// Go to the requested position and get the values of it
-	firstIndexedValueAsByte, firstIDsAsByte := iter.Seek(filterValue)
+	iter.Seek(i.getIDBuilder(filterValue))
+	firstIndexedValueAsByte := iter.Item().Key()
+	firstIDsAsByte, err := iter.Item().Value()
+	if err != nil {
+		return nil, err
+	}
+	// firstIndexedValueAsByte, firstIDsAsByte := iter.Item().
 	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.SelectorHash, filterValue, firstIDsAsByte)
 	if unmarshalIDsErr != nil {
 		return nil, unmarshalIDsErr
@@ -54,25 +67,21 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 			allIDs.AddIDs(firstIDsValue)
 		}
 	}
-
-	var nextFunc func() (key []byte, value []byte)
-	if increasing {
-		nextFunc = iter.Next
-	} else {
-		nextFunc = iter.Prev
-	}
-
-	return i.getIDsForRangeOfValuesLoop(ctx, allIDs, nextFunc, filterValue, limit, keepEqual)
+	return i.getIDsForRangeOfValuesLoop(ctx, allIDs, iter, filterValue, limit, keepEqual)
 }
 
-func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context,
-	allIDs *idsType,
-	nextFunc func() (key []byte, value []byte),
-	filterValue, limit []byte,
-	keepEqual bool,
-) (*idsType, error) {
+func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsType, iter *badger.Iterator, filterValue, limit []byte, keepEqual bool) (*idsType, error) {
+	limitID := i.getIDBuilder(limit)
 	for {
-		indexedValue, idsAsByte := nextFunc()
+		iter.Next()
+		if !iter.ValidForPrefix(limitID) {
+			break
+		}
+		indexedValue := iter.Item().Key()
+		idsAsByte, err := iter.Item().Value()
+		if err != nil {
+			return nil, err
+		}
 		if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
 			break
 		}

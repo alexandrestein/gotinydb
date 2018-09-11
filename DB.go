@@ -25,9 +25,9 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	d.options = options
 	d.ctx = ctx
 
-	if err := d.buildPath(); err != nil {
-		return nil, err
-	}
+	// if err := d.buildPath(); err != nil {
+	// 	return nil, err
+	// }
 
 	if initBadgerErr := d.initBadger(); initBadgerErr != nil {
 		return nil, initBadgerErr
@@ -88,23 +88,9 @@ func (d *DB) Close() error {
 	}
 	d.closing = true
 
-	errors := ""
-	for i, col := range d.collections {
-		if err := col.db.Close(); err != nil {
-			errors = fmt.Sprintf("%s%s\n", errors, err.Error())
-		}
-		d.collections[i] = nil
-	}
-
+	var err error
 	if d.valueStore != nil {
-		err := d.valueStore.Close()
-		if err != nil {
-			errors = fmt.Sprintf("%s%s\n", errors, err.Error())
-		}
-	}
-
-	if errors != "" {
-		return fmt.Errorf(errors)
+		err = d.valueStore.Close()
 	}
 
 	d.options.Path = ""
@@ -112,7 +98,8 @@ func (d *DB) Close() error {
 	d.collections = nil
 
 	d = nil
-	return nil
+
+	return err
 }
 
 // DeleteCollection delete the given collection
@@ -130,10 +117,6 @@ func (d *DB) DeleteCollection(collectionName string) error {
 		}
 	}
 
-	// Close index DB
-	if err := c.db.Close(); err != nil {
-		return err
-	}
 	// Remove the index DB files
 	if err := os.RemoveAll(d.options.Path + "/collections/" + c.id); err != nil {
 		return err

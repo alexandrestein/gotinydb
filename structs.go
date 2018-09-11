@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger"
 )
 
@@ -30,7 +29,6 @@ type (
 		PutBufferLimit int
 
 		BadgerOptions *badger.Options
-		BoltOptions   *bolt.Options
 	}
 
 	// Collection defines the storage object
@@ -38,9 +36,11 @@ type (
 		name, id string
 		indexes  []*indexType
 
+		// prefix defines the prefix needed to found the collection into the store
+		prefix byte
+
 		options *Options
 
-		db    *bolt.DB
 		store *badger.DB
 
 		writeTransactionChan chan *writeTransaction
@@ -88,7 +88,8 @@ type (
 
 		options *Options
 
-		getTx func(update bool) (*bolt.Tx, error)
+		getTx        func(update bool) *badger.Txn
+		getIDBuilder func(id []byte) []byte
 	}
 
 	// refs defines an struct to manage the references of a given object

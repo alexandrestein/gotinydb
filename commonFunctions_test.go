@@ -4,11 +4,11 @@ import (
 	"testing"
 )
 
-func TestBuildID(t *testing.T) {
-	if id := buildBytesID("testString"); string(id) != "VwrWkLzMGcso0q8enMrDWQ" {
-		t.Error("returned ID, is not correct", id)
-	}
-}
+// func TestBuildID(t *testing.T) {
+// 	if id := buildBytesID("testString"); string(id) != "VwrWkLzMGcso0q8enMrDWQ" {
+// 		t.Error("returned ID, is not correct", id)
+// 	}
+// }
 
 func TestTypeName(t *testing.T) {
 	if StringIndex.TypeName() != "StringIndex" {
