@@ -119,22 +119,27 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan
 
 	err := c.cleanRefs(ctx, tx, writeTransaction.id)
 	if err != nil {
-		errChan <- err
-		return err
+		if err != badger.ErrKeyNotFound {
+			errChan <- err
+			return err
+		}
 	}
 
 	refID := c.buildIDWhitPrefixRefs([]byte(writeTransaction.id))
+	var refsAsBytes []byte
+
 	item, err := tx.Get(refID)
 	if err != nil {
-		errChan <- err
-		return err
-	}
-
-	var refsAsBytes []byte
-	refsAsBytes, err = item.Value()
-	if err != nil {
-		errChan <- err
-		return err
+		if err != badger.ErrKeyNotFound {
+			errChan <- err
+			return err
+		}
+	} else {
+		refsAsBytes, err = item.Value()
+		if err != nil {
+			errChan <- err
+			return err
+		}
 	}
 
 	refs := newRefs()

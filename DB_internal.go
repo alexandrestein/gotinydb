@@ -112,10 +112,18 @@ func (d *DB) writeTransactions(tr *writeTransaction) {
 	if len(tr.transactions) == 1 {
 		d.writeOneTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr.transactions[0])
 
+		err := waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
+		if err == nil {
+			txn.Commit(nil)
+		}
 		// Respond to the caller with the error if any
-		tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
+		tr.responseChan <- err
 	} else {
-		tr.responseChan <- d.writeMultipleTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr)
+		err := d.writeMultipleTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr)
+		if err == nil {
+			txn.Commit(nil)
+		}
+		tr.responseChan <- err
 	}
 }
 
