@@ -124,6 +124,12 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = false
 	it := txn.NewIterator(opt)
+	defer it.Close()
+
+	// Prevent panic
+	if c == nil {
+		return nil
+	}
 
 	// Remove the index DB files
 	prefix := c.buildCollectionPrefix()

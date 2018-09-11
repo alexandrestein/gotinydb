@@ -3,28 +3,27 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
-	"sync"
 
 	"github.com/minio/highwayhash"
 )
 
-// waitForDoneErrOrCanceled waits for the waitgroup or context to be done.
-// If the waitgroup os done first it returns true otherways it returns false.
-func waitForDoneErrOrCanceled(ctx context.Context, wg *sync.WaitGroup, errChan chan error) error {
-	c := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(c)
-	}()
-	select {
-	case <-c:
-		return nil // completed normally
-	case err := <-errChan:
-		return err // returns the received err
-	case <-ctx.Done():
-		return ctx.Err() // timed out or canceled
-	}
-}
+// // waitForDoneErrOrCanceled waits for the waitgroup or context to be done.
+// // If the waitgroup os done first it returns true otherways it returns false.
+// func waitForDoneErrOrCanceled(ctx context.Context, wg *sync.WaitGroup, errChan chan error) error {
+// 	c := make(chan struct{})
+// 	go func() {
+// 		wg.Wait()
+// 		close(c)
+// 	}()
+// 	select {
+// 	case <-c:
+// 		return nil // completed normally
+// 	case err := <-errChan:
+// 		return err // returns the received err
+// 	case <-ctx.Done():
+// 		return ctx.Err() // timed out or canceled
+// 	}
+// }
 
 func getIDsAsString(input []*idType) (ret []string) {
 	for _, id := range input {

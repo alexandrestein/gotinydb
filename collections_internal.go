@@ -99,7 +99,7 @@ func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
 	ret = append(ret, indexName...)
 
 	bs := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bs, highwayhash.Sum64(id, nil))
+	binary.LittleEndian.PutUint64(bs, highwayhash.Sum64(id, make([]byte, 32)))
 
 	return append(ret, bs...)
 }
@@ -114,13 +114,12 @@ func (c *Collection) buildStoreID(id string) []byte {
 	return c.buildIDWhitPrefixData([]byte(id))
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTransaction *writeTransactionElement) error {
 	multi := true
 
 	err := c.cleanRefs(ctx, tx, writeTransaction.id)
 	if err != nil {
 		if err != badger.ErrKeyNotFound {
-			errChan <- err
 			return err
 		}
 	}
@@ -131,13 +130,11 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan
 	item, err := tx.Get(refID)
 	if err != nil {
 		if err != badger.ErrKeyNotFound {
-			errChan <- err
 			return err
 		}
 	} else {
 		refsAsBytes, err = item.Value()
 		if err != nil {
-			errChan <- err
 			return err
 		}
 	}
@@ -145,7 +142,6 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan
 	refs := newRefs()
 	if refsAsBytes != nil && len(refsAsBytes) > 0 {
 		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-			errChan <- err
 			return err
 		}
 	}
@@ -168,20 +164,17 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan
 
 				idsAsItem, err := tx.Get(indexedValueID)
 				if err != nil {
-					errChan <- err
 					return err
 				}
 
 				var idsAsBytes []byte
 				idsAsBytes, err = idsAsItem.Value()
 				if err != nil {
-					errChan <- err
 					return err
 				}
 
 				ids, parseIDsErr := newIDs(ctx, 0, nil, idsAsBytes)
 				if parseIDsErr != nil {
-					errChan <- parseIDsErr
 					return parseIDsErr
 				}
 
@@ -190,7 +183,6 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan
 				idsAsBytes = ids.MustMarshal()
 
 				if err := tx.Set(indexedValueID, idsAsBytes); err != nil {
-					errChan <- err
 					return err
 				}
 
@@ -201,47 +193,27 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan
 
 	putErr := tx.Set(refID, refs.asBytes())
 	if putErr != nil {
-		errChan <- err
 		return err
 	}
 
-	return c.endOfIndexUpdate(ctx, tx, !multi, errChan, wgActions, wgCommitted)
+	return c.endOfIndexUpdate(ctx, tx, !multi)
 }
 
-func (c *Collection) onlyCleanRefs(ctx context.Context, tx *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+func (c *Collection) onlyCleanRefs(ctx context.Context, tx *badger.Txn, writeTransaction *writeTransactionElement) error {
 	multi := true
 
 	err := c.cleanRefs(ctx, tx, writeTransaction.id)
 	if err != nil {
-		errChan <- err
 		return err
 	}
 
-	return c.endOfIndexUpdate(ctx, tx, !multi, errChan, wgActions, wgCommitted)
+	return c.endOfIndexUpdate(ctx, tx, !multi)
 }
 
-func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *badger.Txn, commit bool, errChan chan error, wgActions, wgCommitted *sync.WaitGroup) error {
-	// Tells the rest of the callers that the index is done but not committed
-	wgActions.Done()
-
-	// Wait for the store insetion to be completed
-	err := waitForDoneErrOrCanceled(ctx, wgActions, errChan)
-	if err != nil {
-		errChan <- err
-		return err
-	}
-
+func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *badger.Txn, commit bool) error {
 	if commit {
-		err = tx.Commit(nil)
-		if err != nil {
-			tx.Discard()
-			errChan <- err
-			return err
-		}
+		return tx.Commit(nil)
 	}
-
-	wgCommitted.Done()
-
 	return nil
 }
 
@@ -428,7 +400,7 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	return
 }
 
-func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, isInsertion bool, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
+func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, isInsertion bool, writeTransaction *writeTransactionElement) error {
 	multi := true
 	if txn == nil {
 		multi = false
@@ -448,40 +420,24 @@ func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, i
 		writeErr = txn.Delete(storeID)
 	}
 	if writeErr != nil {
-		err := fmt.Errorf("error writing %q: %s", writeTransaction.id, writeErr.Error())
-		errChan <- err
-		return err
-	}
-
-	// Tells the rest of the callers that the index is done but not committed
-	wgActions.Done()
-
-	// Wait for the store insetion to be completed
-	err := waitForDoneErrOrCanceled(ctx, wgActions, errChan)
-	if err != nil {
-		return err
+		return fmt.Errorf("error writing %q: %s", writeTransaction.id, writeErr.Error())
 	}
 
 	if !multi {
+		fmt.Println("commit §§§")
 		// Start the commit of the indexes
-		err = txn.Commit(nil)
-		if err != nil {
-			errChan <- err
-			return err
-		}
-	}
+		return txn.Commit(nil)
 
-	// Propagate the commit done status
-	wgCommitted.Done()
+	}
 
 	return nil
 }
-func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
-	return c.insertOrDeleteStore(ctx, txn, true, errChan, wgActions, wgCommitted, writeTransaction)
+func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, writeTransaction *writeTransactionElement) error {
+	return c.insertOrDeleteStore(ctx, txn, true, writeTransaction)
 }
 
-func (c *Collection) delFromStore(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, writeTransaction *writeTransactionElement) error {
-	return c.insertOrDeleteStore(ctx, txn, false, errChan, wgActions, wgCommitted, writeTransaction)
+func (c *Collection) delFromStore(ctx context.Context, txn *badger.Txn, writeTransaction *writeTransactionElement) error {
+	return c.insertOrDeleteStore(ctx, txn, false, writeTransaction)
 }
 
 func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
@@ -492,6 +448,7 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 			item, getError := txn.Get(idAsBytes)
 			if getError != nil {
 				if getError == badger.ErrKeyNotFound {
+					fmt.Println("id", idAsBytes)
 					return ErrNotFound
 				}
 				return getError
@@ -634,8 +591,6 @@ func (c *Collection) indexAllValues() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	errChan := make(chan error, 0)
-
 	lastID := ""
 
 newLoop:
@@ -676,9 +631,7 @@ newLoop:
 
 		trElement := newTransactionElement(savedElement.GetID(), m, true, c)
 
-		go c.putIntoIndexes(ctx2, tx, errChan, fakeWgAction, fakeWgCommitted, trElement)
-
-		err := waitForDoneErrOrCanceled(ctx2, fakeWgCommitted, errChan)
+		err := c.putIntoIndexes(ctx2, tx, trElement)
 		if err != nil {
 			return err
 		}

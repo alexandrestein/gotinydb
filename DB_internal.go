@@ -3,7 +3,6 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
-	"sync"
 
 	"github.com/dgraph-io/badger"
 )
@@ -97,106 +96,98 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 }
 
 func (d *DB) writeTransactions(tr *writeTransaction) {
-	// Build a waiting groups
-	// This group is to make internal functions wait the otherone
-	wgActions := new(sync.WaitGroup)
-	// This group defines the waitgroup to consider that all have been done correctly.
-	wgCommitted := new(sync.WaitGroup)
-
 	// Start the new transaction
 	txn := d.valueStore.NewTransaction(true)
 	defer txn.Discard()
 
-	// Used to propagate the error for one or the other function
-	errChan := make(chan error, 1)
 	if len(tr.transactions) == 1 {
-		d.writeOneTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr.transactions[0])
-
-		err := waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
-		if err == nil {
-			txn.Commit(nil)
-		}
 		// Respond to the caller with the error if any
+		err := d.writeOneTransaction(tr.ctx, txn, tr.transactions[0])
 		tr.responseChan <- err
-	} else {
-		err := d.writeMultipleTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr)
-		if err == nil {
-			txn.Commit(nil)
+		if err != nil {
+			return
 		}
+	} else {
+		err := d.writeMultipleTransaction(tr.ctx, txn, tr)
 		tr.responseChan <- err
+		if err != nil {
+			return
+		}
 	}
+
+	txn.Commit(nil)
 }
 
-func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wtElem *writeTransactionElement) {
-	// Increment the tow waiting groups
-	wgActions.Add(2)
-	wgCommitted.Add(2)
-
+func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
 	if wtElem.isInsertion {
 		// Runs saving into the store
-		go wtElem.collection.putIntoStore(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
+		err := wtElem.collection.putIntoStore(ctx, txn, wtElem)
+		if err != nil {
+			return err
+		}
 
 		// Starts the indexing process
 		if !wtElem.bin {
-			go wtElem.collection.putIntoIndexes(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
+			err = wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+			if err != nil {
+				return err
+			}
 		} else {
-			go wtElem.collection.onlyCleanRefs(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
+			err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		// Else is because it's a deletation
-		go wtElem.collection.delFromStore(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
-		go wtElem.collection.onlyCleanRefs(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
-	}
-}
-
-func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wt *writeTransaction) error {
-	// Because there is only one commit for all insertion we add manually 1
-	wgCommitted.Add(1)
-
-	// Loop for every insertion
-	for _, wtElem := range wt.transactions {
-		// Increment the tow waiting groups
-		wgActions.Add(2)
-
-		// Build a new wait group to prevent concurant writes which make Badger panic
-		var wgLoop sync.WaitGroup
-		wgLoop.Add(2)
-
-		if wtElem.isInsertion {
-			// Runs saving into the store
-			go wtElem.collection.putIntoStore(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-
-			// Starts the indexing process
-			if !wtElem.bin {
-				go wtElem.collection.putIntoIndexes(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-			} else {
-				go wtElem.collection.onlyCleanRefs(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-			}
-		} else {
-			// Else is because it's a deletation
-			go wtElem.collection.delFromStore(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-			go wtElem.collection.onlyCleanRefs(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-		}
-
-		// Wait for this to be saved in suspend before commit
-		wgLoop.Wait()
-	}
-
-	// Tells to the rest that commit can be run now
-	wgCommitted.Done()
-
-	// Wait for error if any
-	err := waitForDoneErrOrCanceled(ctx, wgCommitted, errChan)
-	if err == nil {
-		// Commit every thing if no error reported
-		err = txn.Commit(nil)
+		err := wtElem.collection.delFromStore(ctx, txn, wtElem)
 		if err != nil {
-			errChan <- err
+			return err
+		}
+		err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
+		if err != nil {
 			return err
 		}
 	}
-	// Respond to the caller with the error if any
 	return nil
+}
+
+func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *writeTransaction) error {
+	// Loop for every insertion
+	for _, wtElem := range wt.transactions {
+		if wtElem.isInsertion {
+			// Runs saving into the store
+			err := wtElem.collection.putIntoStore(ctx, txn, wtElem)
+			if err != nil {
+				return err
+			}
+
+			// Starts the indexing process
+			if !wtElem.bin {
+				err = wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+				if err != nil {
+					return err
+				}
+			} else {
+				err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			// Else is because it's a deletation
+			err := wtElem.collection.delFromStore(ctx, txn, wtElem)
+			if err != nil {
+				return err
+			}
+			err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	// Commit every thing if no error reported
+	return txn.Commit(nil)
 }
 
 func (d *DB) loadCollections() error {
