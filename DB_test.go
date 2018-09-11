@@ -2,6 +2,7 @@ package gotinydb
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -77,7 +78,9 @@ func TestDB_Use(t *testing.T) {
 			return
 		}
 
+		fmt.Println("avant")
 		c.Put(testID, testContent)
+		fmt.Println("apres")
 
 		t.Run("Ask Twice the same collection", func(t *testing.T) {
 			c, err = db.Use(colName)

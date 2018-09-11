@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"math/big"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/minio/highwayhash"
 )
 
 var (
@@ -67,6 +70,18 @@ func Benchmark(b *testing.B) {
 	cancel()
 
 	time.Sleep(time.Second)
+}
+
+// buildID returns ID as base 64 representation into a string
+func buildID(id string) string {
+	return base64.RawURLEncoding.EncodeToString(buildIDInternal(id))
+}
+
+// buildIDInternal builds an ID as a slice of bytes from the given string
+func buildIDInternal(id string) []byte {
+	key := make([]byte, highwayhash.Size)
+	hash := highwayhash.Sum128([]byte(id), key)
+	return []byte(hash[:])
 }
 
 func putRandRecord(c *Collection, id string) error {

@@ -25,9 +25,9 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	d.options = options
 	d.ctx = ctx
 
-	// if err := d.buildPath(); err != nil {
-	// 	return nil, err
-	// }
+	if err := os.MkdirAll(d.options.Path, FilePermission); err != nil {
+		return nil, err
+	}
 
 	if initBadgerErr := d.initBadger(); initBadgerErr != nil {
 		return nil, initBadgerErr
@@ -35,6 +35,8 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	if loadErr := d.loadCollections(); loadErr != nil {
 		return nil, loadErr
 	}
+
+	d.initWriteTransactionChan(ctx)
 
 	go d.waitForClose()
 
@@ -52,7 +54,7 @@ func (d *DB) Use(colName string) (*Collection, error) {
 		}
 	}
 
-	c, loadErr := d.getCollection("", colName)
+	c, loadErr := d.getCollection(colName)
 	if loadErr != nil {
 		return nil, loadErr
 	}
@@ -117,9 +119,19 @@ func (d *DB) DeleteCollection(collectionName string) error {
 		}
 	}
 
+	txn := d.valueStore.NewTransaction(true)
+	defer txn.Discard()
+	opt := badger.DefaultIteratorOptions
+	opt.PrefetchValues = false
+	it := txn.NewIterator(opt)
+
 	// Remove the index DB files
-	if err := os.RemoveAll(d.options.Path + "/collections/" + c.id); err != nil {
-		return err
+	prefix := c.buildCollectionPrefix()
+	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		err := txn.Delete(it.Item().Key())
+		if err != nil {
+			return err
+		}
 	}
 
 	// Remove stored values 1000 by 1000

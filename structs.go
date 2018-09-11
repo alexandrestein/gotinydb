@@ -16,6 +16,8 @@ type (
 		valueStore  *badger.DB
 		collections []*Collection
 
+		writeTransactionChan chan *writeTransaction
+
 		ctx     context.Context
 		closing bool
 	}
@@ -33,8 +35,8 @@ type (
 
 	// Collection defines the storage object
 	Collection struct {
-		name, id string
-		indexes  []*indexType
+		name    string
+		indexes []*indexType
 
 		// prefix defines the prefix needed to found the collection into the store
 		prefix byte
@@ -115,6 +117,7 @@ type (
 	}
 	writeTransactionElement struct {
 		id               string
+		collection       *Collection
 		contentInterface interface{}
 		contentAsBytes   []byte
 		bin              bool

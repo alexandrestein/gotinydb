@@ -94,11 +94,17 @@ const (
 // Those constants defines the prefix used to split different element of the collection
 // into the store
 const (
-	prefixCollectionsInfo byte = iota
-	prefixData
+	prefixData byte = iota
 	prefixConfig
 	prefixIndexes
 	prefixRefs
+)
+
+const (
+	prefixCollectionsInfo byte = iota
+	prefixCollections
+
+	_IDCollectionsInfoCollectionsNames = "collectionsNames"
 )
 
 // Those define the different type of indexes

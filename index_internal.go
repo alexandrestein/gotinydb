@@ -40,6 +40,7 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 		iterOptions.Reverse = true
 	}
 	iter := tx.NewIterator(badger.DefaultIteratorOptions)
+	defer iter.Close()
 
 	// Go to the requested position and get the values of it
 	iter.Seek(i.getIDBuilder(filterValue))

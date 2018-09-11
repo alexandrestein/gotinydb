@@ -2,7 +2,6 @@ package gotinydb
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"sync"
 
@@ -34,9 +33,9 @@ func getIDsAsString(input []*idType) (ret []string) {
 	return ret
 }
 
-func newTransactionElement(id string, content interface{}, isInsertion bool) (wtElem *writeTransactionElement) {
+func newTransactionElement(id string, content interface{}, isInsertion bool, col *Collection) (wtElem *writeTransactionElement) {
 	wtElem = &writeTransactionElement{
-		id: id, contentInterface: content, isInsertion: isInsertion,
+		id: id, contentInterface: content, isInsertion: isInsertion, collection: col,
 	}
 
 	if !isInsertion {
@@ -72,17 +71,17 @@ func (wt *writeTransaction) addTransaction(trElement ...*writeTransactionElement
 	wt.transactions = append(wt.transactions, trElement...)
 }
 
-// buildIDInternal builds an ID as a slice of bytes from the given string
-func buildIDInternal(id string) []byte {
-	key := make([]byte, highwayhash.Size)
-	hash := highwayhash.Sum128([]byte(id), key)
-	return []byte(hash[:])
-}
+// // buildIDInternal builds an ID as a slice of bytes from the given string
+// func buildIDInternal(id string) []byte {
+// 	key := make([]byte, highwayhash.Size)
+// 	hash := highwayhash.Sum128([]byte(id), key)
+// 	return []byte(hash[:])
+// }
 
-// buildID returns ID as base 64 representation into a string
-func buildID(id string) string {
-	return base64.RawURLEncoding.EncodeToString(buildIDInternal(id))
-}
+// // buildID returns ID as base 64 representation into a string
+// func buildID(id string) string {
+// 	return base64.RawURLEncoding.EncodeToString(buildIDInternal(id))
+// }
 
 // // buildBytesID convert the given ID to an hash as byte definition
 // func buildBytesID(id string) []byte {

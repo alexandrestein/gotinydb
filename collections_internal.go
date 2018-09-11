@@ -79,177 +79,23 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 	})
 }
 
-func (c *Collection) initWriteTransactionChan(ctx context.Context) {
-	// Set a limit
-	limit := c.options.PutBufferLimit
-	// Build the queue with 2 times the limit to help writing on disc
-	// in the same order as the operation are called
-	c.writeTransactionChan = make(chan *writeTransaction, limit*2)
-	// Start the infinite loop
-
-	go c.waittingWriteLoop(ctx, limit)
+func (c *Collection) buildCollectionPrefix() []byte {
+	return []byte{prefixCollections, c.prefix}
 }
-
-func (c *Collection) waittingWriteLoop(ctx context.Context, limit int) {
-	for {
-		select {
-		// A request came up
-		case tr := <-c.writeTransactionChan:
-			// Build a new write request
-			newTr := newTransaction(tr.ctx)
-			// Add the first request to the waiting list
-			newTr.addTransaction(tr.transactions...)
-
-			// Build the slice of chan the writer will respond
-			waittingForResponseList := []chan error{}
-			// Same the first response channel
-			waittingForResponseList = append(waittingForResponseList, tr.responseChan)
-
-			// Try to empty the queue if any
-		tryToGetAnOtherRequest:
-			select {
-			// There is an other request in the queue
-			case trBis := <-c.writeTransactionChan:
-				// Save the request
-				newTr.addTransaction(trBis.transactions...)
-				// And save the response channel
-				waittingForResponseList = append(waittingForResponseList, trBis.responseChan)
-
-				// Check if the limit is not reach
-				if len(newTr.transactions) < limit {
-					// If not lets try to empty the queue a bit more
-					goto tryToGetAnOtherRequest
-				}
-				// This release continue if there is no request in the queue
-			default:
-			}
-
-			// Run the write operation
-			go c.writeTransactions(newTr)
-
-			// Get the response
-			err := <-newTr.responseChan
-			// And spread the response to all callers in parallel
-			for _, waittingForResponse := range waittingForResponseList {
-				go func(waittingForResponse chan error, err error) {
-					waittingForResponse <- err
-				}(waittingForResponse, err)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (c *Collection) writeTransactions(tr *writeTransaction) {
-	// Build a waiting groups
-	// This group is to make internal functions wait the otherone
-	wgActions := new(sync.WaitGroup)
-	// This group defines the waitgroup to consider that all have been done correctly.
-	wgCommitted := new(sync.WaitGroup)
-
-	// Start the new transaction
-	txn := c.store.NewTransaction(true)
-	defer txn.Discard()
-
-	// Used to propagate the error for one or the other function
-	errChan := make(chan error, 1)
-	if len(tr.transactions) == 1 {
-		c.writeOneTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr.transactions[0])
-
-		// Respond to the caller with the error if any
-		tr.responseChan <- waitForDoneErrOrCanceled(tr.ctx, wgCommitted, errChan)
-	} else {
-		tr.responseChan <- c.writeMultipleTransaction(tr.ctx, txn, errChan, wgActions, wgCommitted, tr)
-	}
-}
-
-func (c *Collection) writeOneTransaction(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wtElem *writeTransactionElement) {
-	// Increment the tow waiting groups
-	wgActions.Add(2)
-	wgCommitted.Add(2)
-
-	if wtElem.isInsertion {
-		// Runs saving into the store
-		go c.putIntoStore(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
-
-		// Starts the indexing process
-		if !wtElem.bin {
-			go c.putIntoIndexes(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
-		} else {
-			go c.onlyCleanRefs(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
-		}
-	} else {
-		// Else is because it's a deletation
-		go c.delFromStore(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
-		go c.onlyCleanRefs(ctx, txn, errChan, wgActions, wgCommitted, wtElem)
-	}
-}
-
-func (c *Collection) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, errChan chan error, wgActions, wgCommitted *sync.WaitGroup, wt *writeTransaction) error {
-	// Because there is only one commit for all insertion we add manually 1
-	wgCommitted.Add(1)
-
-	// Loop for every insertion
-	for _, wtElem := range wt.transactions {
-		// Increment the tow waiting groups
-		wgActions.Add(2)
-
-		// Build a new wait group to prevent concurant writes which make Badger panic
-		var wgLoop sync.WaitGroup
-		wgLoop.Add(2)
-
-		if wtElem.isInsertion {
-			// Runs saving into the store
-			go c.putIntoStore(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-
-			// Starts the indexing process
-			if !wtElem.bin {
-				go c.putIntoIndexes(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-			} else {
-				go c.onlyCleanRefs(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-			}
-		} else {
-			// Else is because it's a deletation
-			go c.delFromStore(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-			go c.onlyCleanRefs(ctx, txn, errChan, wgActions, &wgLoop, wtElem)
-		}
-
-		// Wait for this to be saved in suspend before commit
-		wgLoop.Wait()
-	}
-
-	// Tells to the rest that commit can be run now
-	wgCommitted.Done()
-
-	// Wait for error if any
-	err := waitForDoneErrOrCanceled(ctx, wgCommitted, errChan)
-	if err == nil {
-		// Commit every thing if no error reported
-		err = txn.Commit(nil)
-		if err != nil {
-			errChan <- err
-			return err
-		}
-	}
-	// Respond to the caller with the error if any
-	return nil
-}
-
 func (c *Collection) buildIDWhitPrefixData(id []byte) []byte {
 	// prefixSpacer := make([]byte, 8)
-	ret := []byte{c.prefix, prefixData}
+	ret := []byte{prefixCollections, prefixData, c.prefix}
 	// ret = append(ret, prefixSpacer...)
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixConfig(id []byte) []byte {
 	// prefixSpacer := make([]byte, 8)
-	ret := []byte{c.prefix, prefixConfig}
+	ret := []byte{prefixCollections, prefixConfig, c.prefix}
 	// ret = append(ret, prefixSpacer...)
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
-	ret := []byte{c.prefix, prefixIndexes}
+	ret := []byte{prefixCollections, prefixIndexes, c.prefix}
 	ret = append(ret, indexName...)
 
 	bs := make([]byte, 8)
@@ -259,7 +105,7 @@ func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
 }
 func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
 	// prefixSpacer := make([]byte, 8)
-	ret := []byte{c.prefix, prefixRefs}
+	ret := []byte{prefixCollections, prefixRefs, c.prefix}
 	// ret = append(ret, prefixSpacer...)
 	return append(ret, id...)
 }
@@ -302,9 +148,9 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, errChan
 	if refs.ObjectID == "" {
 		refs.ObjectID = writeTransaction.id
 	}
-	if refs.ObjectHashID == "" {
-		refs.ObjectHashID = buildID(writeTransaction.id)
-	}
+	// if refs.ObjectHashID == "" {
+	// 	refs.ObjectHashID = buildID(writeTransaction.id)
+	// }
 
 	for _, index := range c.indexes {
 		if indexedValues, apply := index.apply(writeTransaction.contentInterface); apply {
@@ -727,12 +573,8 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
-		prefix := []byte(c.id[:4] + "_")
-		if starter == "" {
-			iter.Seek(prefix)
-		} else {
-			iter.Seek(append(prefix, []byte(starter)...))
-		}
+		prefix := c.buildIDWhitPrefixData(nil)
+		iter.Seek(c.buildIDWhitPrefixData([]byte(starter)))
 
 		count := 0
 		for ; iter.Valid(); iter.Next() {
@@ -827,7 +669,7 @@ newLoop:
 		fakeWgAction.Add(1)
 		fakeWgCommitted.Add(1)
 
-		trElement := newTransactionElement(savedElement.GetID(), m, true)
+		trElement := newTransactionElement(savedElement.GetID(), m, true, c)
 
 		go c.putIntoIndexes(ctx2, tx, errChan, fakeWgAction, fakeWgCommitted, trElement)
 

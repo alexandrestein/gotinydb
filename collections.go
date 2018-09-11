@@ -21,7 +21,7 @@ func (c *Collection) Put(id string, content interface{}) error {
 	}
 
 	tr := newTransaction(ctx)
-	trElem := newTransactionElement(id, content, true)
+	trElem := newTransactionElement(id, content, true, c)
 
 	tr.addTransaction(trElem)
 
@@ -56,6 +56,7 @@ func (c *Collection) PutMulti(IDs []string, content []interface{}) error {
 			IDs[i],
 			content[i],
 			true,
+			c,
 		)
 	}
 
@@ -111,7 +112,7 @@ func (c *Collection) Delete(id string) error {
 	}
 
 	tr := newTransaction(ctx)
-	trElem := newTransactionElement(id, nil, false)
+	trElem := newTransactionElement(id, nil, false, c)
 
 	tr.addTransaction(trElem)
 
