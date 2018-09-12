@@ -11,6 +11,9 @@ import (
 
 // Defines the default values of the database configuration
 var (
+	// Used to get the configuration after restarting the database
+	configID = []byte{0}
+
 	DefaultTransactionTimeOut = time.Second * 15
 	DefaultQueryTimeOut       = time.Second * 30
 	DefaultQueryLimit         = 100
@@ -98,13 +101,6 @@ const (
 	prefixConfig
 	prefixIndexes
 	prefixRefs
-)
-
-const (
-	prefixCollectionsInfo byte = iota
-	prefixCollections
-
-	_IDCollectionsInfoCollectionsNames = "collectionsNames"
 )
 
 // Those define the different type of indexes

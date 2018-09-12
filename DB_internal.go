@@ -28,10 +28,10 @@ func (d *DB) initBadger() error {
 	return nil
 }
 
-func (d *DB) waitForClose() {
-	<-d.ctx.Done()
-	d.Close()
-}
+// func (d *DB) waitForClose() {
+// 	<-d.ctx.Done()
+// 	d.Close()
+// }
 
 func (d *DB) initWriteTransactionChan(ctx context.Context) {
 	// Set a limit
@@ -42,6 +42,27 @@ func (d *DB) initWriteTransactionChan(ctx context.Context) {
 	// Start the infinite loop
 
 	go d.waittingWriteLoop(ctx, limit)
+}
+
+func (d *DB) initCollection(name string) (*Collection, error) {
+	c := new(Collection)
+	c.name = name
+
+	// Set the prefix
+	c.prefix = d.freePrefix[0]
+
+	// Remove the prefix from the list of free prefixes
+	d.freePrefix = append(d.freePrefix[:0], d.freePrefix[1:]...)
+
+	// Set the different values af the collection
+	c.store = d.valueStore
+	c.writeTransactionChan = d.writeTransactionChan
+	c.ctx = d.ctx
+	c.options = d.options
+
+	d.collections = append(d.collections, c)
+
+	return c, nil
 }
 
 func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
@@ -191,80 +212,153 @@ func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *
 }
 
 func (d *DB) loadCollections() error {
-	colsNames, getColsNamesErr := d.getCollectionsNames()
-	if getColsNamesErr != nil {
-		if getColsNamesErr == badger.ErrKeyNotFound {
-			return nil
+	return d.valueStore.View(func(txn *badger.Txn) error {
+		// Get the config
+		item, err := txn.Get(configID)
+		if err != nil {
+			return err
 		}
-		return getColsNamesErr
-	}
-	for _, colName := range colsNames {
-		col, err := d.getCollection(colName)
+		var configAsBytes []byte
+		configAsBytes, err = item.Value()
 		if err != nil {
 			return err
 		}
 
-		if err := col.loadIndex(); err != nil {
+		// Convert the saved JSON config to object
+		savedDB := new(dbExport)
+		err = json.Unmarshal(configAsBytes, savedDB)
+		if err != nil {
 			return err
 		}
 
-		d.collections = append(d.collections, col)
+		// Save the free prefixes
+		d.freePrefix = savedDB.FreePrefix
+
+		// Fill up collections
+		for _, savedCol := range savedDB.Collections {
+			newCol := new(Collection)
+			newCol.name = savedCol.Name
+			newCol.prefix = savedCol.Prefix
+
+			newCol.indexes = savedCol.Indexes
+
+			newCol.store = d.valueStore
+			newCol.writeTransactionChan = d.writeTransactionChan
+			newCol.ctx = d.ctx
+			newCol.options = d.options
+
+			d.collections = append(d.collections, newCol)
+		}
+
+		return nil
+	})
+	// colsNames, getColsNamesErr := d.getCollectionsNames()
+	// if getColsNamesErr != nil {
+	// 	if getColsNamesErr == badger.ErrKeyNotFound {
+	// 		return nil
+	// 	}
+	// 	return getColsNamesErr
+	// }
+	// for _, colName := range colsNames {
+	// 	col, err := d.getCollection(colName)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	if err := col.loadIndex(); err != nil {
+	// 		return err
+	// 	}
+
+	// 	d.collections = append(d.collections, col)
+	// }
+}
+
+func (d *DB) saveCollections() error {
+	return d.valueStore.Update(func(txn *badger.Txn) error {
+		dbToSave := new(dbExport)
+		// Save the free prefixes
+		dbToSave.FreePrefix = d.freePrefix
+
+		// Save collections
+		for _, col := range d.collections {
+			colToSave := new(collectionExport)
+			colToSave.Name = col.name
+			colToSave.Prefix = col.prefix
+			colToSave.Indexes = col.indexes
+
+			dbToSave.Collections = append(dbToSave.Collections, colToSave)
+		}
+
+		// Convert to JSON
+		dbToSaveAsBytes, err := json.Marshal(dbToSave)
+		if err != nil {
+			return err
+		}
+
+		return txn.Set(configID, dbToSaveAsBytes)
+	})
+}
+
+func (d *DB) initDB() error {
+	d.freePrefix = make([]byte, 255)
+	for i := 1; i < 256; i++ {
+		d.freePrefix[i-1] = byte(i)
 	}
 
 	return nil
 }
 
-func (d *DB) getCollection(colName string) (*Collection, error) {
-	c := new(Collection)
-	c.store = d.valueStore
-	c.name = colName
-	c.writeTransactionChan = d.writeTransactionChan
+// func (d *DB) getCollection(colName string) (*Collection, error) {
+// 	c := new(Collection)
+// 	c.store = d.valueStore
+// 	c.name = colName
+// 	c.writeTransactionChan = d.writeTransactionChan
 
-	c.options = d.options
+// 	c.options = d.options
 
-	if !d.isColExists(colName) {
-		c.prefix = d.getNextColPrefix()
-	}
+// 	if !d.isColExists(colName) {
+// 		c.prefix = d.getNextColPrefix()
+// 	}
 
-	c.name = colName
-	c.ctx = d.ctx
-	// Try to load the collection information
-	if err := c.loadInfos(); err != nil {
-		// If not exists try to build it
-		if err == badger.ErrKeyNotFound {
-			err = c.init(colName)
-			// Error after at build
-			if err != nil {
-				return nil, err
-			}
-			// No error return the new Collection pointer
-			return c, nil
-		}
-		// Other error than not found
-		return nil, err
-	}
+// 	c.name = colName
+// 	c.ctx = d.ctx
+// 	// Try to load the collection information
+// 	if err := c.loadInfos(); err != nil {
+// 		// If not exists try to build it
+// 		if err == badger.ErrKeyNotFound {
+// 			err = c.init(colName)
+// 			// Error after at build
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			// No error return the new Collection pointer
+// 			return c, nil
+// 		}
+// 		// Other error than not found
+// 		return nil, err
+// 	}
 
-	// The collection is loaded and database is ready
-	return c, nil
-}
+// 	// The collection is loaded and database is ready
+// 	return c, nil
+// }
 
-func (d *DB) getCollectionsNames() ([]string, error) {
-	var ret []string
-	err := d.valueStore.View(func(txn *badger.Txn) error {
-		colsAsItem, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
-		if err != nil {
-			return err
-		}
+// func (d *DB) getCollectionsNames() ([]string, error) {
+// 	var ret []string
+// 	err := d.valueStore.View(func(txn *badger.Txn) error {
+// 		colsAsItem, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
+// 		if err != nil {
+// 			return err
+// 		}
 
-		var colsAsBytes []byte
-		colsAsBytes, err = colsAsItem.Value()
-		if err != nil {
-			return err
-		}
-		return json.Unmarshal(colsAsBytes, &ret)
-	})
-	return ret, err
-}
+// 		var colsAsBytes []byte
+// 		colsAsBytes, err = colsAsItem.Value()
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return json.Unmarshal(colsAsBytes, &ret)
+// 	})
+// 	return ret, err
+// }
 
 // func (d *DB) getCollectionsIDs() ([]string, error) {
 // 	ret := []string{}
@@ -292,73 +386,73 @@ func (d *DB) getCollectionsNames() ([]string, error) {
 // 	return ret, nil
 // }
 
-func (d *DB) buildIDWithCollectionsInfoPrefix(id []byte) []byte {
-	ret := []byte{prefixCollectionsInfo}
-	return append(ret, id...)
-}
+// func (d *DB) buildIDWithCollectionsInfoPrefix(id []byte) []byte {
+// 	ret := []byte{prefixCollectionsInfo}
+// 	return append(ret, id...)
+// }
 
-func (d *DB) isColExists(colName string) bool {
-	ret := false
-	d.valueStore.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
-		if err != nil {
-			return err
-		}
+// func (d *DB) isColExists(colName string) bool {
+// 	ret := false
+// 	d.valueStore.View(func(txn *badger.Txn) error {
+// 		item, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
+// 		if err != nil {
+// 			return err
+// 		}
 
-		var asBytes []byte
-		asBytes, err = item.Value()
-		if err != nil {
-			return err
-		}
+// 		var asBytes []byte
+// 		asBytes, err = item.Value()
+// 		if err != nil {
+// 			return err
+// 		}
 
-		var names []string
-		err = json.Unmarshal(asBytes, &names)
-		if err != nil {
-			return err
-		}
+// 		var names []string
+// 		err = json.Unmarshal(asBytes, &names)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		for _, name := range names {
-			if name == colName {
-				ret = true
-				break
-			}
-		}
+// 		for _, name := range names {
+// 			if name == colName {
+// 				ret = true
+// 				break
+// 			}
+// 		}
 
-		return nil
-	})
+// 		return nil
+// 	})
 
-	return ret
-}
+// 	return ret
+// }
 
-func (d *DB) getNextColPrefix() byte {
-	ret := byte(0)
-	d.valueStore.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
-		if err != nil {
-			return err
-		}
+// func (d *DB) getNextColPrefix() byte {
+// 	ret := byte(0)
+// 	d.valueStore.View(func(txn *badger.Txn) error {
+// 		item, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
+// 		if err != nil {
+// 			return err
+// 		}
 
-		var asBytes []byte
-		asBytes, err = item.Value()
-		if err != nil {
-			return err
-		}
+// 		var asBytes []byte
+// 		asBytes, err = item.Value()
+// 		if err != nil {
+// 			return err
+// 		}
 
-		var names []string
-		err = json.Unmarshal(asBytes, &names)
-		if err != nil {
-			return err
-		}
+// 		var names []string
+// 		err = json.Unmarshal(asBytes, &names)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		count := 0
-		for range names {
-			count++
-		}
+// 		count := 0
+// 		for range names {
+// 			count++
+// 		}
 
-		ret = byte(count)
+// 		ret = byte(count)
 
-		return nil
-	})
+// 		return nil
+// 	})
 
-	return ret
-}
+// 	return ret
+// }

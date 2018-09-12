@@ -147,7 +147,12 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 		return errSetingIndexIntoConfig
 	}
 
-	return c.indexAllValues()
+	err := c.indexAllValues()
+	if err != nil {
+		return err
+	}
+
+	return c.saveCollections()
 }
 
 // DeleteIndex remove the index from the collection
@@ -176,7 +181,12 @@ func (c *Collection) DeleteIndex(name string) error {
 				}
 			}
 
-			return tx.Commit(nil)
+			err := tx.Commit(nil)
+			if err != nil {
+				return err
+			}
+
+			return c.saveCollections()
 		}
 	}
 

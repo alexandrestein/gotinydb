@@ -80,22 +80,22 @@ func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
 }
 
 func (c *Collection) buildCollectionPrefix() []byte {
-	return []byte{prefixCollections, c.prefix}
+	return []byte{c.prefix}
 }
 func (c *Collection) buildIDWhitPrefixData(id []byte) []byte {
 	// prefixSpacer := make([]byte, 8)
-	ret := []byte{prefixCollections, prefixData, c.prefix}
+	ret := []byte{prefixData, c.prefix}
 	// ret = append(ret, prefixSpacer...)
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixConfig(id []byte) []byte {
 	// prefixSpacer := make([]byte, 8)
-	ret := []byte{prefixCollections, prefixConfig, c.prefix}
+	ret := []byte{prefixConfig, c.prefix}
 	// ret = append(ret, prefixSpacer...)
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
-	ret := []byte{prefixCollections, prefixIndexes, c.prefix}
+	ret := []byte{prefixIndexes, c.prefix}
 	ret = append(ret, indexName...)
 
 	bs := make([]byte, 8)
@@ -105,7 +105,7 @@ func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
 }
 func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
 	// prefixSpacer := make([]byte, 8)
-	ret := []byte{prefixCollections, prefixRefs, c.prefix}
+	ret := []byte{prefixRefs, c.prefix}
 	// ret = append(ret, prefixSpacer...)
 	return append(ret, id...)
 }
@@ -448,7 +448,6 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 			item, getError := txn.Get(idAsBytes)
 			if getError != nil {
 				if getError == badger.ErrKeyNotFound {
-					fmt.Println("id", idAsBytes)
 					return ErrNotFound
 				}
 				return getError
@@ -494,19 +493,19 @@ func (c *Collection) getAndCheckContent(contentAndHashSignatureAsBytes []byte) (
 	return contentAsBytes, nil
 }
 
-func (c *Collection) loadIndex() error {
-	indexes := c.getIndexesFromConfigBucket()
-	for _, index := range indexes {
-		index.options = c.options
-		index.getTx = c.store.NewTransaction
-		index.getIDBuilder = func(id []byte) []byte {
-			return c.buildIDWhitPrefixIndex([]byte(index.Name), id)
-		}
-	}
-	c.indexes = indexes
+// func (c *Collection) loadIndex() error {
+// 	indexes := c.getIndexesFromConfigBucket()
+// 	for _, index := range indexes {
+// 		index.options = c.options
+// 		index.getTx = c.store.NewTransaction
+// 		index.getIDBuilder = func(id []byte) []byte {
+// 			return c.buildIDWhitPrefixIndex([]byte(index.Name), id)
+// 		}
+// 	}
+// 	c.indexes = indexes
 
-	return nil
-}
+// 	return nil
+// }
 
 func (c *Collection) getRefs(tx *badger.Txn, id string) (*refs, error) {
 	refsAsItem, err := tx.Get(c.buildIDWhitPrefixRefs([]byte(id)))

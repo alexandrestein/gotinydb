@@ -16,10 +16,23 @@ type (
 		valueStore  *badger.DB
 		collections []*Collection
 
+		// freePrefix defines the list of prefix which can be used for a new collection
+		freePrefix []byte
+
 		writeTransactionChan chan *writeTransaction
 
 		ctx     context.Context
 		closing bool
+	}
+
+	dbExport struct {
+		Collections []*collectionExport
+		FreePrefix  []byte
+	}
+	collectionExport struct {
+		Name    string
+		Indexes []*indexType
+		Prefix  byte
 	}
 
 	// Options defines the deferent configuration elements of the database
@@ -48,6 +61,8 @@ type (
 		writeTransactionChan chan *writeTransaction
 
 		ctx context.Context
+
+		saveCollections func() error
 	}
 
 	// Filter defines the way the query will be performed

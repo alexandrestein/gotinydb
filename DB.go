@@ -25,6 +25,8 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	d.options = options
 	d.ctx = ctx
 
+	d.initWriteTransactionChan(ctx)
+
 	if err := os.MkdirAll(d.options.Path, FilePermission); err != nil {
 		return nil, err
 	}
@@ -33,12 +35,12 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 		return nil, initBadgerErr
 	}
 	if loadErr := d.loadCollections(); loadErr != nil {
-		return nil, loadErr
+		if loadErr == badger.ErrKeyNotFound {
+			d.initDB()
+		} else {
+			return nil, loadErr
+		}
 	}
-
-	d.initWriteTransactionChan(ctx)
-
-	go d.waitForClose()
 
 	return d, nil
 }
@@ -47,24 +49,25 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 func (d *DB) Use(colName string) (*Collection, error) {
 	for _, col := range d.collections {
 		if col.name == colName {
-			if err := col.loadIndex(); err != nil {
-				return nil, err
-			}
+			// if err := col.loadIndex(); err != nil {
+			// 	return nil, err
+			// }
 			return col, nil
 		}
 	}
 
-	c, loadErr := d.getCollection(colName)
-	if loadErr != nil {
-		return nil, loadErr
-	}
+	return d.initCollection(colName)
 
-	if err := c.loadIndex(); err != nil {
-		return nil, err
-	}
-	d.collections = append(d.collections, c)
+	// c, loadErr := d.getCollection(colName)
+	// if loadErr != nil {
+	// 	return nil, loadErr
+	// }
 
-	return c, nil
+	// if err := c.loadIndex(); err != nil {
+	// 	return nil, err
+	// }
+	// d.collections = append(d.collections, c)
+	// return c, nil
 }
 
 // SetOptions update the database configurations.
@@ -124,7 +127,15 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = false
 	it := txn.NewIterator(opt)
-	defer it.Close()
+	// Make sure that the iterator is closed.
+	// But we have to make sure that close is called only onces
+	// but we need to run it before commit.
+	defer func() {
+		if r := recover(); r != nil {
+			it.Close()
+			fmt.Println("r", r)
+		}
+	}()
 
 	// Prevent panic
 	if c == nil {
@@ -139,30 +150,36 @@ func (d *DB) DeleteCollection(collectionName string) error {
 			return err
 		}
 	}
+	it.Close()
 
-	// Remove stored values 1000 by 1000
-	for {
-		ids, err := c.getStoredIDsAndValues("", 1000, true)
-		if err != nil {
-			return err
-		}
-		if len(ids) == 0 {
-			return nil
-		}
+	// // Remove stored values 1000 by 1000
+	// for {
+	// 	ids, err := c.getStoredIDsAndValues("", 1000, true)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if len(ids) == 0 {
+	// 		break
+	// 	}
 
-		err = d.valueStore.Update(func(txn *badger.Txn) error {
-			for _, id := range ids {
-				err := txn.Delete(c.buildStoreID(id.GetID()))
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
+	// 	for _, id := range ids {
+	// 		err := txn.Delete(c.buildStoreID(id.GetID()))
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// }
+
+	// Commit changes
+	err := txn.Commit(nil)
+	if err != nil {
+		return err
 	}
+
+	// Put the prefix again into the free prefix list
+	d.freePrefix = append(d.freePrefix, c.prefix)
+
+	return nil
 }
 
 // Backup run a backup to the given archive
