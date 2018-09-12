@@ -23,7 +23,7 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 		return nil, err
 	}
 
-	ids, err = newIDs(ctx, i.SelectorHash, indexedValue, asBytes)
+	ids, err = newIDs(ctx, i.selectorHash(), indexedValue, asBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +50,12 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 		return nil, err
 	}
 	// firstIndexedValueAsByte, firstIDsAsByte := iter.Item().
-	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.SelectorHash, filterValue, firstIDsAsByte)
+	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), filterValue, firstIDsAsByte)
 	if unmarshalIDsErr != nil {
 		return nil, unmarshalIDsErr
 	}
 
-	allIDs, _ = newIDs(ctx, i.SelectorHash, filterValue, nil)
+	allIDs, _ = newIDs(ctx, i.selectorHash(), filterValue, nil)
 
 	// If the index is not string index or if index is a string but the filter value is contained into the indexed value
 	if i.Type != StringIndex || bytes.Contains(firstIndexedValueAsByte, filterValue) && i.Type == StringIndex {
@@ -92,7 +92,7 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 			continue
 		}
 
-		ids, unmarshalIDsErr := newIDs(ctx, i.SelectorHash, indexedValue, idsAsByte)
+		ids, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), indexedValue, idsAsByte)
 		if unmarshalIDsErr != nil {
 			return nil, unmarshalIDsErr
 		}
@@ -130,7 +130,7 @@ func (i *indexType) queryEqual(ctx context.Context, ids *idsType, filter Filter)
 		}
 
 		for _, tmpID := range tmpIDs.IDs {
-			tmpID.values[i.SelectorHash] = value.Bytes()
+			tmpID.values[i.selectorHash()] = value.Bytes()
 		}
 
 		ids.AddIDs(tmpIDs)

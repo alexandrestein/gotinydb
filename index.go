@@ -13,7 +13,6 @@ func newIndex(name string, t IndexType, selector ...string) *indexType {
 	ret := new(indexType)
 	ret.Name = name
 	ret.Selector = selector
-	ret.SelectorHash = buildSelectorHash(selector)
 	ret.Type = t
 
 	return ret
@@ -72,6 +71,10 @@ func (i *indexType) testJSONTag(fields []*structs.Field, fieldName string) (fiel
 	return
 }
 
+func (i *indexType) selectorHash() uint64 {
+	return buildSelectorHash(i.Selector)
+}
+
 func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex [][]byte, ok bool) {
 	var field interface{}
 	for i, fieldName := range i.Selector {
@@ -97,7 +100,7 @@ func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex []
 // doesFilterApplyToIndex only check if the filter belongs to the index
 func (i *indexType) doesFilterApplyToIndex(filter Filter) (ok bool) {
 	// Check the selector
-	if filter.getFilterBase().selectorHash != i.SelectorHash {
+	if filter.getFilterBase().selectorHash != i.selectorHash() {
 		return false
 	}
 
@@ -226,7 +229,8 @@ func newRefsFromDB(input []byte) *refs {
 // setIndexedValue add to the list of references this one.
 // The indexName define the index it belongs to and indexedVal defines what value
 // is indexed.
-func (r *refs) setIndexedValue(indexName string, indexHash uint64, indexedVal []byte) {
+func (r *refs) setIndexedValue(indexName string, selectorHash uint64, indexedVal []byte) {
+	// func (r *refs) setIndexedValue(indexName string, indexHash uint64, indexedVal []byte) {
 	for _, ref := range r.Refs {
 		if ref.IndexName == indexName {
 			ref.IndexedValue = indexedVal
@@ -236,8 +240,8 @@ func (r *refs) setIndexedValue(indexName string, indexHash uint64, indexedVal []
 
 	ref := new(ref)
 	ref.IndexName = indexName
-	ref.IndexHash = indexHash
 	ref.IndexedValue = indexedVal
+	ref.IndexHash = selectorHash
 	r.Refs = append(r.Refs, ref)
 }
 

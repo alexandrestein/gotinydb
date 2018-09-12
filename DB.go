@@ -7,14 +7,10 @@ It can handel big binnary files as structured objects with fields and subfields 
 package gotinydb
 
 import (
-	"archive/zip"
-	"compress/flate"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"time"
 
 	"github.com/dgraph-io/badger"
 )
@@ -181,102 +177,14 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	return nil
 }
 
-// Backup run a backup to the given archive
-func (d *DB) Backup(path string, since uint64) error {
-	t0 := time.Now()
-	file, openFileErr := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, FilePermission)
-	if openFileErr != nil {
-		return openFileErr
-	}
-	defer file.Close()
-
-	zipWriter := zip.NewWriter(file)
-	// Setup compression
-	zipWriter.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
-		return flate.NewWriter(out, flate.BestCompression)
-	})
-
-	backupFile, createFileErr := zipWriter.Create("archive")
-	if createFileErr != nil {
-		return createFileErr
-	}
-
-	timestamp, backupErr := d.valueStore.Backup(backupFile, since)
-	if backupErr != nil {
-		return backupErr
-	}
-
-	configFile, createFileErr := zipWriter.Create("config.json")
-	if createFileErr != nil {
-		return createFileErr
-	}
-
-	archivePointer := d.loadArchive()
-	archivePointer.StartTime = t0
-	archivePointer.EndTime = time.Now()
-	archivePointer.Timestamp = timestamp
-
-	configAsBytes, marshalErr := json.Marshal(archivePointer)
-	if marshalErr != nil {
-		return marshalErr
-	}
-
-	_, writeErr := configFile.Write(configAsBytes)
-	if writeErr != nil {
-		return writeErr
-	}
-
-	return zipWriter.Close()
+// Backup run a badger.DB.Backup
+func (d *DB) Backup(w io.Writer, since uint64) (uint64, error) {
+	return d.valueStore.Backup(w, since)
 }
 
 // Load restor the database from a backup file
-func (d *DB) Load(path string) error {
-	zipReader, openZipErr := zip.OpenReader(path)
-	if openZipErr != nil {
-		return openZipErr
-	}
-
-	config := new(archive)
-
-	for _, file := range zipReader.File {
-		switch file.Name {
-		case "archive":
-			reader, openErr := file.Open()
-			if openErr != nil {
-				return openErr
-			}
-
-			loadErr := d.valueStore.Load(reader)
-			if loadErr != nil {
-				return loadErr
-			}
-		case "config.json":
-			configReader, openConfigReaderErr := file.Open()
-			if openConfigReaderErr != nil {
-				return openConfigReaderErr
-			}
-
-			decodeErr := json.NewDecoder(configReader).Decode(config)
-			if decodeErr != nil {
-				return decodeErr
-			}
-		}
-	}
-
-	// Add the indexes to the filledup database
-	for _, collectionName := range config.Collections {
-		collection, useCollectionErr := d.Use(collectionName)
-		if useCollectionErr != nil {
-			return useCollectionErr
-		}
-		for _, index := range config.Indexes[collectionName] {
-			err := collection.SetIndex(index.Name, index.Type, index.Selector...)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+func (d *DB) Load(r io.Reader) error {
+	return d.valueStore.Load(r)
 }
 
 func (d *DB) loadArchive() *archive {

@@ -3,6 +3,7 @@
 package gotinydb
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -97,7 +98,8 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	addContentFunc(baseCols[1], dataset2)
 	addContentFunc(baseCols[2], dataset3)
 
-	err = db.Backup(backupArchivePath, 0)
+	bkpWriter := bytes.NewBuffer(nil)
+	_, err = db.Backup(bkpWriter, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -110,7 +112,7 @@ func TestDB_Backup_And_Load(t *testing.T) {
 		return
 	}
 
-	err = restoredDB.Load(backupArchivePath)
+	err = restoredDB.Load(bkpWriter)
 	if err != nil {
 		t.Error(err)
 		return

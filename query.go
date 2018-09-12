@@ -278,7 +278,6 @@ func newIDs(ctx context.Context, selectorHash uint64, referredValue []byte, idsA
 		return nil, err
 	}
 
-	// Init the channel used to count the number of occurrences of a given ID.
 	for _, id := range ids {
 		newID := newID(ctx, id)
 		if selectorHash != 0 && referredValue != nil {

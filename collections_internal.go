@@ -193,7 +193,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 					return err
 				}
 
-				refs.setIndexedValue(index.Name, index.SelectorHash, indexedValue)
+				refs.setIndexedValue(index.Name, index.selectorHash(), indexedValue)
 			}
 		}
 	}
@@ -231,7 +231,8 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 	var refsAsBytes []byte
 
 	// Get the references of the given ID
-	refsAsItem, err := tx.Get(c.buildIDWhitPrefixRefs([]byte(idAsString)))
+	refsDBID := c.buildIDWhitPrefixRefs([]byte(idAsString))
+	refsAsItem, err := tx.Get(refsDBID)
 	if err != nil {
 		if err != badger.ErrKeyNotFound {
 			return err
@@ -271,11 +272,20 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 				}
 				ids.RmID(idAsString)
 				// And saved again after the clean
-				return tx.Set(refIDAsBytes, ids.MustMarshal())
+				err = tx.Set(refIDAsBytes, ids.MustMarshal())
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
-	return nil
+
+	refsAsBytes, err = json.Marshal(refs)
+	if err != nil {
+		return err
+	}
+
+	return tx.Set(refsDBID, refsAsBytes)
 }
 
 func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, error) {

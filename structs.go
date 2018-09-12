@@ -98,10 +98,9 @@ type (
 
 	// Index defines the struct to manage indexation
 	indexType struct {
-		Name         string
-		Selector     []string
-		SelectorHash uint64
-		Type         IndexType
+		Name     string
+		Selector []string
+		Type     IndexType
 
 		options *Options
 
