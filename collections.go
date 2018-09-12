@@ -124,6 +124,12 @@ func (c *Collection) Delete(id string) error {
 
 // SetIndex enable the collection to index field or sub field
 func (c *Collection) SetIndex(name string, t IndexType, selector ...string) error {
+	for _, index := range c.indexes {
+		if index.Name == name {
+			return ErrIndexNameAllreadyExists
+		}
+	}
+
 	i := newIndex(name, t, selector...)
 	i.options = c.options
 	i.getTx = c.store.NewTransaction
@@ -143,9 +149,9 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 	// }
 
 	c.indexes = append(c.indexes, i)
-	if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
-		return errSetingIndexIntoConfig
-	}
+	// if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
+	// 	return errSetingIndexIntoConfig
+	// }
 
 	err := c.indexAllValues()
 	if err != nil {

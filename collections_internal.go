@@ -57,27 +57,27 @@ func (c *Collection) getIndexesFromConfigBucket() []*indexType {
 	return indexes
 }
 
-func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
-	return c.store.Update(func(tx *badger.Txn) error {
-		id := c.buildIDWhitPrefixConfig([]byte("indexesList"))
-		item, err := tx.Get(id)
-		if err != nil {
-			return err
-		}
+// func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
+// 	return c.store.Update(func(tx *badger.Txn) error {
+// 		id := c.buildIDWhitPrefixConfig([]byte("indexesList"))
+// 		item, err := tx.Get(id)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		var indexesAsBytes []byte
-		indexesAsBytes, err = item.Value()
+// 		var indexesAsBytes []byte
+// 		indexesAsBytes, err = item.Value()
 
-		indexes := []*indexType{}
-		json.Unmarshal(indexesAsBytes, &indexes)
+// 		indexes := []*indexType{}
+// 		json.Unmarshal(indexesAsBytes, &indexes)
 
-		indexes = append(indexes, index)
+// 		indexes = append(indexes, index)
 
-		indexesAsBytes, _ = json.Marshal(indexes)
+// 		indexesAsBytes, _ = json.Marshal(indexes)
 
-		return tx.Set(id, indexesAsBytes)
-	})
-}
+// 		return tx.Set(id, indexesAsBytes)
+// 	})
+// }
 
 func (c *Collection) buildCollectionPrefix() []byte {
 	return []byte{c.prefix}
@@ -160,27 +160,34 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 			// If the selector hit a slice.
 			// apply can returns more than one value to index
 			for _, indexedValue := range indexedValues {
+				var ids = new(idsType)
+
 				indexedValueID := c.buildIDWhitPrefixIndex([]byte(index.Name), indexedValue)
 
+				// Try to get the ids related to the field value
 				idsAsItem, err := tx.Get(indexedValueID)
 				if err != nil {
-					return err
-				}
+					if err != badger.ErrKeyNotFound {
+						return err
+					}
+				} else {
+					// If the a list of ids is present for this index field value,
+					// this save tha actual status of the given filed value
+					var idsAsBytes []byte
+					idsAsBytes, err = idsAsItem.Value()
+					if err != nil {
+						return err
+					}
 
-				var idsAsBytes []byte
-				idsAsBytes, err = idsAsItem.Value()
-				if err != nil {
-					return err
-				}
-
-				ids, parseIDsErr := newIDs(ctx, 0, nil, idsAsBytes)
-				if parseIDsErr != nil {
-					return parseIDsErr
+					ids, err = newIDs(ctx, 0, nil, idsAsBytes)
+					if err != nil {
+						return err
+					}
 				}
 
 				id := newID(ctx, writeTransaction.id)
 				ids.AddID(id)
-				idsAsBytes = ids.MustMarshal()
+				idsAsBytes := ids.MustMarshal()
 
 				if err := tx.Set(indexedValueID, idsAsBytes); err != nil {
 					return err
@@ -221,16 +228,21 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 	// indexBucket := tx.Bucket([]byte("indexes"))
 	// refsBucket := tx.Bucket([]byte("refs"))
 
+	var refsAsBytes []byte
+
 	// Get the references of the given ID
 	refsAsItem, err := tx.Get(c.buildIDWhitPrefixRefs([]byte(idAsString)))
 	if err != nil {
-		return err
+		if err != badger.ErrKeyNotFound {
+			return err
+		}
+	} else {
+		refsAsBytes, err = refsAsItem.Value()
+		if err != nil {
+			return err
+		}
 	}
-	var refsAsBytes []byte
-	refsAsBytes, err = refsAsItem.Value()
-	if err != nil {
-		return err
-	}
+
 	refs := newRefs()
 	if refsAsBytes != nil && len(refsAsBytes) > 0 {
 		if err := json.Unmarshal(refsAsBytes, refs); err != nil {

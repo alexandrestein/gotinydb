@@ -62,6 +62,8 @@ func (d *DB) initCollection(name string) (*Collection, error) {
 
 	d.collections = append(d.collections, c)
 
+	c.saveCollections = d.saveCollections
+
 	return c, nil
 }
 
@@ -100,10 +102,10 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 			}
 
 			// Run the write operation
-			go d.writeTransactions(newTr)
+			err := d.writeTransactions(newTr)
 
-			// Get the response
-			err := <-newTr.responseChan
+			// // Get the response
+			// err := <-newTr.responseChan
 			// And spread the response to all callers in parallel
 			for _, waittingForResponse := range waittingForResponseList {
 				go func(waittingForResponse chan error, err error) {
@@ -116,7 +118,7 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 	}
 }
 
-func (d *DB) writeTransactions(tr *writeTransaction) {
+func (d *DB) writeTransactions(tr *writeTransaction) error {
 	// Start the new transaction
 	txn := d.valueStore.NewTransaction(true)
 	defer txn.Discard()
@@ -124,19 +126,19 @@ func (d *DB) writeTransactions(tr *writeTransaction) {
 	if len(tr.transactions) == 1 {
 		// Respond to the caller with the error if any
 		err := d.writeOneTransaction(tr.ctx, txn, tr.transactions[0])
-		tr.responseChan <- err
+		// tr.responseChan <- err
 		if err != nil {
-			return
+			return err
 		}
 	} else {
 		err := d.writeMultipleTransaction(tr.ctx, txn, tr)
-		tr.responseChan <- err
+		// tr.responseChan <- err
 		if err != nil {
-			return
+			return err
 		}
 	}
 
-	txn.Commit(nil)
+	return txn.Commit(nil)
 }
 
 func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
