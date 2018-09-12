@@ -133,7 +133,6 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	defer func() {
 		if r := recover(); r != nil {
 			it.Close()
-			fmt.Println("r", r)
 		}
 	}()
 

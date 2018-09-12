@@ -209,8 +209,7 @@ func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *
 			}
 		}
 	}
-	// Commit every thing if no error reported
-	return txn.Commit(nil)
+	return nil
 }
 
 func (d *DB) loadCollections() error {

@@ -63,8 +63,7 @@ func (c *Collection) PutMulti(IDs []string, content []interface{}) error {
 	// Run the insertion
 	c.writeTransactionChan <- tr
 	// And wait for the end of the insertion
-	s := <-tr.responseChan
-	return s
+	return <-tr.responseChan
 }
 
 // Get retrieves the content of the given ID
@@ -177,7 +176,14 @@ func (c *Collection) DeleteIndex(name string) error {
 			iteratorOptions := badger.DefaultIteratorOptions
 			iteratorOptions.PrefetchValues = false
 			iterator := tx.NewIterator(iteratorOptions)
-			defer iterator.Close()
+			// Make sure that the iterator is closed.
+			// But we have to make sure that close is called only onces
+			// but we need to run it before commit.
+			defer func() {
+				if r := recover(); r != nil {
+					iterator.Close()
+				}
+			}()
 
 			indexPrefix := c.buildIDWhitPrefixIndex([]byte(name), nil)
 			for iterator.Seek(indexPrefix); iterator.ValidForPrefix(indexPrefix); iterator.Next() {
@@ -186,6 +192,9 @@ func (c *Collection) DeleteIndex(name string) error {
 					return err
 				}
 			}
+
+			// Need to close the iterator before commit
+			iterator.Close()
 
 			err := tx.Commit(nil)
 			if err != nil {

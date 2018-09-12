@@ -565,7 +565,7 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 			}
 
 			responseItem._ID = new(idType)
-			responseItem._ID.ID = string(item.Key()[5:])
+			responseItem._ID.ID = string(item.Key()[len(c.buildIDWhitPrefixData(nil)):])
 
 			if !IDsOnly {
 				var err error
