@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"reflect"
 
@@ -13,7 +14,8 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 	tx := i.getTx(false)
 	defer tx.Discard()
 
-	asItem, err := tx.Get(i.getIDBuilder(indexedValue))
+	indexedValueID := append(i.getIDBuilder(nil), indexedValue...)
+	asItem, err := tx.Get(indexedValueID)
 	if err != nil {
 		return nil, err
 	}
@@ -39,19 +41,29 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 	if !increasing {
 		iterOptions.Reverse = true
 	}
-	iter := tx.NewIterator(badger.DefaultIteratorOptions)
+	iter := tx.NewIterator(iterOptions)
 	defer iter.Close()
 
+	indexedValueID := append(i.getIDBuilder(nil), filterValue...)
+
 	// Go to the requested position and get the values of it
-	iter.Seek(i.getIDBuilder(filterValue))
+	iter.Seek(indexedValueID)
+	if !iter.ValidForPrefix(i.getIDBuilder(nil)) {
+		fmt.Println("i.getIDBuilder(nil)", i.getIDBuilder(nil))
+		return nil, ErrNotFound
+	}
+
 	firstIndexedValueAsByte := iter.Item().Key()
 	firstIDsAsByte, err := iter.Item().Value()
 	if err != nil {
 		return nil, err
 	}
+
 	// firstIndexedValueAsByte, firstIDsAsByte := iter.Item().
 	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), filterValue, firstIDsAsByte)
 	if unmarshalIDsErr != nil {
+		fmt.Println(7, "key:", firstIndexedValueAsByte, "valAsString:", string(firstIDsAsByte))
+		fmt.Println("ERRRRrrr", indexedValueID, unmarshalIDsErr, string(firstIDsAsByte))
 		return nil, unmarshalIDsErr
 	}
 

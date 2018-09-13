@@ -18,7 +18,7 @@ var (
 	DefaultQueryTimeOut       = time.Second * 30
 	DefaultQueryLimit         = 100
 	DefaultInternalQueryLimit = 1000
-	DefaultPutBufferLimit     = 1000
+	DefaultPutBufferLimit     = 100
 
 	// FilePermission defines the database file permission
 	FilePermission os.FileMode = 0740 // u -> rwx | g -> r-- | o -> ---

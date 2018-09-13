@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/dgraph-io/badger"
 )
@@ -123,91 +124,105 @@ func (d *DB) writeTransactions(tr *writeTransaction) error {
 	txn := d.valueStore.NewTransaction(true)
 	defer txn.Discard()
 
+	var err error
+
 	if len(tr.transactions) == 1 {
 		// Respond to the caller with the error if any
+		// return d.writeOneTransaction(tr.ctx, txn, tr.transactions[0])
 		err := d.writeOneTransaction(tr.ctx, txn, tr.transactions[0])
 		// tr.responseChan <- err
 		if err != nil {
 			return err
 		}
-	} else {
-		err := d.writeMultipleTransaction(tr.ctx, txn, tr)
-		// tr.responseChan <- err
-		if err != nil {
-			return err
-		}
+
+		goto commit
 	}
 
+	err = d.writeMultipleTransaction(tr.ctx, txn, tr)
+	// tr.responseChan <- err
+	if err != nil {
+		fmt.Println("Err")
+		return err
+	}
+
+commit:
+	fmt.Println("commit")
 	return txn.Commit(nil)
 }
 
 func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
 	if wtElem.isInsertion {
 		// Runs saving into the store
-		err := wtElem.collection.putIntoStore(ctx, txn, wtElem)
+		err := wtElem.collection.insertOrDeleteStore(ctx, txn, true, wtElem)
 		if err != nil {
 			return err
 		}
 
 		// Starts the indexing process
 		if !wtElem.bin {
-			err = wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
-			if err != nil {
-				return err
-			}
-		} else {
-			err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
-			if err != nil {
-				return err
-			}
+			return wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+			// err = wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+			// if err != nil {
+			// 	return err
+			// }
 		}
-	} else {
-		// Else is because it's a deletation
-		err := wtElem.collection.delFromStore(ctx, txn, wtElem)
-		if err != nil {
-			return err
-		}
-		err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
-		if err != nil {
-			return err
-		}
+
+		// } else {
+		return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
+		// err = wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
+		// if err != nil {
+		// 	return err
+		// }
 	}
-	return nil
+	// Else is because it's a deletation
+	err := wtElem.collection.insertOrDeleteStore(ctx, txn, false, wtElem)
+	if err != nil {
+		return err
+	}
+	return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
+	// err = wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
+	// if err != nil {
+	// 	return err
+	// }
 }
 
 func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *writeTransaction) error {
 	// Loop for every insertion
 	for _, wtElem := range wt.transactions {
-		if wtElem.isInsertion {
-			// Runs saving into the store
-			err := wtElem.collection.putIntoStore(ctx, txn, wtElem)
-			if err != nil {
-				return err
-			}
-
-			// Starts the indexing process
-			if !wtElem.bin {
-				err = wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
-				if err != nil {
-					return err
-				}
-			} else {
-				err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			// Else is because it's a deletation
-			err := wtElem.collection.delFromStore(ctx, txn, wtElem)
-			if err != nil {
-				return err
-			}
-			err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
-			if err != nil {
-				return err
-			}
+		err := d.writeOneTransaction(ctx, txn, wtElem)
+		if err != nil {
+			return err
 		}
+		// if wtElem.isInsertion {
+		// 	// Runs saving into the store
+		// 	err := wtElem.collection.putIntoStore(ctx, txn, wtElem)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+
+		// 	// Starts the indexing process
+		// 	if !wtElem.bin {
+		// 		err = wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 	} else {
+		// 		err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 	}
+		// } else {
+		// 	// Else is because it's a deletation
+		// 	err := wtElem.collection.delFromStore(ctx, txn, wtElem)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
 	}
 	return nil
 }
@@ -242,6 +257,13 @@ func (d *DB) loadCollections() error {
 			newCol.prefix = savedCol.Prefix
 
 			newCol.indexes = savedCol.Indexes
+			for _, i := range newCol.indexes {
+				i.options = d.options
+				i.getTx = d.valueStore.NewTransaction
+				i.getIDBuilder = func(id []byte) []byte {
+					return newCol.buildIDWhitPrefixIndex([]byte(i.Name), id)
+				}
+			}
 
 			newCol.store = d.valueStore
 			newCol.writeTransactionChan = d.writeTransactionChan
@@ -296,7 +318,21 @@ func (d *DB) saveCollections() error {
 			return err
 		}
 
-		return txn.Set(configID, dbToSaveAsBytes)
+		e := &badger.Entry{
+			Key:   configID,
+			Value: dbToSaveAsBytes,
+		}
+		fmt.Println(6, "key:", e.Key, "valAsString:", string(e.Value))
+
+		copyOfKey := make([]byte, len(e.Key))
+		copy(copyOfKey, e.Key)
+		copyOfValue := make([]byte, len(e.Value))
+		copy(copyOfValue, e.Value)
+		e.Key = copyOfKey
+		e.Value = copyOfValue
+
+		return txn.SetEntry(e)
+		// return txn.Set(configID, dbToSaveAsBytes)
 	})
 }
 

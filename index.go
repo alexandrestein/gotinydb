@@ -231,6 +231,8 @@ func newRefsFromDB(input []byte) *refs {
 // is indexed.
 func (r *refs) setIndexedValue(indexName string, selectorHash uint64, indexedVal []byte) {
 	// func (r *refs) setIndexedValue(indexName string, indexHash uint64, indexedVal []byte) {
+
+	// Looks into existing references
 	for _, ref := range r.Refs {
 		if ref.IndexName == indexName {
 			ref.IndexedValue = indexedVal
@@ -238,6 +240,7 @@ func (r *refs) setIndexedValue(indexName string, selectorHash uint64, indexedVal
 		}
 	}
 
+	// Build a new reference
 	ref := new(ref)
 	ref.IndexName = indexName
 	ref.IndexedValue = indexedVal

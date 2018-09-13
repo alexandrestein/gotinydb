@@ -111,8 +111,8 @@ type (
 	// refs defines an struct to manage the references of a given object
 	// in all the indexes it belongs to
 	refs struct {
-		ObjectID     string
-		ObjectHashID string
+		ObjectID string
+		// ObjectHashID string
 
 		Refs []*ref
 	}
