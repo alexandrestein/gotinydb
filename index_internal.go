@@ -72,9 +72,7 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 	if i.Type != StringIndex || bytes.Contains(firstIndexedValueAsByte, filterValue) && i.Type == StringIndex {
 		// if the asked value is found
 		if !reflect.DeepEqual(firstIndexedValueAsByte, filterValue) {
-			if increasing {
-				allIDs.AddIDs(firstIDsValue)
-			}
+			allIDs.AddIDs(firstIDsValue)
 		} else if keepEqual {
 			allIDs.AddIDs(firstIDsValue)
 		}
