@@ -20,7 +20,7 @@ func TestCollection_Query(t *testing.T) {
 
 	conf := NewDefaultOptions(testPath)
 	// This limit the queue to prevent the race overflow during test
-	conf.PutBufferLimit = 50
+	conf.PutBufferLimit = 100
 
 	db, err := Open(ctx, conf)
 	if err != nil {
@@ -80,7 +80,7 @@ func TestCollection_Query(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Equal Int Limit 10",
+			name: "Equal Uint Limit 10",
 			args: NewQuery().SetFilter(
 				NewEqualFilter(uint(19), "Age"),
 			).SetLimits(10, 0),

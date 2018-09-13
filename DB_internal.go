@@ -3,7 +3,6 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/dgraph-io/badger"
 )
@@ -141,12 +140,10 @@ func (d *DB) writeTransactions(tr *writeTransaction) error {
 	err = d.writeMultipleTransaction(tr.ctx, txn, tr)
 	// tr.responseChan <- err
 	if err != nil {
-		fmt.Println("Err")
 		return err
 	}
 
 commit:
-	fmt.Println("commit")
 	return txn.Commit(nil)
 }
 
@@ -322,7 +319,6 @@ func (d *DB) saveCollections() error {
 			Key:   configID,
 			Value: dbToSaveAsBytes,
 		}
-		fmt.Println(6, "key:", e.Key, "valAsString:", string(e.Value))
 
 		copyOfKey := make([]byte, len(e.Key))
 		copy(copyOfKey, e.Key)

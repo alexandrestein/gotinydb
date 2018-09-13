@@ -3,7 +3,6 @@ package gotinydb
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log"
 	"reflect"
 
@@ -14,7 +13,9 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 	tx := i.getTx(false)
 	defer tx.Discard()
 
-	indexedValueID := append(i.getIDBuilder(nil), indexedValue...)
+	indexedValueID := i.getIDBuilder(indexedValue)
+	// indexedValueID := append(i.getIDBuilder(nil), indexedValue...)
+
 	asItem, err := tx.Get(indexedValueID)
 	if err != nil {
 		return nil, err
@@ -44,12 +45,12 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 	iter := tx.NewIterator(iterOptions)
 	defer iter.Close()
 
-	indexedValueID := append(i.getIDBuilder(nil), filterValue...)
+	indexedValueID := i.getIDBuilder(filterValue)
+	// indexedValueID := append(i.getIDBuilder(nil), filterValue...)
 
 	// Go to the requested position and get the values of it
 	iter.Seek(indexedValueID)
 	if !iter.ValidForPrefix(i.getIDBuilder(nil)) {
-		fmt.Println("i.getIDBuilder(nil)", i.getIDBuilder(nil))
 		return nil, ErrNotFound
 	}
 
@@ -62,8 +63,6 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 	// firstIndexedValueAsByte, firstIDsAsByte := iter.Item().
 	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), filterValue, firstIDsAsByte)
 	if unmarshalIDsErr != nil {
-		fmt.Println(7, "key:", firstIndexedValueAsByte, "valAsString:", string(firstIDsAsByte))
-		fmt.Println("ERRRRrrr", indexedValueID, unmarshalIDsErr, string(firstIDsAsByte))
 		return nil, unmarshalIDsErr
 	}
 
@@ -84,10 +83,10 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 }
 
 func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsType, iter *badger.Iterator, filterValue, limit []byte, keepEqual bool) (*idsType, error) {
-	limitID := i.getIDBuilder(limit)
+	prefix := i.getIDBuilder(nil)
 	for {
 		iter.Next()
-		if !iter.ValidForPrefix(limitID) {
+		if !iter.ValidForPrefix(prefix) {
 			break
 		}
 		indexedValue := iter.Item().Key()

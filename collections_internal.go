@@ -100,7 +100,8 @@ func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
 	binary.LittleEndian.PutUint64(bs, highwayhash.Sum64(indexName, make([]byte, 32)))
 
 	ret = append(ret, bs...)
-	return append(ret, indexName...)
+	ret = append(ret, indexName...)
+	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
 	// prefixSpacer := make([]byte, 8)
@@ -198,7 +199,6 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 				e.Key = copyOfKey
 				e.Value = copyOfValue
 
-				fmt.Println(1, "key:", e.Key, "valAsString:", string(e.Value))
 				if err := tx.SetEntry(e); err != nil {
 					// if err := tx.Set(indexedValueID, idsAsBytes); err != nil {
 					return err
@@ -215,7 +215,6 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 		Key:   refID,
 		Value: refs.asBytes(),
 	}
-	fmt.Println(2, "key:", e.Key, "valAsString:", string(e.Value))
 
 	copyOfKey := make([]byte, len(e.Key))
 	copy(copyOfKey, e.Key)
@@ -283,7 +282,6 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 	for _, ref := range refs.Refs {
 		for _, index := range c.indexes {
 			if index.Name == ref.IndexName {
-				fmt.Println("clean", index.Name)
 				indexIDForTheGivenObjectAsBytes := c.buildIDWhitPrefixIndex([]byte(index.Name), ref.IndexedValue)
 				indexedValueAsItem, err := tx.Get(indexIDForTheGivenObjectAsBytes)
 				if err != nil {
@@ -306,7 +304,6 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 					Key:   indexIDForTheGivenObjectAsBytes,
 					Value: ids.MustMarshal(),
 				}
-				fmt.Println(3, "key:", e.Key, "valAsString:", string(e.Value))
 
 				copyOfKey := make([]byte, len(e.Key))
 				copy(copyOfKey, e.Key)
@@ -320,7 +317,6 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 				if err != nil {
 					return err
 				}
-				fmt.Println("end clean")
 			}
 		}
 	}
@@ -334,7 +330,6 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 		Key:   refsDBID,
 		Value: refsAsBytes,
 	}
-	fmt.Println(4, "key:", e.Key, "valAsString:", string(e.Value))
 
 	copyOfKey := make([]byte, len(e.Key))
 	copy(copyOfKey, e.Key)
@@ -493,7 +488,6 @@ func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, i
 			Key:   storeID,
 			Value: contentToWrite,
 		}
-		fmt.Println(5, "key:", e.Key, "valAsString:", string(e.Value))
 
 		copyOfKey := make([]byte, len(e.Key))
 		copy(copyOfKey, e.Key)

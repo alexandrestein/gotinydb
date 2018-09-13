@@ -29,12 +29,12 @@ func TestDebug(t *testing.T) {
 		return
 	}
 
-	// c.SetIndex("email", StringIndex, "email")
+	c.SetIndex("email", StringIndex, "email")
 	c.SetIndex("age", UIntIndex, "Age")
-	// c.SetIndex("balance", IntIndex, "Balance")
-	// c.SetIndex("last connection", TimeIndex, "LastLogin")
-	// c.SetIndex("multiple level index", StringIndex, "Address", "city")
-	// c.SetIndex("test slice of integers", IntIndex, "related")
+	c.SetIndex("balance", IntIndex, "Balance")
+	c.SetIndex("last connection", TimeIndex, "LastLogin")
+	c.SetIndex("multiple level index", StringIndex, "Address", "city")
+	c.SetIndex("test slice of integers", IntIndex, "related")
 
 	// c.SetIndex("never called", StringIndex, "neverMatch")
 
@@ -43,6 +43,7 @@ func TestDebug(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
 	testUserBis := *testUser
 	testUserBis.Age = uint(20)
 	err = c.Put(testUser.ID, &testUserBis)
@@ -52,19 +53,20 @@ func TestDebug(t *testing.T) {
 	}
 
 	var response *Response
-	response, err = c.Query(NewQuery().SetFilter(NewLessFilter(uint(29), "Age")))
-	// response, err = c.Query(NewQuery().SetFilter(NewGreaterFilter(uint(24), "Age")))
+	response, err = c.Query(NewQuery().SetFilter(NewLessFilter(uint(100), "Age")))
+	// response, err = c.Query(NewQuery().SetFilter(NewGreaterFilter(uint(18), "Age")))
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
 	getUser := new(User)
-	_, err = response.One(getUser)
+	var id string
+	id, err = response.One(getUser)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	fmt.Println("OK", getUser)
+	fmt.Println("OK", id, getUser)
 }
