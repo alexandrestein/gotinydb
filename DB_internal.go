@@ -229,7 +229,12 @@ func (d *DB) loadCollections() error {
 		// Get the config
 		item, err := txn.Get(configID)
 		if err != nil {
-			return err
+			if err == badger.ErrKeyNotFound {
+				return d.initDB()
+			} else {
+				return err
+			}
+			// return err
 		}
 		var configAsBytes []byte
 		configAsBytes, err = item.Value()

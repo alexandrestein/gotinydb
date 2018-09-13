@@ -30,15 +30,20 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	if initBadgerErr := d.initBadger(); initBadgerErr != nil {
 		return nil, initBadgerErr
 	}
-	if loadErr := d.loadCollections(); loadErr != nil {
-		if loadErr == badger.ErrKeyNotFound {
-			d.initDB()
-		} else {
-			return nil, loadErr
-		}
-	}
 
-	return d, nil
+	return d, d.loadCollections()
+	// if loadErr := d.loadCollections(); loadErr != nil {
+	// 	if loadErr == badger.ErrKeyNotFound {
+	// 		err := d.initDB()
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 	} else {
+	// 		return nil, loadErr
+	// 	}
+	// }
+
+	// return d, nil
 }
 
 // Use build or get a Collection pointer
@@ -184,7 +189,53 @@ func (d *DB) Backup(w io.Writer, since uint64) (uint64, error) {
 
 // Load restor the database from a backup file
 func (d *DB) Load(r io.Reader) error {
-	return d.valueStore.Load(r)
+	err := d.valueStore.Load(r)
+	if err != nil {
+		return err
+	}
+
+	return d.loadCollections()
+
+	// // Save elements
+	// savedCtx := d.ctx
+	// savedOptions1 := *d.options
+	// savedOptions2 := *d.options
+
+	// // Close the DB
+	// err := d.Close()
+	// if err != nil {
+	// 	return err
+	// }
+	// // Remove all existing elements
+	// os.RemoveAll(d.options.Path)
+
+	// // Open a brand new database
+	// var loadedDB *DB
+	// loadedDB, err = Open(savedCtx, &savedOptions1)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // Load saved values
+	// err = loadedDB.valueStore.Load(r)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // Close again
+	// err = loadedDB.Close()
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // And load a new collection
+	// loadedDB, err = Open(savedCtx, &savedOptions2)
+	// if err != nil {
+	// 	return err
+	// }
+	// d = loadedDB
+
+	// return nil
 }
 
 func (d *DB) loadArchive() *archive {
