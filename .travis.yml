@@ -13,5 +13,5 @@ before_install:
   - go get -t ./...
 
 script:
-  - go test -timeout 1h -v -failfast -race -coverprofile=coverage.txt -covermode=atomic
+  - go test -race
 

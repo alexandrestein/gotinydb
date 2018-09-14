@@ -17,5 +17,5 @@ before_test:
   - go vet ./...
 
 test_script:
-  - go test -v -failfast -race 
+  - go test -race 
   # - vgo test -v -race ./...

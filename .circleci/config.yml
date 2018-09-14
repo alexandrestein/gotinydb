@@ -31,5 +31,6 @@ jobs:
       # - run: vgo get -v
 
       # test
-      - run: go test -failfast -coverprofile=coverage.txt -covermode=atomic && bash <(curl -s https://codecov.io/bash)
+      - run: go test -race -coverprofile=coverage.txt -covermode=atomic
+      - run: bash <(curl -s https://codecov.io/bash)
       # - run: vgo test -v -race ./...
