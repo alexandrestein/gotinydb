@@ -137,10 +137,18 @@ func (q *Query) SetTimeout(timeout time.Duration) *Query {
 }
 
 // SetOrder defines the order of the response
-func (q *Query) SetOrder(ascendent bool, selector ...string) *Query {
+func (q *Query) SetOrder(selector ...string) *Query {
 	q.orderSelector = selector
 	q.order = buildSelectorHash(selector)
-	q.ascendent = ascendent
+	q.ascendent = true
+	return q
+}
+
+// SetRevertOrder defines the order of the response
+func (q *Query) SetRevertOrder(selector ...string) *Query {
+	q.orderSelector = selector
+	q.order = buildSelectorHash(selector)
+	q.ascendent = false
 	return q
 }
 

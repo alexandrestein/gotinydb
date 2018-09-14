@@ -33,7 +33,7 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 	return ids, nil
 }
 
-func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, limit []byte, keepEqual, increasing bool) (allIDs *idsType, err error) {
+func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, limit []byte, increasing bool) (allIDs *idsType, err error) {
 	tx := i.getTx(false)
 	defer tx.Discard()
 
@@ -73,49 +73,47 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 		// if the asked value is found
 		if !reflect.DeepEqual(firstIndexedValueAsByte, filterValue) {
 			allIDs.AddIDs(firstIDsValue)
-		} else if keepEqual {
-			allIDs.AddIDs(firstIDsValue)
 		}
 	}
-	return i.getIDsForRangeOfValuesLoop(ctx, allIDs, iter, filterValue, limit, keepEqual)
+	return i.getIDsForRangeOfValuesLoop(ctx, allIDs, iter, filterValue, limit)
 }
 
-func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsType, iter *badger.Iterator, filterValue, limit []byte, keepEqual bool) (*idsType, error) {
+func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsType, iter *badger.Iterator, filterValue, limit []byte) (*idsType, error) {
 	prefix := i.getIDBuilder(nil)
 	for {
 		iter.Next()
 		if !iter.ValidForPrefix(prefix) {
 			break
 		}
-		indexedValue := iter.Item().Key()
+		indexedValuePlusPrefixes := iter.Item().Key()
 		idsAsByte, err := iter.Item().Value()
 		if err != nil {
 			return nil, err
 		}
-		if len(indexedValue) <= 0 && len(idsAsByte) <= 0 {
+		if len(indexedValuePlusPrefixes) <= 0 && len(idsAsByte) <= 0 {
 			break
 		}
 
 		// The indexed value needs at least to containe the filter value
-		if i.Type == StringIndex && !bytes.Contains(indexedValue, filterValue) {
+		if i.Type == StringIndex && !bytes.Contains(indexedValuePlusPrefixes, filterValue) {
 			continue
 		}
 
-		ids, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), indexedValue, idsAsByte)
+		ids, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), indexedValuePlusPrefixes, idsAsByte)
 		if unmarshalIDsErr != nil {
 			return nil, unmarshalIDsErr
 		}
 
 		if limit != nil {
-			if keepEqual {
-				if bytes.Compare(limit, indexedValue) < 0 {
-					break
-				}
-			} else {
-				if bytes.Compare(limit, indexedValue) <= 0 {
-					break
-				}
+			// if keepEqual {
+			if bytes.Compare(append(prefix, limit...), indexedValuePlusPrefixes) < 0 {
+				break
 			}
+			// } else {
+			// 	if bytes.Compare(limit, indexedValue) <= 0 {
+			// 		break
+			// 	}
+			// }
 		}
 
 		allIDs.AddIDs(ids)
@@ -152,7 +150,7 @@ func (i *indexType) queryGreaterLess(ctx context.Context, ids *idsType, filter F
 		greater = false
 	}
 
-	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.getFilterBase().values[0].Bytes(), nil, filter.getFilterBase().equal, greater)
+	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.getFilterBase().values[0].Bytes(), nil, greater)
 	if getIdsErr != nil {
 		log.Printf("Index.runQuery Greater, Less: %s\n", getIdsErr.Error())
 		return
@@ -166,7 +164,7 @@ func (i *indexType) queryBetween(ctx context.Context, ids *idsType, filter Filte
 	if len(filter.getFilterBase().values) < 2 {
 		return
 	}
-	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.getFilterBase().values[0].Bytes(), filter.getFilterBase().values[1].Bytes(), filter.getFilterBase().equal, true)
+	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.getFilterBase().values[0].Bytes(), filter.getFilterBase().values[1].Bytes(), true)
 	if getIdsErr != nil {
 		log.Printf("Index.runQuery Between: %s\n", getIdsErr.Error())
 		return

@@ -313,10 +313,10 @@ func query(b *testing.B, parallel bool, simple bool) error {
 		query = NewQuery().SetFilter(NewEqualFilter("a", "email"))
 	} else {
 		query = NewQuery().
-			SetFilter(NewBetweenFilter("a", "b", "email")).
+			SetFilter(NewEqualAndBetweenFilter("a", "b", "email")).
 			SetFilter(NewEqualFilter(10, "Age")).
-			SetFilter(NewGreaterFilter(10000, "Balance")).
-			SetFilter(NewLessFilter(-100000, "Balance"))
+			SetFilter(NewEqualAndGreaterFilter(10000, "Balance")).
+			SetFilter(NewEqualAndLessFilter(-100000, "Balance"))
 	}
 
 	if parallel {

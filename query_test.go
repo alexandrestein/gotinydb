@@ -100,7 +100,7 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Greater Int Limit 5 No Order",
 			args: NewQuery().SetFilter(
-				NewGreaterFilter(uint(19), "Age").EqualWanted(),
+				NewEqualAndGreaterFilter(uint(19), "Age"),
 			).SetLimits(5, 0),
 			wantResponse: []*User{
 				{ID: "100", Email: "ferguson-85@leroy.com", Balance: 4447977972181900834, Address: &Address{City: "Maserati", ZipCode: 56}, Age: 19, LastLogin: mustParseTime("2017-03-17T17:38:44.77944231+01:00")},
@@ -113,8 +113,8 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Greater Int Limit 5 With Order",
 			args: NewQuery().SetFilter(
-				NewGreaterFilter(uint(19), "Age").EqualWanted(),
-			).SetLimits(5, 0).SetOrder(true, "Age"),
+				NewEqualAndGreaterFilter(uint(19), "Age"),
+			).SetLimits(5, 0).SetOrder("Age"),
 			wantResponse: []*User{
 				{ID: "79", Email: "katharine-15@torres.com", Balance: 6167440685671547817, Address: &Address{City: "Callie", ZipCode: 31}, Age: 19, LastLogin: mustParseTime("2017-06-20T18:35:28.779405337+02:00")},
 				{ID: "63", Email: "flowers-35@gelbvieh.com", Balance: 2953156017263370109, Address: &Address{City: "Daugherty", ZipCode: 19}, Age: 19, LastLogin: mustParseTime("2016-08-27T06:51:39.779372769+02:00")},
@@ -126,8 +126,8 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Less Time Limit 5 With Order",
 			args: NewQuery().SetFilter(
-				NewLessFilter(time.Now(), "LastLogin"),
-			).SetLimits(5, 0).SetOrder(false, "Age"),
+				NewEqualAndLessFilter(time.Now(), "LastLogin"),
+			).SetLimits(5, 0).SetRevertOrder("Age"),
 			wantResponse: []*User{
 				{ID: "127", Email: "prensa-56@dedekind.com", Balance: 4495937405735533066, Address: &Address{City: "Cymbeline", ZipCode: 80}, Age: 19, LastLogin: mustParseTime("2018-01-23T09:31:19.77949703+01:00")},
 				{ID: "154", Email: "depp-88@christa.com", Balance: 7172349605666936298, Address: &Address{City: "Staubach", ZipCode: 50}, Age: 19, LastLogin: mustParseTime("2018-03-10T22:14:40.779554928+01:00")},
@@ -139,8 +139,8 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Between Int Limit 5 Order",
 			args: NewQuery().SetFilter(
-				NewBetweenFilter(uint(5), uint(10), "Age"),
-			).SetLimits(5, 0).SetOrder(true, "Age"),
+				NewEqualAndBetweenFilter(uint(6), uint(10), "Age"),
+			).SetLimits(5, 0).SetOrder("Age"),
 			wantResponse: []*User{
 				{ID: "283", Email: "bonhoeffer-67@agatha.com", Balance: 6915424560435208594, Address: &Address{City: "Lon", ZipCode: 96}, Age: 6, LastLogin: mustParseTime("2016-12-15T19:17:56.779778796+01:00")},
 				{ID: "238", Email: "sweeney-44@maserati.com", Balance: 2921351223480399877, Address: &Address{City: "Ahmadinejad", ZipCode: 93}, Age: 6, LastLogin: mustParseTime("2016-08-08T00:20:44.779696507+02:00")},
@@ -150,22 +150,9 @@ func TestCollection_Query(t *testing.T) {
 			},
 			wantErr: false,
 		}, {
-			name: "Between Int Limit 5 Equal Wanted Order",
-			args: NewQuery().SetFilter(
-				NewBetweenFilter(uint(5), uint(10), "Age").EqualWanted(),
-			).SetLimits(5, 0).SetOrder(true, "Age"),
-			wantResponse: []*User{
-				{ID: "224", Email: "gustavus-91@godzilla.com", Balance: 157473026907431221, Address: &Address{City: "Ishim", ZipCode: 6}, Age: 5, LastLogin: mustParseTime("2017-07-24T03:46:50.779668183+02:00")},
-				{ID: "217", Email: "kelli-50@scruggs.com", Balance: 6024610462857344358, Address: &Address{City: "Asperger", ZipCode: 11}, Age: 5, LastLogin: mustParseTime("2018-03-10T05:46:48.779656214+01:00")},
-				{ID: "214", Email: "eugenie-68@jerrod.com", Balance: 5805317582471799175, Address: &Address{City: "Lynne", ZipCode: 18}, Age: 5, LastLogin: mustParseTime("2016-07-01T13:47:45.779651797+02:00")},
-				{ID: "203", Email: "miltown-26@velez.com", Balance: 4278560190771696982, Address: &Address{City: "Eeyore", ZipCode: 67}, Age: 5, LastLogin: mustParseTime("2016-10-04T09:38:19.779635629+02:00")},
-				{ID: "198", Email: "oneal-12@olive.com", Balance: 5986049212808166631, Address: &Address{City: "Laramie", ZipCode: 9}, Age: 5, LastLogin: mustParseTime("2016-09-05T13:26:01.779624982+02:00")},
-			},
-			wantErr: false,
-		}, {
 			name: "Slice query",
 			args: NewQuery().SetFilter(
-				NewGreaterFilter(10, "related"),
+				NewEqualAndGreaterFilter(10, "related"),
 			),
 			wantResponse: []*User{
 				testUser,
@@ -174,9 +161,9 @@ func TestCollection_Query(t *testing.T) {
 		}, {
 			name: "Exclude Filter",
 			args: NewQuery().SetFilter(
-				NewBetweenFilter(uint(15), uint(19), "Age"),
+				NewEqualAndBetweenFilter(uint(16), uint(18), "Age"),
 				NewEqualFilter(uint(17), "Age").ExclusionFilter(),
-			).SetLimits(30, 0).SetOrder(false, "Age").SetTimeout(time.Hour),
+			).SetLimits(30, 0).SetRevertOrder("Age").SetTimeout(time.Hour),
 			wantResponse: []*User{
 				{ID: "111", Email: "sarnoff-84@amie.com", Balance: 4059682463746307250, Address: &Address{City: "Herring", ZipCode: 58}, Age: 18, LastLogin: mustParseTime("2017-12-12T23:10:51.779471556+01:00")},
 				{ID: "133", Email: "citibank-38@css.com", Balance: 7414564314151778346, Address: &Address{City: "Byers", ZipCode: 49}, Age: 18, LastLogin: mustParseTime("2017-07-20T07:00:58.77950965+02:00")},

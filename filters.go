@@ -14,8 +14,8 @@ func NewEqualFilter(value interface{}, s ...string) Filter {
 	return Filter(ret)
 }
 
-// NewGreaterFilter builds a Filter interface for greater query
-func NewGreaterFilter(value interface{}, s ...string) Filter {
+// NewEqualAndGreaterFilter builds a Filter interface for greater query
+func NewEqualAndGreaterFilter(value interface{}, s ...string) Filter {
 	ret := &filterBase{
 		operator: Greater,
 	}
@@ -24,8 +24,8 @@ func NewGreaterFilter(value interface{}, s ...string) Filter {
 	return Filter(ret)
 }
 
-// NewLessFilter builds a Filter interface for less query
-func NewLessFilter(value interface{}, s ...string) Filter {
+// NewEqualAndLessFilter builds a Filter interface for less query
+func NewEqualAndLessFilter(value interface{}, s ...string) Filter {
 	ret := &filterBase{
 		operator: Less,
 	}
@@ -34,8 +34,8 @@ func NewLessFilter(value interface{}, s ...string) Filter {
 	return Filter(ret)
 }
 
-// NewBetweenFilter builds a Filter interface for between query
-func NewBetweenFilter(from, to interface{}, s ...string) Filter {
+// NewEqualAndBetweenFilter builds a Filter interface for between query
+func NewEqualAndBetweenFilter(from, to interface{}, s ...string) Filter {
 	ret := &filterBase{
 		operator: Between,
 	}
@@ -91,12 +91,6 @@ func (f *filterBase) CompareTo(val interface{}) *filterBase {
 // GetType returns the type of the filter given at the initialization
 func (f *filterBase) GetType() FilterOperator {
 	return f.operator
-}
-
-// EqualWanted defines if the exact corresponding key is retrieved or not.
-func (f *filterBase) EqualWanted() Filter {
-	f.equal = true
-	return f
 }
 
 // ExclusionFilter set the given Filter to be used as a cleaner filter.

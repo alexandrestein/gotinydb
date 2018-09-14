@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- Many modification at the API level.
+
+### Remove
+
+- Bolt database.
+
 ## [0.0.8] - 2018-09-07
 
 ### Added

@@ -69,8 +69,6 @@ type (
 	Filter interface {
 		// GetType returns the type of the filter given at the initialization
 		GetType() FilterOperator
-		// EqualWanted defines if the exact corresponding key is retrieved or not.
-		EqualWanted() Filter
 		// ExclusionFilter set the given Filter to be used as a cleaner filter.
 		// When IDs are retrieved by those filters the IDs will not be returned at response.
 		ExclusionFilter() Filter
@@ -83,7 +81,6 @@ type (
 		selectorHash uint64
 		operator     FilterOperator
 		values       []*filterValue
-		equal        bool
 		exclusion    bool
 	}
 

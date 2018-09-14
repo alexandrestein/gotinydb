@@ -231,9 +231,9 @@ func (d *DB) loadCollections() error {
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
 				return d.initDB()
-			} else {
-				return err
+				// } else {
 			}
+			return err
 			// return err
 		}
 		var configAsBytes []byte
