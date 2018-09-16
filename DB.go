@@ -194,6 +194,8 @@ func (d *DB) Load(r io.Reader) error {
 		return err
 	}
 
+	d.collections = nil
+
 	return d.loadCollections()
 
 	// // Save elements
@@ -238,22 +240,22 @@ func (d *DB) Load(r io.Reader) error {
 	// return nil
 }
 
-func (d *DB) loadArchive() *archive {
-	ret := new(archive)
-	ret.Collections = make([]string, len(d.collections))
-	ret.Indexes = map[string][]*indexType{}
+// func (d *DB) loadArchive() *archive {
+// 	ret := new(archive)
+// 	ret.Collections = make([]string, len(d.collections))
+// 	ret.Indexes = map[string][]*indexType{}
 
-	for i, collection := range d.collections {
-		ret.Collections[i] = collection.name
+// 	for i, collection := range d.collections {
+// 		ret.Collections[i] = collection.name
 
-		ret.Indexes[collection.name] = make([]*indexType, len(collection.indexes))
-		for j, index := range collection.indexes {
-			ret.Indexes[collection.name][j] = index
-		}
-	}
+// 		ret.Indexes[collection.name] = make([]*indexType, len(collection.indexes))
+// 		for j, index := range collection.indexes {
+// 			ret.Indexes[collection.name][j] = index
+// 		}
+// 	}
 
-	return ret
-}
+// 	return ret
+// }
 
 // GetCollections returns all collection pointers
 func (d *DB) GetCollections() []*Collection {

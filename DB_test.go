@@ -79,6 +79,8 @@ func TestDB_Use(t *testing.T) {
 			return
 		}
 
+		c.SetIndex("email", StringIndex, "email")
+
 		err = c.Put(testID, testContent)
 		if err != nil {
 			t.Error(err)
@@ -98,6 +100,22 @@ func TestDB_Use(t *testing.T) {
 				t.Error(err)
 				return
 			}
+
+			if !reflect.DeepEqual(testContent, retrievedUser) {
+				t.Errorf("both users are not equal but should\n\t%v\n\t%v", testContent, retrievedUser)
+				return
+			}
+
+			retrievedUser = new(User)
+			var response *Response
+			response, err = c.Query(NewQuery().SetFilter(NewEqualFilter(testContent.Email, "email")))
+			// _, err = c.Get(testID, retrievedUser)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			response.One(retrievedUser)
 
 			if !reflect.DeepEqual(testContent, retrievedUser) {
 				t.Errorf("both users are not equal but should\n\t%v\n\t%v", testContent, retrievedUser)
@@ -126,6 +144,22 @@ func TestDB_Use(t *testing.T) {
 			t.Error(err)
 			return
 		}
+
+		if !reflect.DeepEqual(testContent, retrievedUser) {
+			t.Errorf("both users are not equal but should\n\t%v\n\t%v", testContent, retrievedUser)
+			return
+		}
+
+		retrievedUser = new(User)
+		var response *Response
+		response, err = c.Query(NewQuery().SetFilter(NewEqualFilter(testContent.Email, "email")))
+		// _, err = c.Get(testID, retrievedUser)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		response.One(retrievedUser)
 
 		if !reflect.DeepEqual(testContent, retrievedUser) {
 			t.Errorf("both users are not equal but should\n\t%v\n\t%v", testContent, retrievedUser)
@@ -353,8 +387,17 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	addContentFunc(baseCols[1], dataset2)
 	addContentFunc(baseCols[2], dataset3)
 
-	bkpWriter := bytes.NewBuffer(nil)
-	_, err = db.Backup(bkpWriter, 0)
+	// var file *os.File
+	// file, err = os.OpenFile(backupArchivePath, os.O_CREATE|os.O_WRONLY, 0777)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+	// defer file.Close()
+
+	var backup bytes.Buffer
+
+	_, err = db.Backup(&backup, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -367,7 +410,7 @@ func TestDB_Backup_And_Load(t *testing.T) {
 		return
 	}
 
-	err = restoredDB.Load(bkpWriter)
+	err = restoredDB.Load(&backup)
 	if err != nil {
 		t.Error(err)
 		return
@@ -408,9 +451,6 @@ func backupAndRestorSimpleGetValues(ids []string, c1, c2, c3, rc1, rc2, rc3 *Col
 	var values []*ResponseElem
 
 	testValues := func(values []*ResponseElem, rc *Collection) error {
-		if err != nil {
-			return err
-		}
 		for _, response := range values {
 			user := &User{}
 			restoredUser := &User{}

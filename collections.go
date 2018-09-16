@@ -216,7 +216,7 @@ func (c *Collection) Query(q *Query) (response *Response, _ error) {
 
 	// If no filter the query stops
 	if len(q.filters) <= 0 {
-		return nil, fmt.Errorf("query has not get action")
+		return nil, fmt.Errorf("query has no filter")
 	}
 
 	// If no index stop the query

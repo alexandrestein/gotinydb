@@ -6,13 +6,13 @@
 [![AppVeyor Build](https://ci.appveyor.com/api/projects/status/7kr5y6kk9jtkg261?svg=true)](https://ci.appveyor.com/project/alexandrestein/gotinydb)
 [![CircleCI](https://circleci.com/gh/alexandrestein/gotinydb.svg?style=svg)](https://circleci.com/gh/alexandrestein/gotinydb)
 [![codecov](https://codecov.io/gh/alexandreStein/GoTinyDB/branch/master/graph/badge.svg)](https://codecov.io/gh/alexandreStein/GoTinyDB) 
-[![Go Report Card](https://goreportcard.com/badge/github.com/alexandrestein/gotinydb)](https://goreportcard.com/report/github.com/alexandrestein/gotinydb) 
+[![Go Report Card](https://goreportcard.com/badge/github.com/alexandrestein/gotinydb)](https://goreportcard.com/report/github.com/alexandrestein/gotinydb)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
 The goal is to have a fairly simple database which is light and don't needs to fit in RAM. It supports indexing for:
 
 - string
-- int, uint, int8, uint8, int16, 
+- int, uint, int8, uint8, int16
 - uint16, int32, uint32, int64, uint64
 - time.Time
 
@@ -31,18 +31,17 @@ Take a look at [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb) for
 
 ## Built With
 
-* [Badger](https://github.com/dgraph-io/badger) - Is the main storage engine
-* [Bolt](https://github.com/boltdb/bolt) - Is the index engine
-* [Btree](https://github.com/google/btree) - Is the in memory list used to save sub queries elements.
-* [Structs](https://github.com/fatih/structs) - Used to cut objects in part for indexing
+- [Badger](https://github.com/dgraph-io/badger) - Is the main storage engine
+- [Btree](https://github.com/google/btree) - Is the in memory list used to save sub queries elements.
+- [Structs](https://github.com/fatih/structs) - Used to cut objects in part for indexing
 
 ## Possible Road Map
 
-* Make a basic master/slaves replication system for data protection
-* Make a simple web interface
-* Add "has" or "exist" filter
-* Support float
-* Full text search with [Bleve](http://www.blevesearch.com/)
+- Make a basic master/slaves replication system for data protection
+- Make a simple web interface
+- Add "has" or "exist" filter
+- Support float
+- Full text search with [Bleve](http://www.blevesearch.com/)
 
 ## Contributing
 
@@ -62,18 +61,18 @@ There is no compatibility promise for now.
 
 ## Author
 
-* **Alexandre Stein** - [GitHub](https://github.com/alexandrestein)
+- **Alexandre Stein** - [GitHub](https://github.com/alexandrestein)
 
 <!-- See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project. -->
 
 ## License
 
-This project is licensed under the "Apache License, Version 2.0" - see the [LICENSE](LICENSE) file for details or follow this [link](http://www.apache.org/licenses/LICENSE-2.0).
+This project is licensed under the "Apache License, Version 2.0" see the [LICENSE](LICENSE) file for details or follow this [link](http://www.apache.org/licenses/LICENSE-2.0).
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Falexandrestein%2Fgotinydb.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Falexandrestein%2Fgotinydb?ref=badge_large)
 
 ## Acknowledgments
 
-* I was looking for pure `golang` database for reasonable (not to big) data set. I saw [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match which was not what I was looking for.
-* B-Tree is a good way to have ordered elements and is extremely scalable. It is particularly great for heavy random reads. Used for indexing and queries ([Bolt](https://github.com/boltdb/bolt) for persistent indexation and [Btree](https://github.com/google/btree) for in memory queries).
-* LSM-Tree is much more efficient for height write loads. This is used to store data ([Badger](https://github.com/dgraph-io/badger)).
+- I was looking for pure `golang` database for reasonable (not to big) data set. I saw [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match which was not what I was looking for.
+- B-Tree is a good way to have ordered elements and is extremely scalable. It is particularly great for heavy random reads. Used for indexing and queries ([Bolt](https://github.com/boltdb/bolt) for persistent indexation and [Btree](https://github.com/google/btree) for in memory queries).
+- LSM-Tree is much more efficient for height write loads. This is used to store data ([Badger](https://github.com/dgraph-io/badger)).
