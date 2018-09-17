@@ -330,8 +330,6 @@ func TestCollection_PutToCloseDB(t *testing.T) {
 }
 
 func TestDB_Backup_And_Load(t *testing.T) {
-	return
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 

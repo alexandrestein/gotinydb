@@ -97,7 +97,7 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 					// If not lets try to empty the queue a bit more
 					goto tryToGetAnOtherRequest
 				}
-				// This release continue if there is no request in the queue
+				// This continue if there is no more request in the queue
 			default:
 			}
 
@@ -255,11 +255,9 @@ func (d *DB) loadCollections() error {
 		// Fill up collections
 		for _, savedCol := range savedDB.Collections {
 			newCol := new(Collection)
+
 			newCol.name = savedCol.Name
 			newCol.prefix = savedCol.Prefix
-
-			// fmt.Println("col", savedCol.Name, savedCol.Indexes)
-
 			newCol.store = d.valueStore
 			newCol.writeTransactionChan = d.writeTransactionChan
 			newCol.ctx = d.ctx

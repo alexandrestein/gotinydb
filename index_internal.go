@@ -14,7 +14,6 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 	defer tx.Discard()
 
 	indexedValueID := i.getIDBuilder(indexedValue)
-	// indexedValueID := append(i.getIDBuilder(nil), indexedValue...)
 
 	asItem, err := tx.Get(indexedValueID)
 	if err != nil {

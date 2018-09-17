@@ -43,10 +43,13 @@ func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex [][]by
 				field, ok = i.testJSONTag(object.Fields(), fieldName)
 			}
 		} else {
-			field, ok = field.FieldOk(fieldName)
+			var tmpField *structs.Field
+			tmpField, ok = field.FieldOk(fieldName)
 			// Check the JSON tag
 			if !ok {
-				field, ok = i.testJSONTag(object.Fields(), fieldName)
+				field, ok = i.testJSONTag(field.Fields(), fieldName)
+			} else {
+				field = tmpField
 			}
 		}
 
