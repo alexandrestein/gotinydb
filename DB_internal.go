@@ -258,19 +258,27 @@ func (d *DB) loadCollections() error {
 			newCol.name = savedCol.Name
 			newCol.prefix = savedCol.Prefix
 
-			newCol.indexes = savedCol.Indexes
-			for _, i := range newCol.indexes {
-				i.options = d.options
-				i.getTx = d.valueStore.NewTransaction
-				i.getIDBuilder = func(id []byte) []byte {
-					return newCol.buildIDWhitPrefixIndex([]byte(i.Name), id)
-				}
-			}
+			// fmt.Println("col", savedCol.Name, savedCol.Indexes)
 
 			newCol.store = d.valueStore
 			newCol.writeTransactionChan = d.writeTransactionChan
 			newCol.ctx = d.ctx
 			newCol.options = d.options
+			for _, tmpIndex := range savedCol.Indexes {
+				i := new(indexType)
+
+				i.Name = tmpIndex.Name
+				i.Selector = tmpIndex.Selector
+				i.Type = tmpIndex.Type
+
+				i.options = d.options
+				i.getTx = d.valueStore.NewTransaction
+				i.getIDBuilder = func(id []byte) []byte {
+					return newCol.buildIDWhitPrefixIndex([]byte(i.Name), id)
+				}
+
+				newCol.indexes = append(newCol.indexes, i)
+			}
 
 			d.collections = append(d.collections, newCol)
 		}
