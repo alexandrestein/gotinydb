@@ -74,5 +74,4 @@ This project is licensed under the "Apache License, Version 2.0" see the [LICENS
 ## Acknowledgments
 
 - I was looking for pure `golang` database for reasonable (not to big) data set. I saw [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match which was not what I was looking for.
-- B-Tree is a good way to have ordered elements and is extremely scalable. It is particularly great for heavy random reads. Used for indexing and queries ([Bolt](https://github.com/boltdb/bolt) for persistent indexation and [Btree](https://github.com/google/btree) for in memory queries).
 - LSM-Tree is much more efficient for height write loads. This is used to store data ([Badger](https://github.com/dgraph-io/badger)).
