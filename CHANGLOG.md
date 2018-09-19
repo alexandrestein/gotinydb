@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-- Filter are structs.
+- Filter are structs and not interface any more and the exclusion filters has been modified.
 - Many modification at the API level.
 
 ### Remove

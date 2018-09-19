@@ -10,63 +10,6 @@ import (
 	"github.com/google/btree"
 )
 
-type (
-	// Query defines the object to request index query.
-	Query struct {
-		filters []*Filter
-
-		orderSelector []string
-		order         uint64 // is the selector hash representation
-		ascendent     bool   // defines the way of the order
-
-		limit         int
-		internalLimit int
-		timeout       time.Duration
-	}
-
-	// idType is a type to order IDs during query to be compatible with the tree query
-	idType struct {
-		ID          string
-		occurrences int
-		ch          chan int
-		// values defines the different values and selector that called this ID
-		// selectors are defined by a hash 64
-		values map[uint64][]byte
-
-		// This is for the ordering
-		less         func(btree.Item) bool
-		selectorHash uint64
-		getRefsFunc  func(id string) *refs
-	}
-
-	// idsType defines a list of ID. The struct is needed to build a pointer to be
-	// passed to deferent functions
-	idsType struct {
-		IDs []*idType
-	}
-
-	idsTypeMultiSorter struct {
-		IDs    []*idType
-		invert bool
-	}
-
-	// FilterOperator defines the type of filter to perform
-	FilterOperator string
-
-	// Response holds the results of a query
-	Response struct {
-		list           []*ResponseElem
-		actualPosition int
-		query          *Query
-	}
-
-	// ResponseElem defines the response as a pointer
-	ResponseElem struct {
-		_ID            *idType
-		contentAsBytes []byte
-	}
-)
-
 func (iMs *idsTypeMultiSorter) Sort(limit int) {
 	sort.Sort(iMs)
 
@@ -160,6 +103,15 @@ func (q *Query) SetFilter(f ...*Filter) *Query {
 	}
 	q.filters = append(q.filters, f...)
 	return q
+}
+
+// SetExclusionFilter defines the action to perform to get IDs
+func (q *Query) SetExclusionFilter(f ...*Filter) *Query {
+	for i := range f {
+		f[i].exclusion = true
+	}
+
+	return q.SetFilter(f...)
 }
 
 func (q *Query) nbSelectFilters() (ret int) {

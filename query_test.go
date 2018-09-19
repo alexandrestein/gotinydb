@@ -174,7 +174,8 @@ func TestCollection_Query(t *testing.T) {
 			name: "Exclude Filter",
 			args: NewQuery().SetFilter(
 				NewEqualAndBetweenFilter(uint(16), uint(18), "Age"),
-				NewEqualFilter(uint(17), "Age").ExclusionFilter(),
+			).SetExclusionFilter(
+				NewEqualFilter(uint(17), "Age"),
 			).SetLimits(30, 0).SetRevertOrder("Age").SetTimeout(time.Hour),
 			wantResponse: []*User{
 				{ID: "111", Email: "sarnoff-84@amie.com", Balance: 4059682463746307250, Address: &Address{City: "Herring", ZipCode: 58}, Age: 18, LastLogin: mustParseTime("2017-12-12T23:10:51.779471556+01:00")},

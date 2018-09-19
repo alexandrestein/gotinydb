@@ -93,13 +93,6 @@ func (f *Filter) GetType() FilterOperator {
 	return f.operator
 }
 
-// ExclusionFilter set the given Filter to be used as a cleaner filter.
-// When IDs are retrieved by those filters the IDs will not be returned at response.
-func (f *Filter) ExclusionFilter() *Filter {
-	f.exclusion = true
-	return f
-}
-
 // setSelector defines the configurable limit of IDs.
 func (f *Filter) setSelector(s ...string) *Filter {
 	f.selector = s
