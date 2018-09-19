@@ -334,11 +334,9 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	defer cancel()
 
 	backedUpDBPath := os.TempDir() + "/" + "backedUp"
-	backupArchivePath := os.TempDir() + "/" + "bkpArchive"
 	restoredDBPath := os.TempDir() + "/" + "restored"
 
 	defer os.RemoveAll(backedUpDBPath)
-	defer os.RemoveAll(backupArchivePath)
 	defer os.RemoveAll(restoredDBPath)
 
 	db, err := Open(ctx, NewDefaultOptions(backedUpDBPath))
@@ -384,14 +382,6 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	addContentFunc(baseCols[0], dataset1)
 	addContentFunc(baseCols[1], dataset2)
 	addContentFunc(baseCols[2], dataset3)
-
-	// var file *os.File
-	// file, err = os.OpenFile(backupArchivePath, os.O_CREATE|os.O_WRONLY, 0777)
-	// if err != nil {
-	// 	t.Error(err)
-	// 	return
-	// }
-	// defer file.Close()
 
 	var backup bytes.Buffer
 

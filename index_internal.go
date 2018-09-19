@@ -45,7 +45,6 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 	defer iter.Close()
 
 	indexedValueID := i.getIDBuilder(filterValue)
-	// indexedValueID := append(i.getIDBuilder(nil), filterValue...)
 
 	// Go to the requested position and get the values of it
 	iter.Seek(indexedValueID)
@@ -59,7 +58,6 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 		return nil, err
 	}
 
-	// firstIndexedValueAsByte, firstIDsAsByte := iter.Item().
 	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), filterValue, firstIDsAsByte)
 	if unmarshalIDsErr != nil {
 		return nil, unmarshalIDsErr
@@ -108,11 +106,6 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 			if bytes.Compare(append(prefix, limit...), indexedValuePlusPrefixes) < 0 {
 				break
 			}
-			// } else {
-			// 	if bytes.Compare(limit, indexedValue) <= 0 {
-			// 		break
-			// 	}
-			// }
 		}
 
 		allIDs.AddIDs(ids)

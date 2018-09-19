@@ -100,7 +100,6 @@ const (
 // into the store
 const (
 	prefixData byte = iota
-	prefixConfig
 	prefixIndexes
 	prefixRefs
 )

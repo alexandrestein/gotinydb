@@ -32,43 +32,17 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	}
 
 	return d, d.loadCollections()
-	// if loadErr := d.loadCollections(); loadErr != nil {
-	// 	if loadErr == badger.ErrKeyNotFound {
-	// 		err := d.initDB()
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 	} else {
-	// 		return nil, loadErr
-	// 	}
-	// }
-
-	// return d, nil
 }
 
 // Use build or get a Collection pointer
 func (d *DB) Use(colName string) (*Collection, error) {
 	for _, col := range d.collections {
 		if col.name == colName {
-			// if err := col.loadIndex(); err != nil {
-			// 	return nil, err
-			// }
 			return col, nil
 		}
 	}
 
 	return d.initCollection(colName)
-
-	// c, loadErr := d.getCollection(colName)
-	// if loadErr != nil {
-	// 	return nil, loadErr
-	// }
-
-	// if err := c.loadIndex(); err != nil {
-	// 	return nil, err
-	// }
-	// d.collections = append(d.collections, c)
-	// return c, nil
 }
 
 // SetOptions update the database configurations.
@@ -152,24 +126,6 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	}
 	it.Close()
 
-	// // Remove stored values 1000 by 1000
-	// for {
-	// 	ids, err := c.getStoredIDsAndValues("", 1000, true)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	if len(ids) == 0 {
-	// 		break
-	// 	}
-
-	// 	for _, id := range ids {
-	// 		err := txn.Delete(c.buildStoreID(id.GetID()))
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
-
 	// Commit changes
 	err := txn.Commit(nil)
 	if err != nil {
@@ -197,65 +153,7 @@ func (d *DB) Load(r io.Reader) error {
 	d.collections = nil
 
 	return d.loadCollections()
-
-	// // Save elements
-	// savedCtx := d.ctx
-	// savedOptions1 := *d.options
-	// savedOptions2 := *d.options
-
-	// // Close the DB
-	// err := d.Close()
-	// if err != nil {
-	// 	return err
-	// }
-	// // Remove all existing elements
-	// os.RemoveAll(d.options.Path)
-
-	// // Open a brand new database
-	// var loadedDB *DB
-	// loadedDB, err = Open(savedCtx, &savedOptions1)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // Load saved values
-	// err = loadedDB.valueStore.Load(r)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // Close again
-	// err = loadedDB.Close()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // And load a new collection
-	// loadedDB, err = Open(savedCtx, &savedOptions2)
-	// if err != nil {
-	// 	return err
-	// }
-	// d = loadedDB
-
-	// return nil
 }
-
-// func (d *DB) loadArchive() *archive {
-// 	ret := new(archive)
-// 	ret.Collections = make([]string, len(d.collections))
-// 	ret.Indexes = map[string][]*indexType{}
-
-// 	for i, collection := range d.collections {
-// 		ret.Collections[i] = collection.name
-
-// 		ret.Indexes[collection.name] = make([]*indexType, len(collection.indexes))
-// 		for j, index := range collection.indexes {
-// 			ret.Indexes[collection.name][j] = index
-// 		}
-// 	}
-
-// 	return ret
-// }
 
 // GetCollections returns all collection pointers
 func (d *DB) GetCollections() []*Collection {

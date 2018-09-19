@@ -14,83 +14,11 @@ import (
 	"github.com/minio/highwayhash"
 )
 
-func (c *Collection) loadInfos() error {
-	return c.store.View(func(txn *badger.Txn) error {
-		id := c.buildIDWhitPrefixConfig([]byte("name"))
-		item, err := txn.Get(id)
-		if err != nil {
-			return err
-		}
-
-		c.name = item.String()
-		return nil
-	})
-}
-
-// func (c *Collection) init(name string) error {
-// 	return c.store.Update(func(txn *badger.Txn) error {
-// 		id := c.buildIDWhitPrefixConfig([]byte("name"))
-// 		return txn.Set(id, []byte(name))
-// 	})
-// }
-
-func (c *Collection) getIndexesFromConfigBucket() []*indexType {
-	indexes := []*indexType{}
-	c.store.View(func(txn *badger.Txn) error {
-		id := c.buildIDWhitPrefixConfig([]byte("indexesList"))
-		indexesAsItem, err := txn.Get(id)
-		if err != nil {
-			return err
-		}
-
-		var indexesAsBytes []byte
-		indexesAsBytes, err = indexesAsItem.Value()
-		if err != nil {
-			return err
-		}
-
-		json.Unmarshal(indexesAsBytes, &indexes)
-
-		return nil
-	})
-	return indexes
-}
-
-// func (c *Collection) setIndexesIntoConfigBucket(index *indexType) error {
-// 	return c.store.Update(func(tx *badger.Txn) error {
-// 		id := c.buildIDWhitPrefixConfig([]byte("indexesList"))
-// 		item, err := tx.Get(id)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		var indexesAsBytes []byte
-// 		indexesAsBytes, err = item.Value()
-
-// 		indexes := []*indexType{}
-// 		json.Unmarshal(indexesAsBytes, &indexes)
-
-// 		indexes = append(indexes, index)
-
-// 		indexesAsBytes, _ = json.Marshal(indexes)
-
-// 		return tx.Set(id, indexesAsBytes)
-// 	})
-// }
-
 func (c *Collection) buildCollectionPrefix() []byte {
 	return []byte{c.prefix}
 }
 func (c *Collection) buildIDWhitPrefixData(id []byte) []byte {
-	// prefixSpacer := make([]byte, 8)
 	ret := []byte{c.prefix, prefixData}
-	// ret = append(ret, prefixSpacer...)
-	return append(ret, id...)
-}
-func (c *Collection) buildIDWhitPrefixConfig(id []byte) []byte {
-	// prefixSpacer := make([]byte, 8)
-	ret := []byte{c.prefix, prefixConfig}
-	// ret = append(ret, prefixSpacer...)
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
@@ -104,9 +32,7 @@ func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
-	// prefixSpacer := make([]byte, 8)
 	ret := []byte{c.prefix, prefixRefs}
-	// ret = append(ret, prefixSpacer...)
 	return append(ret, id...)
 }
 
@@ -147,14 +73,9 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 	if refs.ObjectID == "" {
 		refs.ObjectID = writeTransaction.id
 	}
-	// if refs.ObjectHashID == "" {
-	// 	refs.ObjectHashID = buildID(writeTransaction.id)
-	// }
 
 	for _, index := range c.indexes {
 		if indexedValues, apply := index.apply(writeTransaction.contentInterface); apply {
-			// indexBucket := tx.Bucket([]byte("indexes")).Bucket([]byte(index.Name))
-
 			// If the selector hit a slice.
 			// apply can returns more than one value to index
 			for _, indexedValue := range indexedValues {
@@ -192,15 +113,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 					Value: idsAsBytes,
 				}
 
-				copyOfKey := make([]byte, len(e.Key))
-				copy(copyOfKey, e.Key)
-				copyOfValue := make([]byte, len(e.Value))
-				copy(copyOfValue, e.Value)
-				e.Key = copyOfKey
-				e.Value = copyOfValue
-
 				if err := tx.SetEntry(e); err != nil {
-					// if err := tx.Set(indexedValueID, idsAsBytes); err != nil {
 					return err
 				}
 
@@ -216,50 +129,15 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 		Value: refs.asBytes(),
 	}
 
-	copyOfKey := make([]byte, len(e.Key))
-	copy(copyOfKey, e.Key)
-	copyOfValue := make([]byte, len(e.Value))
-	copy(copyOfValue, e.Value)
-	e.Key = copyOfKey
-	e.Value = copyOfValue
-
 	return tx.SetEntry(e)
-	// return tx.Set(refID, refs.asBytes())
-
-	// putErr := tx.Set(refID, refs.asBytes())
-	// if putErr != nil {
-	// 	return err
-	// }
-
-	// return c.endOfIndexUpdate(ctx, tx, !multi)
 }
 
-// func (c *Collection) onlyCleanRefs(ctx context.Context, tx *badger.Txn, writeTransaction *writeTransactionElement) error {
-// 	return c.cleanRefs(ctx, tx, writeTransaction.id)
-// 	// err := c.cleanRefs(ctx, tx, writeTransaction.id)
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-
-// 	// return c.endOfIndexUpdate(ctx, tx, !multi)
-// }
-
-// func (c *Collection) endOfIndexUpdate(ctx context.Context, tx *badger.Txn, commit bool) error {
-// 	if commit {
-// 		return tx.Commit(nil)
-// 	}
-// 	return nil
-// }
-
 func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString string) error {
-	// indexBucket := tx.Bucket([]byte("indexes"))
-	// refsBucket := tx.Bucket([]byte("refs"))
-
 	var refsAsBytes []byte
 
 	// Get the references of the given ID
-	refsDBID := c.buildIDWhitPrefixRefs([]byte(idAsString))
-	refsAsItem, err := tx.Get(refsDBID)
+	refsDbID := c.buildIDWhitPrefixRefs([]byte(idAsString))
+	refsAsItem, err := tx.Get(refsDbID)
 	if err != nil {
 		if err != badger.ErrKeyNotFound {
 			return err
@@ -305,15 +183,7 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 					Value: ids.MustMarshal(),
 				}
 
-				copyOfKey := make([]byte, len(e.Key))
-				copy(copyOfKey, e.Key)
-				copyOfValue := make([]byte, len(e.Value))
-				copy(copyOfValue, e.Value)
-				e.Key = copyOfKey
-				e.Value = copyOfValue
-
 				err = tx.SetEntry(e)
-				// err = tx.Set(indexIDForTheGivenObjectAsBytes, ids.MustMarshal())
 				if err != nil {
 					return err
 				}
@@ -327,19 +197,11 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 	}
 
 	e := &badger.Entry{
-		Key:   refsDBID,
+		Key:   refsDbID,
 		Value: refsAsBytes,
 	}
 
-	copyOfKey := make([]byte, len(e.Key))
-	copy(copyOfKey, e.Key)
-	copyOfValue := make([]byte, len(e.Value))
-	copy(copyOfValue, e.Value)
-	e.Key = copyOfKey
-	e.Value = copyOfValue
-
 	return tx.SetEntry(e)
-	// return tx.Set(refsDBID, refsAsBytes)
 }
 
 func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, error) {
@@ -489,15 +351,7 @@ func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, i
 			Value: contentToWrite,
 		}
 
-		copyOfKey := make([]byte, len(e.Key))
-		copy(copyOfKey, e.Key)
-		copyOfValue := make([]byte, len(e.Value))
-		copy(copyOfValue, e.Value)
-		e.Key = copyOfKey
-		e.Value = copyOfValue
-
 		writeErr = txn.SetEntry(e)
-		// writeErr = txn.Set(storeID, contentToWrite)
 	} else {
 		writeErr = txn.Delete(storeID)
 	}
@@ -507,14 +361,6 @@ func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, i
 
 	return nil
 }
-
-// func (c *Collection) putIntoStore(ctx context.Context, txn *badger.Txn, writeTransaction *writeTransactionElement) error {
-// 	return c.insertOrDeleteStore(ctx, txn, true, writeTransaction)
-// }
-
-// func (c *Collection) delFromStore(ctx context.Context, txn *badger.Txn, writeTransaction *writeTransactionElement) error {
-// 	return c.insertOrDeleteStore(ctx, txn, false, writeTransaction)
-// }
 
 func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 	ret := make([][]byte, len(ids))
@@ -568,20 +414,6 @@ func (c *Collection) getAndCheckContent(contentAndHashSignatureAsBytes []byte) (
 
 	return contentAsBytes, nil
 }
-
-// func (c *Collection) loadIndex() error {
-// 	indexes := c.getIndexesFromConfigBucket()
-// 	for _, index := range indexes {
-// 		index.options = c.options
-// 		index.getTx = c.store.NewTransaction
-// 		index.getIDBuilder = func(id []byte) []byte {
-// 			return c.buildIDWhitPrefixIndex([]byte(index.Name), id)
-// 		}
-// 	}
-// 	c.indexes = indexes
-
-// 	return nil
-// }
 
 func (c *Collection) getRefs(tx *badger.Txn, id string) (*refs, error) {
 	refsAsItem, err := tx.Get(c.buildIDWhitPrefixRefs([]byte(id)))
@@ -662,7 +494,6 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 }
 
 func (c *Collection) indexAllValues() error {
-	// func (c *Collection) indexAllValues(i *indexType) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

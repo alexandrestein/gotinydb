@@ -7,10 +7,6 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
-// func (d *DB) buildPath() error {
-// 	return os.MkdirAll(d.options.Path+"/collections", FilePermission)
-// }
-
 func (d *DB) initBadger() error {
 	if d.options.BadgerOptions == nil {
 		return ErrBadBadgerConfig
@@ -27,11 +23,6 @@ func (d *DB) initBadger() error {
 	d.valueStore = db
 	return nil
 }
-
-// func (d *DB) waitForClose() {
-// 	<-d.ctx.Done()
-// 	d.Close()
-// }
 
 func (d *DB) initWriteTransactionChan(ctx context.Context) {
 	// Set a limit
@@ -104,8 +95,6 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 			// Run the write operation
 			err := d.writeTransactions(newTr)
 
-			// // Get the response
-			// err := <-newTr.responseChan
 			// And spread the response to all callers in parallel
 			for _, waittingForResponse := range waittingForResponseList {
 				go func(waittingForResponse chan error, err error) {
@@ -127,9 +116,7 @@ func (d *DB) writeTransactions(tr *writeTransaction) error {
 
 	if len(tr.transactions) == 1 {
 		// Respond to the caller with the error if any
-		// return d.writeOneTransaction(tr.ctx, txn, tr.transactions[0])
 		err := d.writeOneTransaction(tr.ctx, txn, tr.transactions[0])
-		// tr.responseChan <- err
 		if err != nil {
 			return err
 		}
@@ -138,7 +125,6 @@ func (d *DB) writeTransactions(tr *writeTransaction) error {
 	}
 
 	err = d.writeMultipleTransaction(tr.ctx, txn, tr)
-	// tr.responseChan <- err
 	if err != nil {
 		return err
 	}
@@ -158,18 +144,8 @@ func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *w
 		// Starts the indexing process
 		if !wtElem.bin {
 			return wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
-			// err = wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
-			// if err != nil {
-			// 	return err
-			// }
 		}
-
-		// } else {
 		return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
-		// err = wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
-		// if err != nil {
-		// 	return err
-		// }
 	}
 	// Else is because it's a deletation
 	err := wtElem.collection.insertOrDeleteStore(ctx, txn, false, wtElem)
@@ -177,10 +153,6 @@ func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *w
 		return err
 	}
 	return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
-	// err = wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
-	// if err != nil {
-	// 	return err
-	// }
 }
 
 func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *writeTransaction) error {
@@ -190,36 +162,6 @@ func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *
 		if err != nil {
 			return err
 		}
-		// if wtElem.isInsertion {
-		// 	// Runs saving into the store
-		// 	err := wtElem.collection.putIntoStore(ctx, txn, wtElem)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-
-		// 	// Starts the indexing process
-		// 	if !wtElem.bin {
-		// 		err = wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 	} else {
-		// 		err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
-		// 		if err != nil {
-		// 			return err
-		// 		}
-		// 	}
-		// } else {
-		// 	// Else is because it's a deletation
-		// 	err := wtElem.collection.delFromStore(ctx, txn, wtElem)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// 	err = wtElem.collection.onlyCleanRefs(ctx, txn, wtElem)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
 	}
 	return nil
 }
@@ -231,10 +173,8 @@ func (d *DB) loadCollections() error {
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
 				return d.initDB()
-				// } else {
 			}
 			return err
-			// return err
 		}
 		var configAsBytes []byte
 		configAsBytes, err = item.Value()
@@ -283,25 +223,6 @@ func (d *DB) loadCollections() error {
 
 		return nil
 	})
-	// colsNames, getColsNamesErr := d.getCollectionsNames()
-	// if getColsNamesErr != nil {
-	// 	if getColsNamesErr == badger.ErrKeyNotFound {
-	// 		return nil
-	// 	}
-	// 	return getColsNamesErr
-	// }
-	// for _, colName := range colsNames {
-	// 	col, err := d.getCollection(colName)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	if err := col.loadIndex(); err != nil {
-	// 		return err
-	// 	}
-
-	// 	d.collections = append(d.collections, col)
-	// }
 }
 
 func (d *DB) saveCollections() error {
@@ -331,15 +252,7 @@ func (d *DB) saveCollections() error {
 			Value: dbToSaveAsBytes,
 		}
 
-		copyOfKey := make([]byte, len(e.Key))
-		copy(copyOfKey, e.Key)
-		copyOfValue := make([]byte, len(e.Value))
-		copy(copyOfValue, e.Value)
-		e.Key = copyOfKey
-		e.Value = copyOfValue
-
 		return txn.SetEntry(e)
-		// return txn.Set(configID, dbToSaveAsBytes)
 	})
 }
 
@@ -351,152 +264,3 @@ func (d *DB) initDB() error {
 
 	return nil
 }
-
-// func (d *DB) getCollection(colName string) (*Collection, error) {
-// 	c := new(Collection)
-// 	c.store = d.valueStore
-// 	c.name = colName
-// 	c.writeTransactionChan = d.writeTransactionChan
-
-// 	c.options = d.options
-
-// 	if !d.isColExists(colName) {
-// 		c.prefix = d.getNextColPrefix()
-// 	}
-
-// 	c.name = colName
-// 	c.ctx = d.ctx
-// 	// Try to load the collection information
-// 	if err := c.loadInfos(); err != nil {
-// 		// If not exists try to build it
-// 		if err == badger.ErrKeyNotFound {
-// 			err = c.init(colName)
-// 			// Error after at build
-// 			if err != nil {
-// 				return nil, err
-// 			}
-// 			// No error return the new Collection pointer
-// 			return c, nil
-// 		}
-// 		// Other error than not found
-// 		return nil, err
-// 	}
-
-// 	// The collection is loaded and database is ready
-// 	return c, nil
-// }
-
-// func (d *DB) getCollectionsNames() ([]string, error) {
-// 	var ret []string
-// 	err := d.valueStore.View(func(txn *badger.Txn) error {
-// 		colsAsItem, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		var colsAsBytes []byte
-// 		colsAsBytes, err = colsAsItem.Value()
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return json.Unmarshal(colsAsBytes, &ret)
-// 	})
-// 	return ret, err
-// }
-
-// func (d *DB) getCollectionsIDs() ([]string, error) {
-// 	ret := []string{}
-
-// 	d.valueStore.View(func(txn *badger.Txn) error {
-// 		opt := badger.DefaultIteratorOptions
-// 		opt.PrefetchValues = false
-// 		it := txn.NewIterator(opt)
-// 		defer it.Close()
-// 		colPrefix := d.buildIDWithCollectionsInfoPrefix(nil)
-// 		for it.Seek(colPrefix); it.ValidForPrefix(colPrefix); it.Next() {
-// 			ret = append(ret, string(it.Item().Key()))
-// 		}
-// 		return nil
-// 	})
-// 	// files, err := ioutil.ReadDir(d.options.Path + "/collections")
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
-// 	//
-// 	// for _, f := range files {
-// 	// 	ret = append(ret, f.Name())
-// 	// }
-
-// 	return ret, nil
-// }
-
-// func (d *DB) buildIDWithCollectionsInfoPrefix(id []byte) []byte {
-// 	ret := []byte{prefixCollectionsInfo}
-// 	return append(ret, id...)
-// }
-
-// func (d *DB) isColExists(colName string) bool {
-// 	ret := false
-// 	d.valueStore.View(func(txn *badger.Txn) error {
-// 		item, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		var asBytes []byte
-// 		asBytes, err = item.Value()
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		var names []string
-// 		err = json.Unmarshal(asBytes, &names)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		for _, name := range names {
-// 			if name == colName {
-// 				ret = true
-// 				break
-// 			}
-// 		}
-
-// 		return nil
-// 	})
-
-// 	return ret
-// }
-
-// func (d *DB) getNextColPrefix() byte {
-// 	ret := byte(0)
-// 	d.valueStore.View(func(txn *badger.Txn) error {
-// 		item, err := txn.Get(d.buildIDWithCollectionsInfoPrefix([]byte(_IDCollectionsInfoCollectionsNames)))
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		var asBytes []byte
-// 		asBytes, err = item.Value()
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		var names []string
-// 		err = json.Unmarshal(asBytes, &names)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		count := 0
-// 		for range names {
-// 			count++
-// 		}
-
-// 		ret = byte(count)
-
-// 		return nil
-// 	})
-
-// 	return ret
-// }

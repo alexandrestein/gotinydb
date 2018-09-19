@@ -171,15 +171,6 @@ func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bo
 
 // query do the given filter and ad it to the tree
 func (i *indexType) query(ctx context.Context, filter *filterBase, finishedChan chan *idsType) {
-	done := false
-	defer func() {
-		// Make sure to reply as done
-		if !done && ctx.Err() == nil {
-			finishedChan <- nil
-			return
-		}
-	}()
-
 	ids, _ := newIDs(ctx, filter.getFilterBase().selectorHash, nil, nil)
 
 	switch filter.getFilterBase().GetType() {
@@ -205,8 +196,6 @@ func (i *indexType) query(ctx context.Context, filter *filterBase, finishedChan 
 		}
 	}
 
-	done = true
-
 	return
 }
 
@@ -224,17 +213,10 @@ func newRefsFromDB(input []byte) *refs {
 	return refs
 }
 
-// // IDasBytes returns the ID of the coresponding object as a slice of bytes
-// func (r *refs) IDasBytes() []byte {
-// 	return []byte(r.ObjectHashID)
-// }
-
 // setIndexedValue add to the list of references this one.
 // The indexName define the index it belongs to and indexedVal defines what value
 // is indexed.
 func (r *refs) setIndexedValue(indexName string, selectorHash uint64, indexedVal []byte) {
-	// func (r *refs) setIndexedValue(indexName string, indexHash uint64, indexedVal []byte) {
-
 	// Looks into existing references
 	for _, ref := range r.Refs {
 		if ref.IndexName == indexName {

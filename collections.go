@@ -136,21 +136,7 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 		return c.buildIDWhitPrefixIndex([]byte(i.Name), id)
 	}
 
-	// if updateErr := c.store.Update(func(tx *badger.Txn) error {
-	// 	tx.
-	// 	_, createErr := tx.Bucket([]byte("indexes")).CreateBucket([]byte(i.Name))
-	// 	if createErr != nil {
-	// 		return createErr
-	// 	}
-	// 	return nil
-	// }); updateErr != nil {
-	// 	return updateErr
-	// }
-
 	c.indexes = append(c.indexes, i)
-	// if errSetingIndexIntoConfig := c.setIndexesIntoConfigBucket(i); errSetingIndexIntoConfig != nil {
-	// 	return errSetingIndexIntoConfig
-	// }
 
 	err := c.indexAllValues()
 	if err != nil {
