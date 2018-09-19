@@ -69,12 +69,12 @@ func (d *DB) Close() error {
 	d.closing = true
 
 	var err error
-	if d.valueStore != nil {
-		err = d.valueStore.Close()
+	if d.badgerDB != nil {
+		err = d.badgerDB.Close()
 	}
 
 	d.options.Path = ""
-	d.valueStore = nil
+	d.badgerDB = nil
 	d.collections = nil
 
 	d = nil
@@ -97,7 +97,7 @@ func (d *DB) DeleteCollection(collectionName string) error {
 		}
 	}
 
-	txn := d.valueStore.NewTransaction(true)
+	txn := d.badgerDB.NewTransaction(true)
 	defer txn.Discard()
 	opt := badger.DefaultIteratorOptions
 	opt.PrefetchValues = false
@@ -140,12 +140,12 @@ func (d *DB) DeleteCollection(collectionName string) error {
 
 // Backup run a badger.DB.Backup
 func (d *DB) Backup(w io.Writer, since uint64) (uint64, error) {
-	return d.valueStore.Backup(w, since)
+	return d.badgerDB.Backup(w, since)
 }
 
 // Load restor the database from a backup file
 func (d *DB) Load(r io.Reader) error {
-	err := d.valueStore.Load(r)
+	err := d.badgerDB.Load(r)
 	if err != nil {
 		return err
 	}

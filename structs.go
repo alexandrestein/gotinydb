@@ -13,7 +13,7 @@ type (
 	DB struct {
 		options *Options
 
-		valueStore  *badger.DB
+		badgerDB    *badger.DB
 		collections []*Collection
 
 		// freePrefix defines the list of prefix which can be used for a new collection

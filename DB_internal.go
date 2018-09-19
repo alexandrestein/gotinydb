@@ -20,7 +20,7 @@ func (d *DB) initBadger() error {
 		return err
 	}
 
-	d.valueStore = db
+	d.badgerDB = db
 	return nil
 }
 
@@ -46,7 +46,7 @@ func (d *DB) initCollection(name string) (*Collection, error) {
 	d.freePrefix = append(d.freePrefix[:0], d.freePrefix[1:]...)
 
 	// Set the different values af the collection
-	c.store = d.valueStore
+	c.store = d.badgerDB
 	c.writeTransactionChan = d.writeTransactionChan
 	c.ctx = d.ctx
 	c.options = d.options
@@ -109,7 +109,7 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 
 func (d *DB) writeTransactions(tr *writeTransaction) error {
 	// Start the new transaction
-	txn := d.valueStore.NewTransaction(true)
+	txn := d.badgerDB.NewTransaction(true)
 	defer txn.Discard()
 
 	var err error
@@ -169,7 +169,7 @@ func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *
 }
 
 func (d *DB) loadCollections() error {
-	return d.valueStore.View(func(txn *badger.Txn) error {
+	return d.badgerDB.View(func(txn *badger.Txn) error {
 		// Get the config
 		item, err := txn.Get(configID)
 		if err != nil {
@@ -200,7 +200,7 @@ func (d *DB) loadCollections() error {
 
 			newCol.name = savedCol.Name
 			newCol.prefix = savedCol.Prefix
-			newCol.store = d.valueStore
+			newCol.store = d.badgerDB
 			newCol.writeTransactionChan = d.writeTransactionChan
 			newCol.ctx = d.ctx
 			newCol.options = d.options
@@ -212,7 +212,7 @@ func (d *DB) loadCollections() error {
 				i.Type = tmpIndex.Type
 
 				i.options = d.options
-				i.getTx = d.valueStore.NewTransaction
+				i.getTx = d.badgerDB.NewTransaction
 				i.getIDBuilder = func(id []byte) []byte {
 					return newCol.buildIDWhitPrefixIndex([]byte(i.Name), id)
 				}
@@ -228,7 +228,7 @@ func (d *DB) loadCollections() error {
 }
 
 func (d *DB) saveCollections() error {
-	return d.valueStore.Update(func(txn *badger.Txn) error {
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
 		dbToSave := new(dbExport)
 		// Save the free prefixes
 		dbToSave.FreePrefix = d.freePrefix
