@@ -44,6 +44,8 @@ type (
 		// This define the limit which apply to the serialization of the writes
 		PutBufferLimit int
 
+		FileChunkSize int
+
 		BadgerOptions *badger.Options
 	}
 
@@ -173,12 +175,13 @@ type (
 		transactions []*writeTransactionElement
 	}
 	writeTransactionElement struct {
-		id               string
-		collection       *Collection
-		contentInterface interface{}
-		contentAsBytes   []byte
-		bin              bool
-		isInsertion      bool
+		id                  string
+		collection          *Collection
+		contentInterface    interface{}
+		contentAsBytes      []byte
+		chunkN              int
+		bin                 bool
+		isInsertion, isFile bool
 	}
 
 	// Archive defines the way archives are saved inside the zip file

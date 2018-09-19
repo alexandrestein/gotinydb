@@ -61,6 +61,129 @@ func (d *DB) SetOptions(options *Options) error {
 	return nil
 }
 
+// PutFile let caller insert large element into the database via a reader interface
+func (d *DB) PutFile(id string, reader io.Reader) error {
+	// Track the numbers of chunks
+	nChunk := 0
+	// Open a loop
+	for true {
+		// init the context for transaction
+		ctx, cancel := context.WithTimeout(d.ctx, d.options.TransactionTimeOut)
+		defer cancel()
+
+		// Initialize the read buffer
+		buff := make([]byte, d.options.FileChunkSize)
+		nWritten, err := reader.Read(buff)
+		// The read is done and it returns
+		if nWritten == 0 || err == io.EOF && nWritten == 0 {
+			return nil
+		}
+		// Return error if any
+		if err != nil && err != io.EOF {
+			return err
+		}
+
+		// Clean the buffer
+		buff = buff[:nWritten]
+
+		// Build the write element
+		tr := newTransaction(ctx)
+		trElem := newFileTransactionElement(id, nChunk, buff, true)
+		tr.addTransaction(trElem)
+
+		// Run the insertion
+		d.writeTransactionChan <- tr
+		// And wait for the end of the insertion
+		err = <-tr.responseChan
+		if err != nil {
+			return err
+		}
+
+		// Increment the chunk counter
+		nChunk++
+	}
+
+	return nil
+}
+
+// ReadFile write file content into the given writer
+func (d *DB) ReadFile(id string, writer io.Writer) error {
+	return d.badgerDB.View(func(txn *badger.Txn) error {
+		storeID := d.buildFilePrefix(id, -1)
+
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchSize = 3
+		opt.PrefetchValues = true
+
+		it := txn.NewIterator(opt)
+		defer it.Close()
+		for it.Seek(storeID); it.ValidForPrefix(storeID); it.Next() {
+			val, err := it.Item().Value()
+			if err != nil {
+				return err
+			}
+
+			var n int
+			n, err = writer.Write(val)
+			if err != nil {
+				return err
+			}
+			if n != len(val) {
+				return fmt.Errorf("the writer did not write the same number of byte but did not return error. writer returned %d but the value is %d byte length", n, len(val))
+			}
+		}
+
+		return nil
+	})
+}
+
+// DeleteFile deletes every chunks of the given file ID
+func (d *DB) DeleteFile(id string) error {
+	// The list of chunk to delete
+	idsToDelete := [][]byte{}
+
+	// Open a read transaction to get every IDs
+	err := d.badgerDB.View(func(txn *badger.Txn) error {
+		// Build the file prefix
+		storeID := d.buildFilePrefix(id, -1)
+
+		// Defines the iterator options to get only IDs
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchValues = false
+
+		// Initialize the iterator
+		it := txn.NewIterator(opt)
+		defer it.Close()
+
+		// Go the the first file chunk
+		for it.Seek(storeID); it.ValidForPrefix(storeID); it.Next() {
+			// Copy the store key
+			var key []byte
+			key = it.Item().KeyCopy(key)
+			// And add it to the list of store IDs to delete
+			idsToDelete = append(idsToDelete, key)
+		}
+
+		// Close the view transaction
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Start the write operation and returns the error if any
+	return d.badgerDB.Update(func(txn *badger.Txn) error {
+		// Loop for every IDs to remove and remove it
+		for _, id := range idsToDelete {
+			err := txn.Delete(id)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // Close close the underneath collections and main store
 func (d *DB) Close() error {
 	if d.closing {
