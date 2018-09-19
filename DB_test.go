@@ -3,11 +3,14 @@ package gotinydb
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/dgraph-io/badger"
 )
 
 func TestOpen(t *testing.T) {
@@ -560,4 +563,71 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 	}
 
 	return nil
+}
+
+func TestFiles(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	testPath := os.TempDir() + "/" + "file"
+	defer os.RemoveAll(testPath)
+
+	opt := NewDefaultOptions(testPath)
+	// 499KB
+	opt.FileChunkSize = 499 * 100
+
+	db, err := Open(ctx, opt)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// 100MB, it will be made 402 chunk
+	randBuff := make([]byte, 20*1000*1000)
+	rand.Read(randBuff)
+
+	fileID := "test file ID"
+
+	err = db.PutFile(fileID, bytes.NewBuffer(randBuff))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	readBuff := bytes.NewBuffer(nil)
+	err = db.ReadFile(fileID, readBuff)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if !reflect.DeepEqual(randBuff, readBuff.Bytes()) {
+		t.Error("the saved file and the rand file are not equal")
+		return
+	}
+
+	err = db.DeleteFile(fileID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = db.badgerDB.View(func(txn *badger.Txn) error {
+		storeID := db.buildFilePrefix(fileID, -1)
+
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchValues = false
+
+		it := txn.NewIterator(opt)
+		defer it.Close()
+		for it.Seek(storeID); it.ValidForPrefix(storeID); it.Next() {
+			return fmt.Errorf("must be empty response")
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
 }

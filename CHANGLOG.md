@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+- Add support to write and read big content.
 - Add support for multiple write operation at ones [#11](https://github.com/alexandrestein/gotinydb/issues/11).
 
 ### Changed

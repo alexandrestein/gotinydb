@@ -40,6 +40,12 @@ func newTransactionElement(id string, content interface{}, isInsertion bool, col
 	return
 }
 
+func newFileTransactionElement(id string, chunkN int, content []byte, isInsertion bool) *writeTransactionElement {
+	return &writeTransactionElement{
+		id: id, chunkN: chunkN, contentAsBytes: content, isInsertion: isInsertion, isFile: true,
+	}
+}
+
 func newTransaction(ctx context.Context) *writeTransaction {
 	wt := new(writeTransaction)
 	wt.ctx = ctx

@@ -20,6 +20,9 @@ var (
 	DefaultInternalQueryLimit = 1000
 	DefaultPutBufferLimit     = 100
 
+	// Default file chunk size is 10MB
+	DefaltFileChunkSize = 10 * 1000 * 1000
+
 	// FilePermission defines the database file permission
 	FilePermission os.FileMode = 0740 // u -> rwx | g -> r-- | o -> ---
 
@@ -102,6 +105,7 @@ const (
 	prefixData byte = iota
 	prefixIndexes
 	prefixRefs
+	prefixFile
 )
 
 // Those define the different type of indexes

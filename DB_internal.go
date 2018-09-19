@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/minio/highwayhash"
+
 	"github.com/dgraph-io/badger"
 )
 
@@ -134,7 +136,9 @@ commit:
 }
 
 func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
-	if wtElem.isInsertion {
+	if wtElem.isFile {
+		return d.insertOrDeleteFileChunks(ctx, txn, wtElem)
+	} else if wtElem.isInsertion {
 		// Runs saving into the store
 		err := wtElem.collection.insertOrDeleteStore(ctx, txn, true, wtElem)
 		if err != nil {
@@ -264,5 +268,48 @@ func (d *DB) initDB() error {
 		d.freePrefix[i-1] = byte(i)
 	}
 
+	return nil
+}
+
+func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
+	// Derive the ID to make sure no file ID overlap the other.
+	// Because the files are chunked it needs to have a stable prefix for reading
+	// and deletation.
+	derivedID := highwayhash.Sum([]byte(id), make([]byte, 32))
+
+	// Build the prefix
+	prefixWithID := append([]byte{prefixFile}, derivedID[:]...)
+
+	// Initialize the chunk part of the ID
+	chunkPart := []byte{}
+
+	// If less than zero it for deletation and only the prefix is returned
+	if chunkN < 0 {
+		return prefixWithID
+	}
+
+	// If it's the first chunk
+	if chunkN == 0 {
+		chunkPart = append(chunkPart, 0)
+	} else {
+		// Lockup the numbers of full bytes for the chunk ID
+		nbFull := chunkN / 256
+		restFull := chunkN % 256
+
+		for index := 0; index < nbFull; index++ {
+			chunkPart = append(chunkPart, 255)
+		}
+		chunkPart = append(chunkPart, uint8(restFull))
+	}
+
+	// Return the ID for the given file and ID
+	return append(prefixWithID, chunkPart...)
+}
+
+func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
+	if wtElem.isInsertion {
+		storeID := d.buildFilePrefix(wtElem.id, wtElem.chunkN)
+		return txn.Set(storeID, wtElem.contentAsBytes)
+	}
 	return nil
 }
