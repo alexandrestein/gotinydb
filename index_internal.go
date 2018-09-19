@@ -123,8 +123,8 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 	return allIDs, nil
 }
 
-func (i *indexType) queryEqual(ctx context.Context, ids *idsType, filter Filter) {
-	for _, value := range filter.getFilterBase().values {
+func (i *indexType) queryEqual(ctx context.Context, ids *idsType, filter *Filter) {
+	for _, value := range filter.values {
 		tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
 		if getErr != nil {
 			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
@@ -139,13 +139,13 @@ func (i *indexType) queryEqual(ctx context.Context, ids *idsType, filter Filter)
 	}
 }
 
-func (i *indexType) queryGreaterLess(ctx context.Context, ids *idsType, filter Filter) {
+func (i *indexType) queryGreaterLess(ctx context.Context, ids *idsType, filter *Filter) {
 	greater := true
-	if filter.getFilterBase().GetType() == Less {
+	if filter.GetType() == Less {
 		greater = false
 	}
 
-	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.getFilterBase().values[0].Bytes(), nil, greater)
+	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), nil, greater)
 	if getIdsErr != nil {
 		log.Printf("Index.runQuery Greater, Less: %s\n", getIdsErr.Error())
 		return
@@ -154,12 +154,12 @@ func (i *indexType) queryGreaterLess(ctx context.Context, ids *idsType, filter F
 	ids.AddIDs(tmpIDs)
 }
 
-func (i *indexType) queryBetween(ctx context.Context, ids *idsType, filter Filter) {
+func (i *indexType) queryBetween(ctx context.Context, ids *idsType, filter *Filter) {
 	// Needs two values to make between
-	if len(filter.getFilterBase().values) < 2 {
+	if len(filter.values) < 2 {
 		return
 	}
-	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.getFilterBase().values[0].Bytes(), filter.getFilterBase().values[1].Bytes(), true)
+	tmpIDs, getIdsErr := i.getIDsForRangeOfValues(ctx, filter.values[0].Bytes(), filter.values[1].Bytes(), true)
 	if getIdsErr != nil {
 		log.Printf("Index.runQuery Between: %s\n", getIdsErr.Error())
 		return

@@ -66,17 +66,7 @@ type (
 	}
 
 	// Filter defines the way the query will be performed
-	Filter interface {
-		// GetType returns the type of the filter given at the initialization
-		GetType() FilterOperator
-		// ExclusionFilter set the given Filter to be used as a cleaner filter.
-		// When IDs are retrieved by those filters the IDs will not be returned at response.
-		ExclusionFilter() Filter
-
-		getFilterBase() *filterBase
-	}
-
-	filterBase struct {
+	Filter struct {
 		selector     []string
 		selectorHash uint64
 		operator     FilterOperator

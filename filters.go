@@ -5,43 +5,43 @@ import (
 )
 
 // NewEqualFilter builds a Filter interface for equal query
-func NewEqualFilter(value interface{}, s ...string) Filter {
-	ret := &filterBase{
+func NewEqualFilter(value interface{}, s ...string) *Filter {
+	ret := &Filter{
 		operator: Equal,
 	}
-	ret.CompareTo(value)
-	ret.SetSelector(s...)
-	return Filter(ret)
+	ret.compareTo(value)
+	ret.setSelector(s...)
+	return ret
 }
 
 // NewEqualAndGreaterFilter builds a Filter interface for greater query
-func NewEqualAndGreaterFilter(value interface{}, s ...string) Filter {
-	ret := &filterBase{
+func NewEqualAndGreaterFilter(value interface{}, s ...string) *Filter {
+	ret := &Filter{
 		operator: Greater,
 	}
-	ret.CompareTo(value)
-	ret.SetSelector(s...)
-	return Filter(ret)
+	ret.compareTo(value)
+	ret.setSelector(s...)
+	return ret
 }
 
 // NewEqualAndLessFilter builds a Filter interface for less query
-func NewEqualAndLessFilter(value interface{}, s ...string) Filter {
-	ret := &filterBase{
+func NewEqualAndLessFilter(value interface{}, s ...string) *Filter {
+	ret := &Filter{
 		operator: Less,
 	}
-	ret.CompareTo(value)
-	ret.SetSelector(s...)
-	return Filter(ret)
+	ret.compareTo(value)
+	ret.setSelector(s...)
+	return ret
 }
 
 // NewEqualAndBetweenFilter builds a Filter interface for between query
-func NewEqualAndBetweenFilter(from, to interface{}, s ...string) Filter {
-	ret := &filterBase{
+func NewEqualAndBetweenFilter(from, to interface{}, s ...string) *Filter {
+	ret := &Filter{
 		operator: Between,
 	}
-	ret.CompareTo(from).CompareTo(to)
-	ret.SetSelector(s...)
-	return Filter(ret)
+	ret.compareTo(from).compareTo(to)
+	ret.setSelector(s...)
+	return ret
 }
 
 // newfilterValue build a new filter value to be used inside the filters
@@ -67,8 +67,8 @@ func newfilterValue(value interface{}) (*filterValue, error) {
 	return filterValue, nil
 }
 
-// CompareTo defines the value you want to compare to
-func (f *filterBase) CompareTo(val interface{}) *filterBase {
+// compareTo defines the value you want to compare to
+func (f *Filter) compareTo(val interface{}) *Filter {
 	// Build the value if possible
 	filterValuePointer, parseErr := newfilterValue(val)
 	// If any error the value is not added
@@ -89,25 +89,21 @@ func (f *filterBase) CompareTo(val interface{}) *filterBase {
 }
 
 // GetType returns the type of the filter given at the initialization
-func (f *filterBase) GetType() FilterOperator {
+func (f *Filter) GetType() FilterOperator {
 	return f.operator
 }
 
 // ExclusionFilter set the given Filter to be used as a cleaner filter.
 // When IDs are retrieved by those filters the IDs will not be returned at response.
-func (f *filterBase) ExclusionFilter() Filter {
+func (f *Filter) ExclusionFilter() *Filter {
 	f.exclusion = true
 	return f
 }
 
-// SetSelector defines the configurable limit of IDs.
-func (f *filterBase) SetSelector(s ...string) *filterBase {
+// setSelector defines the configurable limit of IDs.
+func (f *Filter) setSelector(s ...string) *Filter {
 	f.selector = s
 	f.selectorHash = buildSelectorHash(s)
-	return f
-}
-
-func (f *filterBase) getFilterBase() *filterBase {
 	return f
 }
 
