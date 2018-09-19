@@ -7,7 +7,7 @@ import (
 // NewEqualFilter builds a Filter interface for equal query
 func NewEqualFilter(value interface{}, s ...string) *Filter {
 	ret := &Filter{
-		operator: Equal,
+		operator: equal,
 	}
 	ret.compareTo(value)
 	ret.setSelector(s...)
@@ -17,7 +17,7 @@ func NewEqualFilter(value interface{}, s ...string) *Filter {
 // NewEqualAndGreaterFilter builds a Filter interface for greater query
 func NewEqualAndGreaterFilter(value interface{}, s ...string) *Filter {
 	ret := &Filter{
-		operator: Greater,
+		operator: greater,
 	}
 	ret.compareTo(value)
 	ret.setSelector(s...)
@@ -27,7 +27,7 @@ func NewEqualAndGreaterFilter(value interface{}, s ...string) *Filter {
 // NewEqualAndLessFilter builds a Filter interface for less query
 func NewEqualAndLessFilter(value interface{}, s ...string) *Filter {
 	ret := &Filter{
-		operator: Less,
+		operator: less,
 	}
 	ret.compareTo(value)
 	ret.setSelector(s...)
@@ -37,7 +37,7 @@ func NewEqualAndLessFilter(value interface{}, s ...string) *Filter {
 // NewEqualAndBetweenFilter builds a Filter interface for between query
 func NewEqualAndBetweenFilter(from, to interface{}, s ...string) *Filter {
 	ret := &Filter{
-		operator: Between,
+		operator: between,
 	}
 	ret.compareTo(from).compareTo(to)
 	ret.setSelector(s...)
@@ -78,7 +78,7 @@ func (f *Filter) compareTo(val interface{}) *Filter {
 
 	// If the slice is nil or if the filter is not a between filter
 	// the filter list has only one element
-	if f.values == nil || f.operator != Between {
+	if f.values == nil || f.operator != between {
 		f.values = []*filterValue{filterValuePointer}
 		return f
 	}
@@ -88,8 +88,8 @@ func (f *Filter) compareTo(val interface{}) *Filter {
 	return f
 }
 
-// GetType returns the type of the filter given at the initialization
-func (f *Filter) GetType() FilterOperator {
+// getType returns the type of the filter given at the initialization
+func (f *Filter) getType() filterOperator {
 	return f.operator
 }
 

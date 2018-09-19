@@ -90,10 +90,10 @@ var (
 
 // Those constants defines the different types of filter to perform at query
 const (
-	Equal   FilterOperator = "eq"
-	Greater FilterOperator = "gr"
-	Less    FilterOperator = "le"
-	Between FilterOperator = "bw"
+	equal   filterOperator = "eq"
+	greater filterOperator = "gr"
+	less    filterOperator = "le"
+	between filterOperator = "bw"
 )
 
 // Those constants defines the prefix used to split different element of the collection
@@ -111,8 +111,8 @@ const (
 	UIntIndex
 	TimeIndex
 
-	StringIndexString FilterOperator = "string"
-	IntIndexString    FilterOperator = "int"
-	UIntIndexString   FilterOperator = "uint"
-	TimeIndexString   FilterOperator = "time"
+	StringIndexString filterOperator = "string"
+	IntIndexString    filterOperator = "int"
+	UIntIndexString   filterOperator = "uint"
+	TimeIndexString   filterOperator = "time"
 )

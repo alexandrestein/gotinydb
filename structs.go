@@ -106,7 +106,7 @@ type (
 	}
 
 	// FilterOperator defines the type of filter to perform
-	FilterOperator string
+	filterOperator string
 
 	// Response holds the results of a query
 	Response struct {
@@ -125,7 +125,7 @@ type (
 	Filter struct {
 		selector     []string
 		selectorHash uint64
-		operator     FilterOperator
+		operator     filterOperator
 		values       []*filterValue
 		exclusion    bool
 	}

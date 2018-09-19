@@ -367,22 +367,22 @@ func TestIndexInfo(t *testing.T) {
 	ii := new(IndexInfo)
 
 	ii.Type = StringIndex
-	if ii.GetType() != StringIndexString {
+	if ii.GetType() != string(StringIndexString) {
 		t.Errorf("expected %s but had %s", StringIndexString, ii.GetType())
 	}
 
 	ii.Type = IntIndex
-	if ii.GetType() != IntIndexString {
+	if ii.GetType() != string(IntIndexString) {
 		t.Errorf("expected %s but had %s", IntIndexString, ii.GetType())
 	}
 
 	ii.Type = UIntIndex
-	if ii.GetType() != UIntIndexString {
+	if ii.GetType() != string(UIntIndexString) {
 		t.Errorf("expected %s but had %s", UIntIndexString, ii.GetType())
 	}
 
 	ii.Type = TimeIndex
-	if ii.GetType() != TimeIndexString {
+	if ii.GetType() != string(TimeIndexString) {
 		t.Errorf("expected %s but had %s", TimeIndexString, ii.GetType())
 	}
 

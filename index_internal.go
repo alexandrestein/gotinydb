@@ -141,7 +141,7 @@ func (i *indexType) queryEqual(ctx context.Context, ids *idsType, filter *Filter
 
 func (i *indexType) queryGreaterLess(ctx context.Context, ids *idsType, filter *Filter) {
 	greater := true
-	if filter.GetType() == Less {
+	if filter.getType() == less {
 		greater = false
 	}
 

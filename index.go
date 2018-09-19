@@ -173,13 +173,13 @@ func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bo
 func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
 	ids, _ := newIDs(ctx, filter.selectorHash, nil, nil)
 
-	switch filter.GetType() {
+	switch filter.getType() {
 	// If equal just this leave will be send
-	case Equal:
+	case equal:
 		i.queryEqual(ctx, ids, filter)
-	case Greater, Less:
+	case greater, less:
 		i.queryGreaterLess(ctx, ids, filter)
-	case Between:
+	case between:
 		i.queryBetween(ctx, ids, filter)
 	}
 
@@ -240,16 +240,16 @@ func (r *refs) asBytes() []byte {
 }
 
 // GetType returns the string representation of the index type
-func (i *IndexInfo) GetType() FilterOperator {
+func (i *IndexInfo) GetType() string {
 	switch i.Type {
 	case StringIndex:
-		return StringIndexString
+		return string(StringIndexString)
 	case IntIndex:
-		return IntIndexString
+		return string(IntIndexString)
 	case UIntIndex:
-		return UIntIndexString
+		return string(UIntIndexString)
 	case TimeIndex:
-		return TimeIndexString
+		return string(TimeIndexString)
 	default:
 		return ""
 	}
