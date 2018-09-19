@@ -14,8 +14,8 @@ var (
 	// Used to get the configuration after restarting the database
 	configID = []byte{0}
 
-	DefaultTransactionTimeOut = time.Second * 15
-	DefaultQueryTimeOut       = time.Second * 30
+	DefaultTransactionTimeOut = time.Second * 1
+	DefaultQueryTimeOut       = time.Second * 1
 	DefaultQueryLimit         = 100
 	DefaultInternalQueryLimit = 1000
 	DefaultPutBufferLimit     = 100
