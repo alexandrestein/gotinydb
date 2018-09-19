@@ -475,9 +475,6 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 }
 
 func (c *Collection) indexAllValues() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	lastID := ""
 
 newLoop:
@@ -508,12 +505,12 @@ newLoop:
 
 		m := elem.(map[string]interface{})
 
-		ctx2, cancel2 := context.WithTimeout(ctx, c.options.TransactionTimeOut)
-		defer cancel2()
+		ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
+		defer cancel()
 
 		trElement := newTransactionElement(savedElement.GetID(), m, true, c)
 
-		err := c.putIntoIndexes(ctx2, tx, trElement)
+		err := c.putIntoIndexes(ctx, tx, trElement)
 		if err != nil {
 			return err
 		}
