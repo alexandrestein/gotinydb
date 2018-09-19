@@ -3,8 +3,11 @@ package gotinydb
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log"
 	"reflect"
+	"strconv"
+	"time"
 
 	"github.com/dgraph-io/badger"
 )
@@ -163,4 +166,36 @@ func (i *indexType) queryBetween(ctx context.Context, ids *idsType, filter Filte
 	}
 
 	ids.AddIDs(tmpIDs)
+}
+
+// convertInterfaceValueFromMapToIndexType is used when indexing after insertion.
+// A pointer needs to read the all collection to index values.
+// But the values are not type any more and it needs to be recovered from the JSON record.
+func (i *indexType) convertInterfaceValueFromMapToIndexType(input interface{}) (valueTypedForIndex interface{}) {
+	switch typed := input.(type) {
+	case string:
+		switch i.Type {
+		case StringIndex:
+			return typed
+		case TimeIndex:
+			t, _ := time.Parse(time.RFC3339, typed)
+			return t
+		}
+	case json.Number:
+		switch i.Type {
+		case IntIndex:
+			asInt, _ := typed.Int64()
+			return asInt
+		case UIntIndex:
+			asUint, _ := strconv.ParseUint(typed.String(), 10, 64)
+			return uint64(asUint)
+		}
+	case []interface{}:
+		ret := make([]interface{}, len(typed))
+		for j := range typed {
+			ret[j] = i.convertInterfaceValueFromMapToIndexType(typed[j])
+		}
+		return ret
+	}
+	return
 }

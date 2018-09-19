@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"reflect"
 	"sync"
@@ -35,7 +36,6 @@ func TestCollection_Query(t *testing.T) {
 		return
 	}
 
-	c.SetIndex("email", StringIndex, "email")
 	c.SetIndex("age", UIntIndex, "Age")
 	c.SetIndex("balance", IntIndex, "Balance")
 	c.SetIndex("last connection", TimeIndex, "LastLogin")
@@ -62,6 +62,9 @@ func TestCollection_Query(t *testing.T) {
 		wg.Wait()
 	}
 	c.Put(testUser.ID, testUser)
+
+	// This will update all indexes with existing values
+	c.SetIndex("email", StringIndex, "email")
 
 	tests := []struct {
 		name         string
@@ -129,11 +132,11 @@ func TestCollection_Query(t *testing.T) {
 				NewEqualAndLessFilter(time.Now(), "LastLogin"),
 			).SetLimits(5, 0).SetRevertOrder("Age"),
 			wantResponse: []*User{
+				testUser,
 				{ID: "127", Email: "prensa-56@dedekind.com", Balance: 4495937405735533066, Address: &Address{City: "Cymbeline", ZipCode: 80}, Age: 19, LastLogin: mustParseTime("2018-01-23T09:31:19.77949703+01:00")},
 				{ID: "154", Email: "depp-88@christa.com", Balance: 7172349605666936298, Address: &Address{City: "Staubach", ZipCode: 50}, Age: 19, LastLogin: mustParseTime("2018-03-10T22:14:40.779554928+01:00")},
 				{ID: "111", Email: "sarnoff-84@amie.com", Balance: 4059682463746307250, Address: &Address{City: "Herring", ZipCode: 58}, Age: 18, LastLogin: mustParseTime("2017-12-12T23:10:51.779471556+01:00")},
 				{ID: "166", Email: "mirzam-53@carmelo.com", Balance: 4727539390372795700, Address: &Address{City: "Pribilof", ZipCode: 42}, Age: 18, LastLogin: mustParseTime("2017-10-31T22:41:07.779573284+01:00")},
-				{ID: "155", Email: "gonzalez-41@gillette.com", Balance: 7233813973658996658, Address: &Address{City: "Schlesinger", ZipCode: 3}, Age: 17, LastLogin: mustParseTime("2018-03-30T23:46:47.779556355+02:00")},
 			},
 			wantErr: false,
 		}, {
@@ -147,6 +150,15 @@ func TestCollection_Query(t *testing.T) {
 				{ID: "236", Email: "jerrold-8@figueroa.com", Balance: 1057898234992247733, Address: &Address{City: "Claudette", ZipCode: 98}, Age: 6, LastLogin: mustParseTime("2017-11-03T19:32:57.779693564+01:00")},
 				{ID: "227", Email: "lynda-24@zappa.com", Balance: 5425268988844687454, Address: &Address{City: "Palisades", ZipCode: 87}, Age: 6, LastLogin: mustParseTime("2017-03-17T03:29:00.779672591+01:00")},
 				{ID: "208", Email: "belinda-9@bullwinkle.com", Balance: 2259971995563681914, Address: &Address{City: "Amaru", ZipCode: 95}, Age: 6, LastLogin: mustParseTime("2017-01-17T20:01:07.779642818+01:00")},
+			},
+			wantErr: false,
+		}, {
+			name: "Uint Bigger Than math.MaxUint32",
+			args: NewQuery().SetFilter(
+				NewEqualAndGreaterFilter(uint(math.MaxUint32+10), "Age"),
+			).SetLimits(5, 0).SetOrder("Age"),
+			wantResponse: []*User{
+				testUser,
 			},
 			wantErr: false,
 		}, {
@@ -281,11 +293,16 @@ func queryResponses(t *testing.T, c *Collection) {
 		{ID: "193", Email: "bela-24@stephanie.com", Balance: 7418882447566429223, Address: &Address{City: "Lazaro", ZipCode: 43}, Age: 19, LastLogin: mustParseTime("2017-08-14T20:31:52.779617536+02:00")},
 	}
 
-	responseQuery, _ := c.Query(
+	responseQuery, err := c.Query(
 		NewQuery().SetFilter(
 			NewEqualFilter(uint(19), "Age"),
 		).SetLimits(10, 0),
 	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	for i, _, v := responseQuery.First(); i >= 0; i, _, v = responseQuery.Next() {
 		tmpObj := new(Type)
 		json.Unmarshal(v, tmpObj)
@@ -316,7 +333,7 @@ func queryResponses(t *testing.T, c *Collection) {
 			NewEqualFilter(uint(19), "Age"),
 		).SetLimits(10, 0),
 	)
-	_, err := responseQuery.All(func(id string, contentAsBytes []byte) error {
+	_, err = responseQuery.All(func(id string, contentAsBytes []byte) error {
 		if id == "11" {
 			return fmt.Errorf("fake")
 		}

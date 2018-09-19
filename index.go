@@ -97,7 +97,7 @@ func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex []
 			return nil, false
 		}
 	}
-	return i.testType(field)
+	return i.testType(i.convertInterfaceValueFromMapToIndexType(field))
 }
 
 // doesFilterApplyToIndex only check if the filter belongs to the index

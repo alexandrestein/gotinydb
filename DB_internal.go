@@ -143,7 +143,9 @@ func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *w
 
 		// Starts the indexing process
 		if !wtElem.bin {
-			return wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+			if len(wtElem.collection.indexes) > 0 {
+				return wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+			}
 		}
 		return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
 	}

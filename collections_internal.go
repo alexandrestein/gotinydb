@@ -49,26 +49,8 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 	}
 
 	refID := c.buildIDWhitPrefixRefs([]byte(writeTransaction.id))
-	var refsAsBytes []byte
-
-	item, err := tx.Get(refID)
-	if err != nil {
-		if err != badger.ErrKeyNotFound {
-			return err
-		}
-	} else {
-		refsAsBytes, err = item.Value()
-		if err != nil {
-			return err
-		}
-	}
 
 	refs := newRefs()
-	if refsAsBytes != nil && len(refsAsBytes) > 0 {
-		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-			return err
-		}
-	}
 
 	if refs.ObjectID == "" {
 		refs.ObjectID = writeTransaction.id
