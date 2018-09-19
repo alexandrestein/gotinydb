@@ -2,9 +2,7 @@ package gotinydb
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"math"
-	"strconv"
 	"time"
 )
 
@@ -47,10 +45,6 @@ func uintToBytes(input interface{}) ([]byte, error) {
 		typedValue = uint64(input.(uint32))
 	case uint64:
 		typedValue = input.(uint64)
-	case json.Number:
-		iAsString := input.(json.Number).String()
-
-		typedValue, _ = strconv.ParseUint(iAsString, 10, 64)
 	default:
 		return nil, ErrWrongType
 	}

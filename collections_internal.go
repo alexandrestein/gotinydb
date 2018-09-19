@@ -105,7 +105,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 		}
 	}
 
-	// Save the new reference stat on persistant storage
+	// Save the new reference stat on persistent storage
 	e := &badger.Entry{
 		Key:   refID,
 		Value: refs.asBytes(),
