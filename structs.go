@@ -27,8 +27,8 @@ type (
 	}
 
 	dbExport struct {
-		Collections []*collectionExport
-		FreePrefix  []byte
+		Collections                  []*collectionExport
+		FreePrefix, PrivateCryptoKey []byte
 	}
 	collectionExport struct {
 		Name    string
@@ -46,6 +46,9 @@ type (
 
 		// CryptoKey if present must be 32 bytes long, Otherwise an empty key is used.
 		CryptoKey []byte
+		// privateCryptoKey is saved on the database to provide a way to change the password
+		// without the need to rewrite the all database
+		privateCryptoKey []byte
 
 		// GCCycle define the time the loop for garbage collection takes to run the GC.
 		GCCycle time.Duration

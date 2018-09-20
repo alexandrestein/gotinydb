@@ -2,11 +2,13 @@ package gotinydb
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/minio/highwayhash"
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 func (d *DB) initBadger() error {
@@ -215,6 +217,9 @@ func (d *DB) loadCollections() error {
 			return err
 		}
 
+		// Load the encryption key
+		d.options.privateCryptoKey = savedDB.PrivateCryptoKey
+
 		// Save the free prefixes
 		d.freePrefix = savedDB.FreePrefix
 
@@ -257,6 +262,9 @@ func (d *DB) saveCollections() error {
 		// Save the free prefixes
 		dbToSave.FreePrefix = d.freePrefix
 
+		// Save the internal key for encryption
+		dbToSave.PrivateCryptoKey = d.options.privateCryptoKey
+
 		// Save collections
 		for _, col := range d.collections {
 			colToSave := new(collectionExport)
@@ -287,6 +295,10 @@ func (d *DB) initDB() error {
 	for i := 1; i < 256; i++ {
 		d.freePrefix[i-1] = byte(i)
 	}
+
+	newKey := make([]byte, chacha20poly1305.KeySize)
+	rand.Read(newKey)
+	d.options.privateCryptoKey = newKey
 
 	return nil
 }
@@ -331,7 +343,7 @@ func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtEl
 		storeID := d.buildFilePrefix(wtElem.id, wtElem.chunkN)
 		e := &badger.Entry{
 			Key:   storeID,
-			Value: encrypt(d.options.CryptoKey, storeID, wtElem.contentAsBytes),
+			Value: encrypt(d.options.privateCryptoKey, storeID, wtElem.contentAsBytes),
 		}
 		return txn.SetEntry(e)
 	}

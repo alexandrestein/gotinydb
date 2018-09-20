@@ -287,7 +287,7 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 					return err
 				}
 				var asBytes []byte
-				asBytes, err = decrypt(c.options.CryptoKey, item.Key(), asEncryptedBytes)
+				asBytes, err = decrypt(c.options.privateCryptoKey, item.Key(), asEncryptedBytes)
 				if err != nil {
 					return err
 				}

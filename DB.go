@@ -129,7 +129,7 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 			}
 
 			var valAsBytes []byte
-			valAsBytes, err = decrypt(d.options.CryptoKey, it.Item().Key(), valAsEncryptedBytes)
+			valAsBytes, err = decrypt(d.options.privateCryptoKey, it.Item().Key(), valAsEncryptedBytes)
 			if err != nil {
 				return err
 			}

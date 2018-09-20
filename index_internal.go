@@ -28,7 +28,7 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 		return nil, err
 	}
 	var asBytes []byte
-	asBytes, err = decrypt(i.options.CryptoKey, asItem.Key(), asEncryptedBytes)
+	asBytes, err = decrypt(i.options.privateCryptoKey, asItem.Key(), asEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 	}
 
 	var firstIDsAsBytes []byte
-	firstIDsAsBytes, err = decrypt(i.options.CryptoKey, iter.Item().Key(), firstIDsAsEncryptedBytes)
+	firstIDsAsBytes, err = decrypt(i.options.privateCryptoKey, iter.Item().Key(), firstIDsAsEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 			return nil, err
 		}
 		var idsAsBytes []byte
-		idsAsBytes, err = decrypt(i.options.CryptoKey, iter.Item().Key(), idsAsEncryptedBytes)
+		idsAsBytes, err = decrypt(i.options.privateCryptoKey, iter.Item().Key(), idsAsEncryptedBytes)
 		if err != nil {
 			return nil, err
 		}
