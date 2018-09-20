@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- Encryption replace the data integrity check. Every thing which goes into the database is encrypted.
+
+### Add
+
+- Add a loop that run garbage collection with a configurable timer.
+
 ## [0.1.0] - 2018-09-19
 
 ### Changed

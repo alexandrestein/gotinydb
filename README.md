@@ -11,12 +11,24 @@
 
 The goal is to have a fairly simple database which is light and don't needs to fit in RAM. It supports indexing for:
 
+## Features
+
+### Indexing
+
 - string
 - int, uint, int8, uint8, int16
 - uint16, int32, uint32, int64, uint64
 - time.Time
 
 If the selector point to an array values inside the array are indexed.
+
+### File and media content
+
+Support for big content with io.Reader and io.Writer interface. It split content into configurable chunks size for reads and writes.
+
+### Confidentiality and data integrity
+
+The all database is encrypted and signed with [XChaCha20-Poly1305](https://godoc.org/golang.org/x/crypto/chacha20poly1305#NewX).
 
 ## Installing
 
@@ -73,4 +85,4 @@ This project is licensed under the "Apache License, Version 2.0" see the [LICENS
 
 ## Acknowledgments
 
-- I was looking for pure `golang` database for reasonable (not to big) data set. I saw [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match which was not what I was looking for.
+- I was looking for pure `golang` database for reasonable (not to big) data set. I saw [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index was only for exact match which was not what I was looking for.
