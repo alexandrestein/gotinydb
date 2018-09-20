@@ -3,6 +3,7 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/minio/highwayhash"
@@ -20,6 +21,20 @@ func (d *DB) initBadger() error {
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		ticker := time.NewTicker(d.options.GCCycle)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				db.RunValueLogGC(0.5)
+			case <-d.ctx.Done():
+				return
+			}
+		}
+	}()
 
 	d.badgerDB = db
 	return nil

@@ -44,8 +44,11 @@ type (
 		// This define the limit which apply to the serialization of the writes
 		PutBufferLimit int
 
-		// CryptoKey if present must be 32 bytes long
+		// CryptoKey if present must be 32 bytes long, Otherwise an empty key is used.
 		CryptoKey []byte
+
+		// GCCycle define the time the loop for garbage collection takes to run the GC.
+		GCCycle time.Duration
 
 		FileChunkSize int
 

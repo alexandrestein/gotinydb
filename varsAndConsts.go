@@ -16,6 +16,7 @@ var (
 
 	DefaultTransactionTimeOut = time.Second * 1
 	DefaultQueryTimeOut       = time.Second * 1
+	DefaultGCCycle            = time.Minute * 1
 	DefaultQueryLimit         = 100
 	DefaultInternalQueryLimit = 1000
 	DefaultPutBufferLimit     = 100
@@ -58,6 +59,8 @@ func NewDefaultOptions(path string) *Options {
 		QueryTimeOut:       DefaultQueryTimeOut,
 		InternalQueryLimit: DefaultQueryLimit,
 		PutBufferLimit:     DefaultPutBufferLimit,
+
+		GCCycle: DefaultGCCycle,
 
 		BadgerOptions: DefaultBadgerOptions,
 	}
