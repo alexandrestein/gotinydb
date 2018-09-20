@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 
+	"golang.org/x/crypto/chacha20poly1305"
 	"github.com/dgraph-io/badger"
 )
 
@@ -20,6 +21,10 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	d := new(DB)
 	d.options = options
 	d.ctx = ctx
+
+	if len(d.options.CryptoKey) != chacha20poly1305.KeySize {
+		d.options.CryptoKey = make([]byte, chacha20poly1305.KeySize)
+	}
 
 	d.initWriteTransactionChan(ctx)
 

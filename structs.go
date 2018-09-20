@@ -44,6 +44,9 @@ type (
 		// This define the limit which apply to the serialization of the writes
 		PutBufferLimit int
 
+		// CryptoKey if present must be 32 bytes long
+		CryptoKey []byte
+
 		FileChunkSize int
 
 		BadgerOptions *badger.Options

@@ -101,42 +101,33 @@ func putRandRecord(c *Collection, id string) error {
 	return nil
 }
 
-func fillUpDBForBenchmarks(n int) error {
-	fmt.Printf("Fill up the database with %d records up to 1KB each\n", n)
+func fillUpDBForBenchmarks(b *testing.B, n int) (ids []string) {
+	b.Logf("Fill up the database with %d records up to 1KB each", n)
 
-	modulo := foundPourcentDivider(n)
+	ids = make([]string, n)
 
-	pourcent := 0
 	var wg sync.WaitGroup
+	wg.Add(n)
 	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func() {
-			putRandRecord(benchmarkCollection, buildID(fmt.Sprint(i)))
-			wg.Done()
-		}()
+		if b.Failed() {
+			return
+		}
 
-		if i != 0 {
-			if (i*10)%modulo == 0 {
-				wg.Wait()
-				if pourcent > 0 {
-					fmt.Printf("%d0%%\n", pourcent)
-				}
-				pourcent++
+		go func(i int) {
+			id := buildID(fmt.Sprint(i))
+			err := putRandRecord(benchmarkCollection, id)
+			if err != nil {
+				b.Error(err)
+				return
 			}
-		}
+			ids[i] = id
+			wg.Done()
+		}(i)
 	}
-	fmt.Printf("100%% done\n")
-	return nil
-}
 
-func foundPourcentDivider(n int) int {
-	ret := 1
-	for {
-		if n/ret <= 1 {
-			return ret
-		}
-		ret = ret * 10
-	}
+	wg.Wait()
+	b.Logf("DONE\n")
+	return
 }
 
 func initbenchmark(ctx context.Context) error {
@@ -151,6 +142,8 @@ func initbenchmark(ctx context.Context) error {
 
 	benchmarkDB, _ = Open(ctx, NewDefaultOptions(testPath))
 	benchmarkCollection, _ = benchmarkDB.Use("testCol")
+
+	// fillUpDBForBenchmarks(100 * 1000)
 
 	users := unmarshalDataset(dataset1)
 
@@ -167,20 +160,20 @@ func initbenchmark(ctx context.Context) error {
 			}
 		}
 	}()
-	getExistingID = make(chan string, 100)
-	go func() {
-		i := 0
-		for {
-			select {
-			case getExistingID <- buildID(fmt.Sprint(i)):
-				if i >= iForIds {
-					i = 0
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	// getExistingID = make(chan string, 100)
+	// go func() {
+	// 	i := 0
+	// 	for {
+	// 		select {
+	// 		case getExistingID <- buildID(fmt.Sprint(i)):
+	// 			if i >= iForIds {
+	// 				i = 0
+	// 			}
+	// 		case <-ctx.Done():
+	// 			return
+	// 		}
+	// 	}
+	// }()
 
 	getContent = make(chan interface{}, 100)
 	go func() {
@@ -222,7 +215,7 @@ func cleanCollection() {
 func insert(b *testing.B, parallel bool) error {
 	cleanCollection()
 
-	// b.ResetTimer()
+	b.ResetTimer()
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
@@ -234,7 +227,6 @@ func insert(b *testing.B, parallel bool) error {
 			}
 		})
 	} else {
-		b.N = 1000
 		for i := 0; i < b.N; i++ {
 			id, content := <-getID, <-getContent
 			err := benchmarkCollection.Put(id, content)
@@ -252,20 +244,25 @@ func insert(b *testing.B, parallel bool) error {
 func read(b *testing.B, parallel bool) error {
 	cleanCollection()
 
-	// b.ResetTimer()
+	ids := fillUpDBForBenchmarks(b, 10*1000)
+
+	b.ResetTimer()
+
 	if parallel {
+		i := 0
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				_, err := benchmarkCollection.Get(<-getExistingID, nil)
+				_, err := benchmarkCollection.Get(ids[i], nil)
 				if err != nil {
 					b.Error(err)
 					return
 				}
+				i++
 			}
 		})
 	} else {
 		for i := 0; i < b.N; i++ {
-			_, err := benchmarkCollection.Get(<-getExistingID, nil)
+			_, err := benchmarkCollection.Get(ids[i], nil)
 			if err != nil {
 				return err
 			}
@@ -304,7 +301,7 @@ func delete(b *testing.B, parallel bool) error {
 		}
 	}()
 
-	// b.ResetTimer()
+	b.ResetTimer()
 
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {
@@ -355,7 +352,7 @@ func query(b *testing.B, parallel bool, simple bool) error {
 			SetFilter(NewEqualAndLessFilter(-100000, "Balance"))
 	}
 
-	// b.ResetTimer()
+	b.ResetTimer()
 
 	if parallel {
 		b.RunParallel(func(pb *testing.PB) {

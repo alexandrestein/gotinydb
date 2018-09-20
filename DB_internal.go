@@ -2,11 +2,13 @@ package gotinydb
 
 import (
 	"context"
+	"crypto/cipher"
+	"crypto/rand"
 	"encoding/json"
 
-	"github.com/minio/highwayhash"
-
 	"github.com/dgraph-io/badger"
+	"github.com/minio/highwayhash"
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 func (d *DB) initBadger() error {
@@ -182,8 +184,19 @@ func (d *DB) loadCollections() error {
 			}
 			return err
 		}
+		var configAsBytesEncrypted []byte
+		configAsBytesEncrypted, err = item.Value()
+		if err != nil {
+			return err
+		}
+
+		// Decryption
+		aead, err := chacha20poly1305.NewX(d.options.CryptoKey)
+		if err != nil {
+			return err
+		}
 		var configAsBytes []byte
-		configAsBytes, err = item.Value()
+		configAsBytes, err = aead.Open(nil, configAsBytesEncrypted[:aead.NonceSize()], configAsBytesEncrypted[aead.NonceSize():], nil)
 		if err != nil {
 			return err
 		}
@@ -253,9 +266,21 @@ func (d *DB) saveCollections() error {
 			return err
 		}
 
+		// Encrypt
+		var aead cipher.AEAD
+		aead, err = chacha20poly1305.NewX(d.options.CryptoKey)
+		if err != nil {
+			return err
+		}
+
+		nonce := make([]byte, aead.NonceSize())
+		rand.Read(nonce)
+
+		dbToSaveEncrypted := append(nonce, aead.Seal(nil, nonce, dbToSaveAsBytes, nil)...)
+
 		e := &badger.Entry{
 			Key:   configID,
-			Value: dbToSaveAsBytes,
+			Value: dbToSaveEncrypted,
 		}
 
 		return txn.SetEntry(e)
