@@ -23,9 +23,8 @@ func (d *DB) initBadger() error {
 	if err != nil {
 		return err
 	}
-
-	go func() {
-		ticker := time.NewTicker(d.options.GCCycle)
+	go func(dur time.Duration) {
+		ticker := time.NewTicker(dur)
 		defer ticker.Stop()
 
 		for {
@@ -36,7 +35,7 @@ func (d *DB) initBadger() error {
 				return
 			}
 		}
-	}()
+	}(d.options.GCCycle)
 
 	d.badgerDB = db
 	return nil
