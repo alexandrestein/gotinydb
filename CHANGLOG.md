@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.0] - 2018-09-20
+
 ### Changed
 
 - Encryption replace the data integrity check. Every thing which goes into the database is encrypted.
