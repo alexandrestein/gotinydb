@@ -566,6 +566,11 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 }
 
 func TestFiles(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
@@ -573,8 +578,8 @@ func TestFiles(t *testing.T) {
 	defer os.RemoveAll(testPath)
 
 	opt := NewDefaultOptions(testPath)
-	// 499KB
-	opt.FileChunkSize = 499 * 100
+	// 235KB
+	opt.FileChunkSize = 235 * 100
 
 	db, err := Open(ctx, opt)
 	if err != nil {
@@ -582,8 +587,8 @@ func TestFiles(t *testing.T) {
 		return
 	}
 
-	// 100MB, it will be made 402 chunk
-	randBuff := make([]byte, 20*1000*1000)
+	// 100MB, it will be made 4256 chunks
+	randBuff := make([]byte, 100*1000*1000)
 	rand.Read(randBuff)
 
 	fileID := "test file ID"
@@ -603,6 +608,33 @@ func TestFiles(t *testing.T) {
 
 	if !reflect.DeepEqual(randBuff, readBuff.Bytes()) {
 		t.Error("the saved file and the rand file are not equal")
+		return
+	}
+
+	// Check the ids with chunk number are well generated
+	err = db.badgerDB.View(func(txn *badger.Txn) error {
+		storeID := db.buildFilePrefix(fileID, -1)
+
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchValues = false
+
+		it := txn.NewIterator(opt)
+		defer it.Close()
+		prevLastByte := -1
+		for it.Seek(storeID); it.ValidForPrefix(storeID); it.Next() {
+			lastByte := int(it.Item().Key()[len(it.Item().Key())-1:][0])
+			if prevLastByte+1 != lastByte {
+				if prevLastByte == 255 && lastByte != 0 {
+					t.Errorf("generated incremental bytes is not good")
+				}
+			}
+			prevLastByte = lastByte
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
 		return
 	}
 
