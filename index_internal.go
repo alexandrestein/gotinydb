@@ -13,17 +13,22 @@ import (
 )
 
 func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids *idsType, err error) {
-	tx := i.getTx(false)
-	defer tx.Discard()
+	txn := i.getTx(false)
+	defer txn.Discard()
 
 	indexedValueID := i.getIDBuilder(indexedValue)
 
-	asItem, err := tx.Get(indexedValueID)
+	asItem, err := txn.Get(indexedValueID)
+	if err != nil {
+		return nil, err
+	}
+	var asEncryptedBytes []byte
+	asEncryptedBytes, err = asItem.Value()
 	if err != nil {
 		return nil, err
 	}
 	var asBytes []byte
-	asBytes, err = asItem.Value()
+	asBytes, err = decrypt(i.options.CryptoKey, asItem.Key(), asEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -36,15 +41,15 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 }
 
 func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, limit []byte, increasing bool) (allIDs *idsType, err error) {
-	tx := i.getTx(false)
-	defer tx.Discard()
+	txn := i.getTx(false)
+	defer txn.Discard()
 
 	// Initiate the iterator
 	iterOptions := badger.DefaultIteratorOptions
 	if !increasing {
 		iterOptions.Reverse = true
 	}
-	iter := tx.NewIterator(iterOptions)
+	iter := txn.NewIterator(iterOptions)
 	defer iter.Close()
 
 	indexedValueID := i.getIDBuilder(filterValue)
@@ -55,13 +60,19 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 		return nil, ErrNotFound
 	}
 
-	firstIndexedValueAsByte := iter.Item().Key()
-	firstIDsAsByte, err := iter.Item().Value()
+	firstIndexedValueAsBytes := iter.Item().Key()
+	firstIDsAsEncryptedBytes, err := iter.Item().Value()
 	if err != nil {
 		return nil, err
 	}
 
-	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), filterValue, firstIDsAsByte)
+	var firstIDsAsBytes []byte
+	firstIDsAsBytes, err = decrypt(i.options.CryptoKey, iter.Item().Key(), firstIDsAsEncryptedBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), filterValue, firstIDsAsBytes)
 	if unmarshalIDsErr != nil {
 		return nil, unmarshalIDsErr
 	}
@@ -69,9 +80,9 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 	allIDs, _ = newIDs(ctx, i.selectorHash(), filterValue, nil)
 
 	// If the index is not string index or if index is a string but the filter value is contained into the indexed value
-	if i.Type != StringIndex || bytes.Contains(firstIndexedValueAsByte, filterValue) && i.Type == StringIndex {
+	if i.Type != StringIndex || bytes.Contains(firstIndexedValueAsBytes, filterValue) && i.Type == StringIndex {
 		// if the asked value is found
-		if !reflect.DeepEqual(firstIndexedValueAsByte, filterValue) {
+		if !reflect.DeepEqual(firstIndexedValueAsBytes, filterValue) {
 			allIDs.AddIDs(firstIDsValue)
 		}
 	}
@@ -86,11 +97,17 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 			break
 		}
 		indexedValuePlusPrefixes := iter.Item().Key()
-		idsAsByte, err := iter.Item().Value()
+		idsAsEncryptedBytes, err := iter.Item().Value()
 		if err != nil {
 			return nil, err
 		}
-		if len(indexedValuePlusPrefixes) <= 0 && len(idsAsByte) <= 0 {
+		var idsAsBytes []byte
+		idsAsBytes, err = decrypt(i.options.CryptoKey, iter.Item().Key(), idsAsEncryptedBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(indexedValuePlusPrefixes) <= 0 && len(idsAsBytes) <= 0 {
 			break
 		}
 
@@ -99,7 +116,7 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 			continue
 		}
 
-		ids, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), indexedValuePlusPrefixes, idsAsByte)
+		ids, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), indexedValuePlusPrefixes, idsAsBytes)
 		if unmarshalIDsErr != nil {
 			return nil, unmarshalIDsErr
 		}

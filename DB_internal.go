@@ -181,8 +181,14 @@ func (d *DB) loadCollections() error {
 			}
 			return err
 		}
+		var configAsBytesEncrypted []byte
+		configAsBytesEncrypted, err = item.Value()
+		if err != nil {
+			return err
+		}
+
 		var configAsBytes []byte
-		configAsBytes, err = item.Value()
+		configAsBytes, err = decrypt(d.options.CryptoKey, item.Key(), configAsBytesEncrypted)
 		if err != nil {
 			return err
 		}
@@ -254,7 +260,7 @@ func (d *DB) saveCollections() error {
 
 		e := &badger.Entry{
 			Key:   configID,
-			Value: dbToSaveAsBytes,
+			Value: encrypt(d.options.CryptoKey, configID, dbToSaveAsBytes),
 		}
 
 		return txn.SetEntry(e)
@@ -308,7 +314,11 @@ func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
 func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
 	if wtElem.isInsertion {
 		storeID := d.buildFilePrefix(wtElem.id, wtElem.chunkN)
-		return txn.Set(storeID, wtElem.contentAsBytes)
+		e := &badger.Entry{
+			Key:   storeID,
+			Value: encrypt(d.options.CryptoKey, storeID, wtElem.contentAsBytes),
+		}
+		return txn.SetEntry(e)
 	}
 	return nil
 }
