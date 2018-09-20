@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/minio/highwayhash"
-
 	"github.com/dgraph-io/badger"
+	"github.com/minio/highwayhash"
 )
 
 func (d *DB) initBadger() error {

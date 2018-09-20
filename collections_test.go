@@ -378,7 +378,7 @@ func TestCollection_GetIDsAndValues(t *testing.T) {
 	}
 }
 
-func TestCollection_Rollback(t *testing.T) {
+func TestCollection_Rollback_And_Concurrent_Writes(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
@@ -401,11 +401,17 @@ func TestCollection_Rollback(t *testing.T) {
 	users2 := unmarshalDataset(dataset2)
 	users3 := unmarshalDataset(dataset3)
 
+	var wg sync.WaitGroup
+	wg.Add(len(users))
 	for i, user := range users {
-		c.Put(user.ID, user)
-		c.Put(user.ID, users2[i])
-		c.Put(user.ID, users3[i])
+		go func(c *Collection, id string, u1, u2, u3 *User) {
+			c.Put(id, u1)
+			c.Put(id, u2)
+			c.Put(id, u3)
+			wg.Done()
+		}(c, user.ID, user, users2[i], users3[i])
 	}
+	wg.Wait()
 
 	for i := 0; i < len(users); i++ {
 		if i%2 == 0 {

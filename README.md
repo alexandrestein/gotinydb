@@ -74,4 +74,3 @@ This project is licensed under the "Apache License, Version 2.0" see the [LICENS
 ## Acknowledgments
 
 - I was looking for pure `golang` database for reasonable (not to big) data set. I saw [Tiedot](https://github.com/HouzuoGuo/tiedot) long time ago but the index is only for exact match which was not what I was looking for.
-- LSM-Tree is much more efficient for height write loads. This is used to store data ([Badger](https://github.com/dgraph-io/badger)).
