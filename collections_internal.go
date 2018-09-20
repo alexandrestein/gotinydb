@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/dgraph-io/badger"
@@ -40,8 +39,8 @@ func (c *Collection) buildStoreID(id string) []byte {
 	return c.buildIDWhitPrefixData([]byte(id))
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTransaction *writeTransactionElement) error {
-	err := c.cleanRefs(ctx, tx, writeTransaction.id)
+func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeTransaction *writeTransactionElement) error {
+	err := c.cleanRefs(ctx, txn, writeTransaction.id)
 	if err != nil {
 		if err != badger.ErrKeyNotFound {
 			return err
@@ -65,7 +64,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 
 				indexedValueID := append(index.getIDBuilder(nil), indexedValue...)
 				// Try to get the ids related to the field value
-				idsAsItem, err := tx.Get(indexedValueID)
+				idsAsItem, err := txn.Get(indexedValueID)
 				if err != nil {
 					if err != badger.ErrKeyNotFound {
 						return err
@@ -73,8 +72,15 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 				} else {
 					// If the list of ids is present for this index field value,
 					// this save the actual status of the given filed value.
+					var idsAsBytesEncrypted []byte
+					idsAsBytesEncrypted, err = idsAsItem.Value()
+					if err != nil {
+						return err
+					}
+
+					// Decrypt value
 					var idsAsBytes []byte
-					idsAsBytes, err = idsAsItem.Value()
+					idsAsBytes, err = decrypt(c.options.CryptoKey, idsAsItem.Key(), idsAsBytesEncrypted)
 					if err != nil {
 						return err
 					}
@@ -92,10 +98,10 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 				// Add the list of ID for the given field value
 				e := &badger.Entry{
 					Key:   indexedValueID,
-					Value: idsAsBytes,
+					Value: encrypt(c.options.CryptoKey, indexedValueID, idsAsBytes),
 				}
 
-				if err := tx.SetEntry(e); err != nil {
+				if err := txn.SetEntry(e); err != nil {
 					return err
 				}
 
@@ -108,24 +114,30 @@ func (c *Collection) putIntoIndexes(ctx context.Context, tx *badger.Txn, writeTr
 	// Save the new reference stat on persistent storage
 	e := &badger.Entry{
 		Key:   refID,
-		Value: refs.asBytes(),
+		Value: encrypt(c.options.CryptoKey, refID, refs.asBytes()),
 	}
 
-	return tx.SetEntry(e)
+	return txn.SetEntry(e)
 }
 
-func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString string) error {
+func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString string) error {
 	var refsAsBytes []byte
 
 	// Get the references of the given ID
 	refsDbID := c.buildIDWhitPrefixRefs([]byte(idAsString))
-	refsAsItem, err := tx.Get(refsDbID)
+	refsAsItem, err := txn.Get(refsDbID)
 	if err != nil {
 		if err != badger.ErrKeyNotFound {
 			return err
 		}
 	} else {
-		refsAsBytes, err = refsAsItem.Value()
+		var refsAsEncryptedBytes []byte
+		refsAsEncryptedBytes, err = refsAsItem.Value()
+		if err != nil {
+			return err
+		}
+
+		refsAsBytes, err = decrypt(c.options.CryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
 		if err != nil {
 			return err
 		}
@@ -143,12 +155,17 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 		for _, index := range c.indexes {
 			if index.Name == ref.IndexName {
 				indexIDForTheGivenObjectAsBytes := c.buildIDWhitPrefixIndex([]byte(index.Name), ref.IndexedValue)
-				indexedValueAsItem, err := tx.Get(indexIDForTheGivenObjectAsBytes)
+				indexedValueAsItem, err := txn.Get(indexIDForTheGivenObjectAsBytes)
+				if err != nil {
+					return err
+				}
+				var indexedValueAsEncryptedBytes []byte
+				indexedValueAsEncryptedBytes, err = indexedValueAsItem.Value()
 				if err != nil {
 					return err
 				}
 				var indexedValueAsBytes []byte
-				indexedValueAsBytes, err = indexedValueAsItem.Value()
+				indexedValueAsBytes, err = decrypt(c.options.CryptoKey, indexedValueAsItem.Key(), indexedValueAsEncryptedBytes)
 				if err != nil {
 					return err
 				}
@@ -162,10 +179,10 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 				// And saved again after the clean
 				e := &badger.Entry{
 					Key:   indexIDForTheGivenObjectAsBytes,
-					Value: ids.MustMarshal(),
+					Value: encrypt(c.options.CryptoKey, indexIDForTheGivenObjectAsBytes, ids.MustMarshal()),
 				}
 
-				err = tx.SetEntry(e)
+				err = txn.SetEntry(e)
 				if err != nil {
 					return err
 				}
@@ -180,10 +197,10 @@ func (c *Collection) cleanRefs(ctx context.Context, tx *badger.Txn, idAsString s
 
 	e := &badger.Entry{
 		Key:   refsDbID,
-		Value: refsAsBytes,
+		Value: encrypt(c.options.CryptoKey, refsDbID, refsAsBytes),
 	}
 
-	return tx.SetEntry(e)
+	return txn.SetEntry(e)
 }
 
 func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, error) {
@@ -320,8 +337,6 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 }
 
 func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, isInsertion bool, writeTransaction *writeTransactionElement) error {
-	hashSignature, _ := uintToBytes((highwayhash.Sum64(writeTransaction.contentAsBytes, make([]byte, highwayhash.Size))))
-	contentToWrite := append(hashSignature, writeTransaction.contentAsBytes...)
 
 	storeID := c.buildStoreID(writeTransaction.id)
 
@@ -329,7 +344,7 @@ func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, i
 	if isInsertion {
 		e := &badger.Entry{
 			Key:   storeID,
-			Value: contentToWrite,
+			Value: encrypt(c.options.CryptoKey, storeID, writeTransaction.contentAsBytes),
 		}
 
 		writeErr = txn.SetEntry(e)
@@ -360,14 +375,15 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 				return ErrNotFound
 			}
 
-			contentAndHashSignatureAsBytes, getValErr := item.Value()
-			if getValErr != nil {
-				return getValErr
+			contentAsEncryptedBytes, err := item.Value()
+			if err != nil {
+				return err
 			}
 
-			contentAsBytes, corrupted := c.getAndCheckContent(contentAndHashSignatureAsBytes)
-			if corrupted != nil {
-				return corrupted
+			var contentAsBytes []byte
+			contentAsBytes, err = decrypt(c.options.CryptoKey, item.Key(), contentAsEncryptedBytes)
+			if err != nil {
+				return err
 			}
 
 			ret[i] = contentAsBytes
@@ -380,29 +396,18 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 	return ret, nil
 }
 
-func (c *Collection) getAndCheckContent(contentAndHashSignatureAsBytes []byte) (content []byte, _ error) {
-	if len(contentAndHashSignatureAsBytes) <= 8 {
-		return nil, ErrDataCorrupted
+func (c *Collection) getRefs(txn *badger.Txn, id string) (*refs, error) {
+	refsAsItem, err := txn.Get(c.buildIDWhitPrefixRefs([]byte(id)))
+	if err != nil {
+		return nil, err
 	}
-
-	savedSignature := contentAndHashSignatureAsBytes[:8]
-	contentAsBytes := contentAndHashSignatureAsBytes[8:]
-	retrievedSignature, _ := uintToBytes(highwayhash.Sum64(contentAsBytes, make([]byte, highwayhash.Size)))
-
-	if !reflect.DeepEqual(savedSignature, retrievedSignature) {
-		return nil, ErrDataCorrupted
-	}
-
-	return contentAsBytes, nil
-}
-
-func (c *Collection) getRefs(tx *badger.Txn, id string) (*refs, error) {
-	refsAsItem, err := tx.Get(c.buildIDWhitPrefixRefs([]byte(id)))
+	var refsAsEncryptedBytes []byte
+	refsAsEncryptedBytes, err = refsAsItem.Value()
 	if err != nil {
 		return nil, err
 	}
 	var refsAsBytes []byte
-	refsAsBytes, err = refsAsItem.Value()
+	refsAsBytes, err = decrypt(c.options.CryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -451,10 +456,9 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 					return err
 				}
 
-				var corrupted error
-				responseItem.contentAsBytes, corrupted = c.getAndCheckContent(responseItem.contentAsBytes)
-				if corrupted != nil {
-					return corrupted
+				responseItem.contentAsBytes, err = decrypt(c.options.CryptoKey, item.Key(), responseItem.contentAsBytes)
+				if err != nil {
+					return err
 				}
 			}
 
@@ -487,8 +491,8 @@ newLoop:
 		return nil
 	}
 
-	tx := c.store.NewTransaction(true)
-	defer tx.Discard()
+	txn := c.store.NewTransaction(true)
+	defer txn.Discard()
 
 	for _, savedElement := range savedElements {
 		if savedElement.GetID() == lastID {
@@ -510,7 +514,7 @@ newLoop:
 
 		trElement := newTransactionElement(savedElement.GetID(), m, true, c)
 
-		err := c.putIntoIndexes(ctx, tx, trElement)
+		err := c.putIntoIndexes(ctx, txn, trElement)
 		if err != nil {
 			return err
 		}
@@ -518,7 +522,7 @@ newLoop:
 		lastID = savedElement.GetID()
 	}
 
-	err := tx.Commit(nil)
+	err := txn.Commit(nil)
 	if err != nil {
 		return err
 	}

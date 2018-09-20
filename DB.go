@@ -12,8 +12,8 @@ import (
 	"io"
 	"os"
 
-	"golang.org/x/crypto/chacha20poly1305"
 	"github.com/dgraph-io/badger"
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 // Open simply opens a new or existing database
@@ -123,18 +123,24 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 		it := txn.NewIterator(opt)
 		defer it.Close()
 		for it.Seek(storeID); it.ValidForPrefix(storeID); it.Next() {
-			val, err := it.Item().Value()
+			valAsEncryptedBytes, err := it.Item().Value()
+			if err != nil {
+				return err
+			}
+
+			var valAsBytes []byte
+			valAsBytes, err = decrypt(d.options.CryptoKey, it.Item().Key(), valAsEncryptedBytes)
 			if err != nil {
 				return err
 			}
 
 			var n int
-			n, err = writer.Write(val)
+			n, err = writer.Write(valAsBytes)
 			if err != nil {
 				return err
 			}
-			if n != len(val) {
-				return fmt.Errorf("the writer did not write the same number of byte but did not return error. writer returned %d but the value is %d byte length", n, len(val))
+			if n != len(valAsBytes) {
+				return fmt.Errorf("the writer did not write the same number of byte but did not return error. writer returned %d but the value is %d byte length", n, len(valAsBytes))
 			}
 		}
 

@@ -2,13 +2,10 @@ package gotinydb
 
 import (
 	"context"
-	"crypto/cipher"
-	"crypto/rand"
 	"encoding/json"
 
 	"github.com/dgraph-io/badger"
 	"github.com/minio/highwayhash"
-	"golang.org/x/crypto/chacha20poly1305"
 )
 
 func (d *DB) initBadger() error {
@@ -190,13 +187,8 @@ func (d *DB) loadCollections() error {
 			return err
 		}
 
-		// Decryption
-		aead, err := chacha20poly1305.NewX(d.options.CryptoKey)
-		if err != nil {
-			return err
-		}
 		var configAsBytes []byte
-		configAsBytes, err = aead.Open(nil, configAsBytesEncrypted[:aead.NonceSize()], configAsBytesEncrypted[aead.NonceSize():], nil)
+		configAsBytes, err = decrypt(d.options.CryptoKey, item.Key(), configAsBytesEncrypted)
 		if err != nil {
 			return err
 		}
@@ -266,21 +258,9 @@ func (d *DB) saveCollections() error {
 			return err
 		}
 
-		// Encrypt
-		var aead cipher.AEAD
-		aead, err = chacha20poly1305.NewX(d.options.CryptoKey)
-		if err != nil {
-			return err
-		}
-
-		nonce := make([]byte, aead.NonceSize())
-		rand.Read(nonce)
-
-		dbToSaveEncrypted := append(nonce, aead.Seal(nil, nonce, dbToSaveAsBytes, nil)...)
-
 		e := &badger.Entry{
 			Key:   configID,
-			Value: dbToSaveEncrypted,
+			Value: encrypt(d.options.CryptoKey, configID, dbToSaveAsBytes),
 		}
 
 		return txn.SetEntry(e)
@@ -334,7 +314,11 @@ func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
 func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
 	if wtElem.isInsertion {
 		storeID := d.buildFilePrefix(wtElem.id, wtElem.chunkN)
-		return txn.Set(storeID, wtElem.contentAsBytes)
+		e := &badger.Entry{
+			Key:   storeID,
+			Value: encrypt(d.options.CryptoKey, storeID, wtElem.contentAsBytes),
+		}
+		return txn.SetEntry(e)
 	}
 	return nil
 }

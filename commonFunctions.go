@@ -2,9 +2,11 @@ package gotinydb
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 
 	"github.com/minio/highwayhash"
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 func getIDsAsString(input []*idType) (ret []string) {
@@ -80,4 +82,29 @@ func (it IndexType) TypeName() string {
 	default:
 		return ""
 	}
+}
+
+func deriveKey(key, id []byte) (cipherKey []byte) {
+	derived := highwayhash.Sum(id, key)
+	return derived[:]
+}
+
+func encrypt(key, id, content []byte) []byte {
+	aead, _ := chacha20poly1305.NewX(deriveKey(key, id))
+
+	nonce := make([]byte, aead.NonceSize())
+	rand.Read(nonce)
+
+	return append(nonce, aead.Seal(nil, nonce, content, nil)...)
+}
+
+func decrypt(key, id, content []byte) ([]byte, error) {
+	aead, _ := chacha20poly1305.NewX(deriveKey(key, id))
+
+	decrypedContent, err := aead.Open(nil, content[:aead.NonceSize()], content[aead.NonceSize():], nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return decrypedContent, nil
 }

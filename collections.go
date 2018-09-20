@@ -148,8 +148,8 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 
 // DeleteIndex remove the index from the collection
 func (c *Collection) DeleteIndex(name string) error {
-	tx := c.store.NewTransaction(true)
-	defer tx.Discard()
+	txn := c.store.NewTransaction(true)
+	defer txn.Discard()
 	// Find the correct index from the list
 	for i, activeIndex := range c.indexes {
 		if activeIndex.Name == name {
@@ -161,7 +161,7 @@ func (c *Collection) DeleteIndex(name string) error {
 			// Remove all indexed values from database
 			iteratorOptions := badger.DefaultIteratorOptions
 			iteratorOptions.PrefetchValues = false
-			iterator := tx.NewIterator(iteratorOptions)
+			iterator := txn.NewIterator(iteratorOptions)
 			// Make sure that the iterator is closed.
 			// But we have to make sure that close is called only onces
 			// but we need to run it before commit.
@@ -173,7 +173,7 @@ func (c *Collection) DeleteIndex(name string) error {
 
 			indexPrefix := c.buildIDWhitPrefixIndex([]byte(name), nil)
 			for iterator.Seek(indexPrefix); iterator.ValidForPrefix(indexPrefix); iterator.Next() {
-				err := tx.Delete(iterator.Item().Key())
+				err := txn.Delete(iterator.Item().Key())
 				if err != nil {
 					return err
 				}
@@ -182,7 +182,7 @@ func (c *Collection) DeleteIndex(name string) error {
 			// Need to close the iterator before commit
 			iterator.Close()
 
-			err := tx.Commit(nil)
+			err := txn.Commit(nil)
 			if err != nil {
 				return err
 			}
@@ -280,13 +280,20 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 				return ErrRollbackVersionNotFound
 			} else if previousVersion == 0 {
 				item := iterator.Item()
-				asBytes, valueErr := item.Value()
-				if valueErr != nil {
-					return valueErr
+
+				var asEncryptedBytes []byte
+				asEncryptedBytes, err = item.Value()
+				if err != nil {
+					return err
+				}
+				var asBytes []byte
+				asBytes, err = decrypt(c.options.CryptoKey, item.Key(), asEncryptedBytes)
+				if err != nil {
+					return err
 				}
 
 				// Build a custom decoder to use the number interface instead of float64
-				decoder := json.NewDecoder(bytes.NewBuffer(asBytes[8:]))
+				decoder := json.NewDecoder(bytes.NewBuffer(asBytes))
 				decoder.UseNumber()
 
 				unmarshalErr := decoder.Decode(&contentAsInterface)
