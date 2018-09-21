@@ -59,12 +59,13 @@ Take a look at [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb) for
 - [Btree](https://github.com/google/btree) - Is the in memory list used to save sub queries elements.
 - [Structs](https://github.com/fatih/structs) - Used to cut objects in part for indexing
 
-## Possible Road Map
+## Road Map
 
 - Make a basic master/slaves replication system for data protection
-- Make a simple web interface
-- Add "has" or "exist" filter
 - Support float
+
+### Maybe
+
 - Full text search with [Bleve](http://www.blevesearch.com/)
 
 ## Contributing
