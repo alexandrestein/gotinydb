@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Add
 
+- ENCRYPTION: support for update the encryption key.
 - Links in the changelog to provide easy diff file with github compare.
 
 ## [[0.2.1]](https://github.com/alexandrestein/gotinydb/compare/v0.2.0...v0.2.1) - 2018-09-20
@@ -44,7 +45,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Bolt database.
 
-## [[0.0.8] ](https://github.com/alexandrestein/gotinydb/compare/v0.0.7...v0.0.8)- 2018-09-07
+## [[0.0.8]](https://github.com/alexandrestein/gotinydb/compare/v0.0.7...v0.0.8)- 2018-09-07
 
 ### Added
 

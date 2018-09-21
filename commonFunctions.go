@@ -111,7 +111,7 @@ func decrypt(key [32]byte, id, content []byte) ([]byte, error) {
 	cipherKey, nonce := deriveKey(key, id, seed)
 	aead, _ := chacha20poly1305.NewX(cipherKey)
 
-	decrypedContent, err := aead.Open(nil, nonce, content[aead.NonceSize():], nil)
+	decrypedContent, err := aead.Open(nil, nonce, content[chacha20poly1305.NonceSizeX:], nil)
 	if err != nil {
 		return nil, err
 	}

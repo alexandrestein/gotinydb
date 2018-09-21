@@ -54,7 +54,22 @@ func (d *DB) Use(colName string) (*Collection, error) {
 // Some element won't apply before the database restart.
 // For example the PutBufferLimit can't be change after the collection is started.
 func (d *DB) SetOptions(options *Options) error {
+	// Check if the crypto key has been updated
+	cryptoChanged := false
+	if d.options.CryptoKey != options.CryptoKey {
+		cryptoChanged = true
+		options.privateCryptoKey = d.options.privateCryptoKey
+	}
+
 	d.options = options
+
+	// If the crypto key has been changed the config needs to be save with the new key
+	if cryptoChanged {
+		err := d.saveCollections()
+		if err != nil {
+			return err
+		}
+	}
 
 	// Apply the configuration to all collections index stores
 	for _, col := range d.collections {

@@ -193,10 +193,47 @@ func TestDB_SetOptions(t *testing.T) {
 		return
 	}
 
+	c.Put(testUser.ID, testUser)
+
 	// To test index option update
 	c.SetIndex("test", StringIndex, "nil")
 
-	db.SetOptions(NewDefaultOptions(testPath))
+	cryptoKey := [32]byte{}
+	rand.Read(cryptoKey[:])
+
+	options := NewDefaultOptions(testPath)
+	options.CryptoKey = cryptoKey
+
+	err = db.SetOptions(options)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	db.Close()
+
+	// Build a new option because it is degraded after use
+	options = NewDefaultOptions(testPath)
+	options.CryptoKey = cryptoKey
+
+	db, err = Open(ctx, options)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer db.Close()
+
+	c, err = db.Use("testCol")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	retrievedUser := new(User)
+	_, err = c.Get(testUser.ID, retrievedUser)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 }
 
 func TestDB_DeleteCollection(t *testing.T) {
