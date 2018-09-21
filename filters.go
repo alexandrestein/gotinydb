@@ -53,6 +53,17 @@ func NewFieldExistsFilter(s ...string) *Filter {
 	return ret
 }
 
+// NewContainsFilter builds a Filter pointer for equal query.
+// This filter can be slow because it reads the all index
+func NewContainsFilter(value interface{}, s ...string) *Filter {
+	ret := &Filter{
+		operator: contains,
+	}
+	ret.compareTo(value)
+	ret.setSelector(s...)
+	return ret
+}
+
 // newfilterValue build a new filter value to be used inside the filters
 func newfilterValue(value interface{}) (*filterValue, error) {
 	var t IndexType

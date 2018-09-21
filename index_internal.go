@@ -209,6 +209,62 @@ func (i *indexType) queryExists(ctx context.Context, ids *idsType, filter *Filte
 			return
 		}
 		ids.AddIDs(tmpIDs)
+
+		// Clean if to big
+		if len(ids.IDs) >= i.options.InternalQueryLimit {
+			ids.IDs = ids.IDs[:i.options.InternalQueryLimit]
+			break
+		}
+	}
+
+	return
+}
+
+func (i *indexType) queryContains(ctx context.Context, ids *idsType, filter *Filter) {
+	if i.Type != StringIndex {
+		return
+	}
+
+	txn := i.getTx(false)
+	defer txn.Discard()
+
+	prefixID := i.getIDBuilder(nil)
+
+	iter := txn.NewIterator(badger.DefaultIteratorOptions)
+	defer iter.Close()
+
+	for iter.Seek(prefixID); iter.ValidForPrefix(prefixID); iter.Next() {
+		asEncryptedBytes, err := iter.Item().Value()
+		if err != nil {
+			return
+		}
+		var asBytes []byte
+		asBytes, err = decrypt(i.options.privateCryptoKey, iter.Item().Key(), asEncryptedBytes)
+		if err != nil {
+			return
+		}
+
+		var tmpIDs *idsType
+		tmpIDs, err = newIDs(ctx, i.selectorHash(), iter.Item().Key()[len(prefixID):], asBytes)
+		if err != nil {
+			return
+		}
+
+		if len(tmpIDs.IDs) <= 0 {
+			continue
+		}
+
+		// Check if the filter value as byte is inside the indexed value
+		if bytes.Contains(iter.Item().Key()[len(prefixID):], filter.values[0].Bytes()) {
+			// If yes all the related ids containe also the filter value
+			ids.AddIDs(tmpIDs)
+		}
+
+		// Clean if to big
+		if len(ids.IDs) >= i.options.InternalQueryLimit {
+			ids.IDs = ids.IDs[:i.options.InternalQueryLimit]
+			break
+		}
 	}
 
 	return

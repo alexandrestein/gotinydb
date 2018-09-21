@@ -182,6 +182,15 @@ func TestCollection_Query(t *testing.T) {
 			},
 			wantErr: false,
 		}, {
+			name: "Exists Contains",
+			args: c.NewQuery().SetFilter(
+				NewContainsFilter("oeffer-67", "email"),
+			),
+			wantResponse: []*User{
+				{ID: "283", Email: "bonhoeffer-67@agatha.com", Balance: 6915424560435208594, Address: &Address{City: "Lon", ZipCode: 96}, Age: 6, LastLogin: mustParseTime("2016-12-15T19:17:56.779778796+01:00")},
+			},
+			wantErr: false,
+		}, {
 			name: "Exclude Filter",
 			args: c.NewQuery().SetFilter(
 				NewEqualAndBetweenFilter(uint(16), uint(18), "Age"),

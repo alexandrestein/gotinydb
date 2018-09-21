@@ -96,11 +96,12 @@ var (
 
 // Those constants defines the different types of filter to perform at query
 const (
-	equal   filterOperator = "eq"
-	greater filterOperator = "gr"
-	less    filterOperator = "le"
-	between filterOperator = "bw"
-	exists  filterOperator = "ex"
+	equal    filterOperator = "eq"
+	greater  filterOperator = "gr"
+	less     filterOperator = "le"
+	between  filterOperator = "bw"
+	exists   filterOperator = "ex"
+	contains filterOperator = "cn"
 )
 
 // Those constants defines the prefix used to split different element of the collection

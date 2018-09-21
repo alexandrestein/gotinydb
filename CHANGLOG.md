@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - ENCRYPTION: support for update the encryption key.
 - Links in the changelog to provide easy diff file with github compare.
-- Exists filter.
+- Exists filter objects which has the requested field.
+- Contains filter objects when the requested values is some where inside the field value.
 
 ## [[0.2.1]](https://github.com/alexandrestein/gotinydb/compare/v0.2.0...v0.2.1) - 2018-09-20
 

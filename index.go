@@ -188,6 +188,8 @@ func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan
 		i.queryBetween(ctx, ids, filter)
 	case exists:
 		i.queryExists(ctx, ids, filter)
+	case contains:
+		i.queryContains(ctx, ids, filter)
 	}
 
 	// Force to check first if a cancel signal has been send
