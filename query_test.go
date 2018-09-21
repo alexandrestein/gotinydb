@@ -16,7 +16,7 @@ func TestCollection_Query(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	testPath := "queryTest"
+	testPath := os.TempDir() + "/queryTest"
 	defer os.RemoveAll(testPath)
 
 	conf := NewDefaultOptions(testPath)

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/blake2b"
 	"github.com/dgraph-io/badger"
 )
 
@@ -599,6 +600,8 @@ func TestFiles(t *testing.T) {
 		return
 	}
 
+	randHash := blake2b.Sum256(randBuff)
+
 	readBuff := bytes.NewBuffer(nil)
 	err = db.ReadFile(fileID, readBuff)
 	if err != nil {
@@ -606,7 +609,9 @@ func TestFiles(t *testing.T) {
 		return
 	}
 
-	if !reflect.DeepEqual(randBuff, readBuff.Bytes()) {
+	readHash := blake2b.Sum256(readBuff.Bytes())
+
+	if !reflect.DeepEqual(randHash, readHash) {
 		t.Error("the saved file and the rand file are not equal")
 		return
 	}

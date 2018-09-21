@@ -21,7 +21,7 @@ var (
 
 func Example() {
 	// getTestPathChan is an test channel to get test path to TMP directory
-	dbTestPath := "basicExample"
+	dbTestPath := os.TempDir() + "/basicExample"
 	defer os.RemoveAll(dbTestPath)
 
 	ctx, cancel := context.WithCancel(context.Background())
