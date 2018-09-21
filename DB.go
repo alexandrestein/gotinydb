@@ -13,7 +13,6 @@ import (
 	"os"
 
 	"github.com/dgraph-io/badger"
-	"golang.org/x/crypto/chacha20poly1305"
 )
 
 // Open simply opens a new or existing database
@@ -21,10 +20,6 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	d := new(DB)
 	d.options = options
 	d.ctx = ctx
-
-	if len(d.options.CryptoKey) != chacha20poly1305.KeySize {
-		d.options.CryptoKey = [chacha20poly1305.KeySize]byte{}
-	}
 
 	d.initWriteTransactionChan(ctx)
 
@@ -96,7 +91,7 @@ func (d *DB) PutFile(id string, reader io.Reader) error {
 		nWritten, err := reader.Read(buff)
 		// The read is done and it returns
 		if nWritten == 0 || err == io.EOF && nWritten == 0 {
-			return nil
+			break
 		}
 		// Return error if any
 		if err != nil && err != io.EOF {
@@ -149,13 +144,9 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 				return err
 			}
 
-			var n int
-			n, err = writer.Write(valAsBytes)
+			_, err = writer.Write(valAsBytes)
 			if err != nil {
 				return err
-			}
-			if n != len(valAsBytes) {
-				return fmt.Errorf("the writer did not write the same number of byte but did not return error. writer returned %d but the value is %d byte length", n, len(valAsBytes))
 			}
 		}
 

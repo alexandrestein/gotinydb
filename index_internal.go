@@ -33,11 +33,7 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 		return nil, err
 	}
 
-	ids, err = newIDs(ctx, i.selectorHash(), indexedValue, asBytes)
-	if err != nil {
-		return nil, err
-	}
-	return ids, nil
+	return newIDs(ctx, i.selectorHash(), indexedValue, asBytes)
 }
 
 func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, limit []byte, increasing bool) (allIDs *idsType, err error) {
@@ -72,10 +68,7 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 		return nil, err
 	}
 
-	firstIDsValue, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), filterValue, firstIDsAsBytes)
-	if unmarshalIDsErr != nil {
-		return nil, unmarshalIDsErr
-	}
+	firstIDsValue, _ := newIDs(ctx, i.selectorHash(), filterValue, firstIDsAsBytes)
 
 	allIDs, _ = newIDs(ctx, i.selectorHash(), filterValue, nil)
 
@@ -107,19 +100,12 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 			return nil, err
 		}
 
-		if len(indexedValuePlusPrefixes) <= 0 && len(idsAsBytes) <= 0 {
-			break
-		}
-
 		// The indexed value needs at least to containe the filter value
 		if i.Type == StringIndex && !bytes.Contains(indexedValuePlusPrefixes, filterValue) {
 			continue
 		}
 
-		ids, unmarshalIDsErr := newIDs(ctx, i.selectorHash(), indexedValuePlusPrefixes, idsAsBytes)
-		if unmarshalIDsErr != nil {
-			return nil, unmarshalIDsErr
-		}
+		ids, _ := newIDs(ctx, i.selectorHash(), indexedValuePlusPrefixes, idsAsBytes)
 
 		if limit != nil {
 			// if keepEqual {
@@ -203,11 +189,7 @@ func (i *indexType) queryExists(ctx context.Context, ids *idsType, filter *Filte
 			return
 		}
 
-		var tmpIDs *idsType
-		tmpIDs, err = newIDs(ctx, i.selectorHash(), iter.Item().Key()[len(prefixID):], asBytes)
-		if err != nil {
-			return
-		}
+		tmpIDs, _ := newIDs(ctx, i.selectorHash(), iter.Item().Key()[len(prefixID):], asBytes)
 		ids.AddIDs(tmpIDs)
 
 		// Clean if to big
@@ -244,11 +226,7 @@ func (i *indexType) queryContains(ctx context.Context, ids *idsType, filter *Fil
 			return
 		}
 
-		var tmpIDs *idsType
-		tmpIDs, err = newIDs(ctx, i.selectorHash(), iter.Item().Key()[len(prefixID):], asBytes)
-		if err != nil {
-			return
-		}
+		tmpIDs, _ := newIDs(ctx, i.selectorHash(), iter.Item().Key()[len(prefixID):], asBytes)
 
 		if len(tmpIDs.IDs) <= 0 {
 			continue

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
@@ -82,10 +81,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeT
 						return err
 					}
 
-					ids, err = newIDs(ctx, 0, nil, idsAsBytes)
-					if err != nil {
-						return err
-					}
+					ids, _ = newIDs(ctx, 0, nil, idsAsBytes)
 				}
 
 				id := newID(ctx, writeTransaction.id)
@@ -142,9 +138,7 @@ func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString 
 
 	refs := newRefs()
 	if refsAsBytes != nil && len(refsAsBytes) > 0 {
-		if err := json.Unmarshal(refsAsBytes, refs); err != nil {
-			return err
-		}
+		json.Unmarshal(refsAsBytes, refs)
 	}
 
 	// Clean every reference of the object In all indexes if present
@@ -167,10 +161,7 @@ func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString 
 					return err
 				}
 				// If reference present in this index the reference is cleaned
-				ids, newIDErr := newIDs(ctx, 0, nil, indexedValueAsBytes)
-				if newIDErr != nil {
-					return newIDErr
-				}
+				ids, _ := newIDs(ctx, 0, nil, indexedValueAsBytes)
 				ids.RmID(idAsString)
 
 				// And saved again after the clean
@@ -187,10 +178,7 @@ func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString 
 		}
 	}
 
-	refsAsBytes, err = json.Marshal(refs)
-	if err != nil {
-		return err
-	}
+	refsAsBytes, _ = json.Marshal(refs)
 
 	e := &badger.Entry{
 		Key:   refsDbID,
@@ -337,27 +325,20 @@ func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, i
 
 	storeID := c.buildStoreID(writeTransaction.id)
 
-	var writeErr error
 	if isInsertion {
 		e := &badger.Entry{
 			Key:   storeID,
 			Value: encrypt(c.options.privateCryptoKey, storeID, writeTransaction.contentAsBytes),
 		}
 
-		writeErr = txn.SetEntry(e)
-	} else {
-		writeErr = txn.Delete(storeID)
+		return txn.SetEntry(e)
 	}
-	if writeErr != nil {
-		return fmt.Errorf("error writing %q: %s", writeTransaction.id, writeErr.Error())
-	}
-
-	return nil
+	return txn.Delete(storeID)
 }
 
 func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 	ret := make([][]byte, len(ids))
-	if err := c.store.View(func(txn *badger.Txn) error {
+	return ret, c.store.View(func(txn *badger.Txn) error {
 		for i, id := range ids {
 			idAsBytes := c.buildStoreID(id)
 			item, getError := txn.Get(idAsBytes)
@@ -386,11 +367,7 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 			ret[i] = contentAsBytes
 		}
 		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return ret, nil
+	})
 }
 
 func (c *Collection) getRefs(txn *badger.Txn, id string) (*refs, error) {
@@ -409,9 +386,6 @@ func (c *Collection) getRefs(txn *badger.Txn, id string) (*refs, error) {
 		return nil, err
 	}
 	refs := newRefsFromDB(refsAsBytes)
-	if refs == nil {
-		return nil, fmt.Errorf("references mal formed: %s", string(refsAsBytes))
-	}
 	return refs, nil
 }
 
@@ -421,7 +395,7 @@ func (c *Collection) getRefs(txn *badger.Txn, id string) (*refs, error) {
 func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bool) ([]*ResponseElem, error) {
 	response := make([]*ResponseElem, limit)
 
-	err := c.store.View(func(txn *badger.Txn) error {
+	return response, c.store.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
@@ -468,11 +442,6 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 		response = response[:count]
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
 }
 
 func (c *Collection) indexAllValues() error {

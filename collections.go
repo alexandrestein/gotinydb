@@ -306,10 +306,7 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 				decoder := json.NewDecoder(bytes.NewBuffer(asBytes))
 				decoder.UseNumber()
 
-				unmarshalErr := decoder.Decode(&contentAsInterface)
-				if unmarshalErr != nil {
-					return unmarshalErr
-				}
+				decoder.Decode(&contentAsInterface)
 
 				timestamp = item.Version()
 				return nil
