@@ -74,7 +74,7 @@ func Basic() error {
 	}
 
 	// Initialize a query pointer
-	queryPointer := gotinydb.NewQuery()
+	queryPointer := c.NewQuery()
 
 	// Build the filter
 	queryFilter := gotinydb.NewEqualFilter("jonas-90@tlaloc.com", "Email")
@@ -83,7 +83,7 @@ func Basic() error {
 	queryPointer.SetFilter(queryFilter)
 
 	// Or this could be:
-	queryPointer = gotinydb.NewQuery().SetFilter(
+	queryPointer = c.NewQuery().SetFilter(
 		gotinydb.NewEqualFilter("jonas-90@tlaloc.com", "Email"),
 	)
 

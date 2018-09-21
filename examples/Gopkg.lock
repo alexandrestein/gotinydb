@@ -11,11 +11,11 @@
 
 [[projects]]
   branch = "dev"
-  digest = "1:21dafe0234ac27b668bfee032ff76842b7ff2593700de91d0fb8e69240484ef3"
+  digest = "1:2efa096d7c117967a3b5ad4a27089190eadeb7710884d56377483f646f0178ab"
   name = "github.com/alexandrestein/gotinydb"
   packages = ["."]
   pruneopts = "UT"
-  revision = "8059c449eb06494172ccca979da9ccaa181c06de"
+  revision = "d017dd119c0fb3a8ecd462ab164261b6bb545acc"
 
 [[projects]]
   digest = "1:5f5090f05382959db941fa45acbeb7f4c5241aa8ac0f8f4393dec696e5953f53"
@@ -66,14 +66,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c99caced18127b6ae7a0be25bdf64155a8b5337d18fce1e7df0a8e68beb18767"
-  name = "github.com/minio/highwayhash"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "85fc8a2dacad36a6beb2865793cd81363a496696"
-
-[[projects]]
-  branch = "master"
   digest = "1:3bf17a6e6eaa6ad24152148a631d18662f7212e21637c2699bff3369b7f00fa2"
   name = "github.com/petar/GoLLRB"
   packages = ["llrb"]
@@ -90,6 +82,20 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a3089eaf292d30667c4a3b3500224d79b7142097b49f3f7a5a25f6f02f6bfc68"
+  name = "golang.org/x/crypto"
+  packages = [
+    "blake2b",
+    "chacha20poly1305",
+    "internal/chacha20",
+    "internal/subtle",
+    "poly1305",
+  ]
+  pruneopts = "UT"
+  revision = "0e37d006457bf46f9e6692014ba72ef82c33022c"
+
+[[projects]]
+  branch = "master"
   digest = "1:a7b3aa11890fbe342ed4bf76a27986473d13103ae14796dcf2b55521c93e2547"
   name = "golang.org/x/net"
   packages = [
@@ -98,18 +104,18 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
+  revision = "2f5d2388922f370f4355f327fcf4cfe9f5583908"
 
 [[projects]]
   branch = "master"
-  digest = "1:7f80a9df45c36c39dc39f4f36077a71faf68f1d3a8e424759e7b84e7c1c1af40"
+  digest = "1:c5421a8113dc45cb64ea49585a5b2c95785c786f586201c5f8227ec5e08c75ec"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "ee1b12c67af419cf5a9be3bdbeea7fc1c5f32f11"
+  revision = "d47a0f3392421c5624713c9a19fe781f651f8a50"
 
 [solve-meta]
   analyzer-name = "dep"
