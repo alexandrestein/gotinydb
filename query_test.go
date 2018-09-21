@@ -22,6 +22,7 @@ func TestCollection_Query(t *testing.T) {
 	conf := NewDefaultOptions(testPath)
 	// This limit the queue to prevent the race overflow during test
 	conf.PutBufferLimit = 100
+	conf.QueryTimeOut = time.Minute * 10
 
 	db, err := Open(ctx, conf)
 	if err != nil {
@@ -75,7 +76,7 @@ func TestCollection_Query(t *testing.T) {
 	}{
 		{
 			name: "Equal String Limit 1",
-			args: NewQuery().SetFilter(
+			args: c.NewQuery().SetFilter(
 				NewEqualFilter("estrada-21@allie.com", "email"),
 			).SetLimits(1, 0),
 			wantResponse: []*User{
@@ -85,7 +86,7 @@ func TestCollection_Query(t *testing.T) {
 		},
 		{
 			name: "Equal Uint Limit 10",
-			args: NewQuery().SetFilter(
+			args: c.NewQuery().SetFilter(
 				NewEqualFilter(uint(19), "Age"),
 			).SetLimits(10, 0),
 			wantResponse: []*User{
@@ -103,7 +104,7 @@ func TestCollection_Query(t *testing.T) {
 			wantErr: false,
 		}, {
 			name: "Greater Int Limit 5 No Order",
-			args: NewQuery().SetFilter(
+			args: c.NewQuery().SetFilter(
 				NewEqualAndGreaterFilter(uint(19), "Age"),
 			).SetLimits(5, 0),
 			wantResponse: []*User{
@@ -116,7 +117,7 @@ func TestCollection_Query(t *testing.T) {
 			wantErr: false,
 		}, {
 			name: "Greater Int Limit 5 With Order",
-			args: NewQuery().SetFilter(
+			args: c.NewQuery().SetFilter(
 				NewEqualAndGreaterFilter(uint(19), "Age"),
 			).SetLimits(5, 0).SetOrder("Age"),
 			wantResponse: []*User{
@@ -129,7 +130,7 @@ func TestCollection_Query(t *testing.T) {
 			wantErr: false,
 		}, {
 			name: "Less Time Limit 5 With Order",
-			args: NewQuery().SetFilter(
+			args: c.NewQuery().SetFilter(
 				NewEqualAndLessFilter(time.Now(), "LastLogin"),
 			).SetLimits(5, 0).SetRevertOrder("Age"),
 			wantResponse: []*User{
@@ -142,7 +143,7 @@ func TestCollection_Query(t *testing.T) {
 			wantErr: false,
 		}, {
 			name: "Between Int Limit 5 Order",
-			args: NewQuery().SetFilter(
+			args: c.NewQuery().SetFilter(
 				NewEqualAndBetweenFilter(uint(6), uint(10), "Age"),
 			).SetLimits(5, 0).SetOrder("Age"),
 			wantResponse: []*User{
@@ -155,7 +156,7 @@ func TestCollection_Query(t *testing.T) {
 			wantErr: false,
 		}, {
 			name: "Uint Bigger Than math.MaxUint32",
-			args: NewQuery().SetFilter(
+			args: c.NewQuery().SetFilter(
 				NewEqualAndGreaterFilter(uint(math.MaxUint32+10), "Age"),
 			).SetLimits(5, 0).SetOrder("Age"),
 			wantResponse: []*User{
@@ -163,8 +164,8 @@ func TestCollection_Query(t *testing.T) {
 			},
 			wantErr: false,
 		}, {
-			name: "Slice query",
-			args: NewQuery().SetFilter(
+			name: "Slice Query",
+			args: c.NewQuery().SetFilter(
 				NewEqualAndGreaterFilter(10, "related"),
 			),
 			wantResponse: []*User{
@@ -172,8 +173,17 @@ func TestCollection_Query(t *testing.T) {
 			},
 			wantErr: false,
 		}, {
+			name: "Exists Query",
+			args: c.NewQuery().SetFilter(
+				NewFieldExistsFilter("related"),
+			),
+			wantResponse: []*User{
+				testUser,
+			},
+			wantErr: false,
+		}, {
 			name: "Exclude Filter",
-			args: NewQuery().SetFilter(
+			args: c.NewQuery().SetFilter(
 				NewEqualAndBetweenFilter(uint(16), uint(18), "Age"),
 			).SetExclusionFilter(
 				NewEqualFilter(uint(17), "Age"),
@@ -213,7 +223,7 @@ func TestCollection_Query(t *testing.T) {
 			wantErr: false,
 		}, {
 			name: "Nothing To Do",
-			args: NewQuery(),
+			args: c.NewQuery(),
 			wantResponse: []*User{
 				testUser,
 			},
@@ -258,7 +268,7 @@ func TestCollection_Query(t *testing.T) {
 	}
 
 	_, err = c.Query(
-		NewQuery().SetFilter(
+		c.NewQuery().SetFilter(
 			NewEqualFilter("estrada-21@allie.com", "email"),
 		).SetLimits(1, 0).SetTimeout(time.Nanosecond),
 	)
@@ -296,7 +306,7 @@ func queryResponses(t *testing.T, c *Collection) {
 	}
 
 	responseQuery, err := c.Query(
-		NewQuery().SetFilter(
+		c.NewQuery().SetFilter(
 			NewEqualFilter(uint(19), "Age"),
 		).SetLimits(10, 0),
 	)
@@ -316,7 +326,7 @@ func queryResponses(t *testing.T, c *Collection) {
 	}
 
 	responseQuery, _ = c.Query(
-		NewQuery().SetFilter(
+		c.NewQuery().SetFilter(
 			NewEqualFilter(uint(19), "Age"),
 		).SetLimits(10, 0),
 	)
@@ -331,7 +341,7 @@ func queryResponses(t *testing.T, c *Collection) {
 	}
 
 	responseQuery, _ = c.Query(
-		NewQuery().SetFilter(
+		c.NewQuery().SetFilter(
 			NewEqualFilter(uint(19), "Age"),
 		).SetLimits(10, 0),
 	)
@@ -347,7 +357,7 @@ func queryResponses(t *testing.T, c *Collection) {
 	}
 
 	responseQuery, _ = c.Query(
-		NewQuery().SetFilter(
+		c.NewQuery().SetFilter(
 			NewEqualFilter("estrada-21@allie.com", "email"),
 		),
 	)

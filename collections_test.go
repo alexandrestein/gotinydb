@@ -73,7 +73,7 @@ func TestCollection_PutGetAndDelete(t *testing.T) {
 	}
 
 	_, err = c.Query(
-		NewQuery().SetFilter(
+		c.NewQuery().SetFilter(
 			NewEqualFilter("clement-38@thurmond.com", "email"),
 		),
 	)
@@ -134,7 +134,7 @@ func TestCollection_PutGetAndDeleteBin(t *testing.T) {
 	// Test to update with a index element
 	c.Put(contentID, testUser)
 	userFromQuery := new(User)
-	response, _ := c.Query(NewQuery().SetFilter(
+	response, _ := c.Query(c.NewQuery().SetFilter(
 		NewEqualFilter(testUser.Email, "email"),
 	))
 	response.One(userFromQuery)
@@ -151,7 +151,7 @@ func TestCollection_PutGetAndDeleteBin(t *testing.T) {
 		return
 	}
 
-	_, err = c.Query(NewQuery().SetFilter(
+	_, err = c.Query(c.NewQuery().SetFilter(
 		NewEqualFilter(testUser.Email, "email"),
 	))
 	if err != ErrNotFound {

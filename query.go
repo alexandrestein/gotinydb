@@ -46,16 +46,6 @@ func (iMs *idsTypeMultiSorter) less(i, j int) bool {
 	return p.ID > q.ID
 }
 
-// NewQuery build a new query object.
-// It also set the default limit.
-func NewQuery() *Query {
-	return &Query{
-		limit:         DefaultQueryLimit,
-		internalLimit: DefaultQueryLimit * 10,
-		timeout:       DefaultQueryTimeOut,
-	}
-}
-
 // SetLimits defines the configurable limit of IDs.
 // The first parameters is the limit of the result.
 // The second define the internal limit of the query.
@@ -198,7 +188,7 @@ func (i *idType) Occurrences(target int) bool {
 	}
 	i.ch <- 0
 
-	if i.occurrences == target {
+	if i.occurrences >= target {
 		return true
 	}
 	return false

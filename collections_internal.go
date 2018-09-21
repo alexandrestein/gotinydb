@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
@@ -256,7 +255,6 @@ func (c *Collection) queryGetIDsLoop(ctx context.Context, tree *btree.BTree, fin
 				}
 			}
 		case <-ctx.Done():
-			time.Sleep(time.Millisecond * 100)
 			return nil, ErrTimeOut
 		}
 
@@ -294,7 +292,8 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 		return refs
 	}
 
-	// iterate the response tree to get only IDs which has been found in every index queries
+	// Iterate the response tree to get only IDs which has been found in every index queries.
+	// The response goes to idsSlice.
 	occurrenceFunc, idsSlice := occurrenceTreeIterator(q.nbSelectFilters(), q.internalLimit, q.order, getRefFunc)
 	tree.Ascend(occurrenceFunc)
 

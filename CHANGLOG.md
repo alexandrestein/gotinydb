@@ -12,11 +12,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - ENCRYPTION: Key management is redesigned to protect the nonce. A random part is generated for every writes and is used to derive the nonce.
 - Optimized the file testing to be more memory efficient and much faster. So short skip has been removed.
 - Upgrade dependencies.
+- NewQuery in now *Collection.NewQuery to use the configured settings by default.
 
 ### Add
 
 - ENCRYPTION: support for update the encryption key.
 - Links in the changelog to provide easy diff file with github compare.
+- Exists filter.
 
 ## [[0.2.1]](https://github.com/alexandrestein/gotinydb/compare/v0.2.0...v0.2.1) - 2018-09-20
 

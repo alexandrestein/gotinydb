@@ -229,6 +229,16 @@ func (c *Collection) Query(q *Query) (response *Response, _ error) {
 	return c.queryCleanAndOrder(ctx, q, tree)
 }
 
+// NewQuery build a new query object.
+// It also set the default limit.
+func (c *Collection) NewQuery() *Query {
+	return &Query{
+		limit:         c.options.InternalQueryLimit,
+		internalLimit: c.options.InternalQueryLimit * 10,
+		timeout:       c.options.QueryTimeOut,
+	}
+}
+
 // GetIDs returns a list of IDs for the given collection and starting
 // at the given ID. The limit paramiter let caller ask for a portion of the collection.
 func (c *Collection) GetIDs(startID string, limit int) ([]string, error) {

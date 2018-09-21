@@ -112,8 +112,7 @@ func TestDB_Use(t *testing.T) {
 
 			retrievedUser = new(User)
 			var response *Response
-			response, err = c.Query(NewQuery().SetFilter(NewEqualFilter(testContent.Email, "email")))
-			// _, err = c.Get(testID, retrievedUser)
+			response, err = c.Query(c.NewQuery().SetFilter(NewEqualFilter(testContent.Email, "email")))
 			if err != nil {
 				t.Error(err)
 				return
@@ -156,7 +155,7 @@ func TestDB_Use(t *testing.T) {
 
 		retrievedUser = new(User)
 		var response *Response
-		response, err = c.Query(NewQuery().SetFilter(NewEqualFilter(testContent.Email, "email")))
+		response, err = c.Query(c.NewQuery().SetFilter(NewEqualFilter(testContent.Email, "email")))
 		// _, err = c.Get(testID, retrievedUser)
 		if err != nil {
 			t.Error(err)
@@ -538,7 +537,7 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 	testFunc := func(id string, baseCol, restoredCol *Collection) (err error) {
 		baseCol.Get(id, user)
 
-		q := NewQuery().SetFilter(
+		q := restoredCol.NewQuery().SetFilter(
 			NewEqualFilter(user.Email, "email"),
 		).SetLimits(1, 0)
 
@@ -552,7 +551,7 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 			return fmt.Errorf("user in original database and in restored database are not equal\n\t%v\n\t%v", user, gettedUser)
 		}
 
-		q = NewQuery().SetFilter(
+		q = restoredCol.NewQuery().SetFilter(
 			NewEqualFilter(user.Age, "Age"),
 		).SetLimits(1, 0)
 
@@ -567,7 +566,7 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 			return fmt.Errorf("query did not returned value with the same age:\n\t%v\n\t%v", user, gettedUser)
 		}
 
-		q = NewQuery().SetFilter(
+		q = restoredCol.NewQuery().SetFilter(
 			NewEqualFilter(user.Address.City, "Address", "city"),
 		).SetLimits(1, 0)
 

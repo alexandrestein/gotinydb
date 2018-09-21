@@ -342,9 +342,9 @@ func query(b *testing.B, parallel bool, simple bool) error {
 	var query *Query
 
 	if simple {
-		query = NewQuery().SetFilter(NewEqualFilter("a", "email"))
+		query = benchmarkCollection.NewQuery().SetFilter(NewEqualFilter("a", "email"))
 	} else {
-		query = NewQuery().
+		query = benchmarkCollection.NewQuery().
 			SetFilter(NewEqualAndBetweenFilter("a", "b", "email")).
 			SetFilter(NewEqualFilter(10, "Age")).
 			SetFilter(NewEqualAndGreaterFilter(10000, "Balance")).

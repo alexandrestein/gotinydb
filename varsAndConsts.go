@@ -100,6 +100,7 @@ const (
 	greater filterOperator = "gr"
 	less    filterOperator = "le"
 	between filterOperator = "bw"
+	exists  filterOperator = "ex"
 )
 
 // Those constants defines the prefix used to split different element of the collection

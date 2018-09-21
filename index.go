@@ -114,6 +114,11 @@ func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
 		}
 	}
 
+	// Returns true to apply if the filter is a exists filter
+	if len(filter.values) == 0 && filter.getType() == exists {
+		return true
+	}
+
 	return false
 }
 
@@ -181,6 +186,8 @@ func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan
 		i.queryGreaterLess(ctx, ids, filter)
 	case between:
 		i.queryBetween(ctx, ids, filter)
+	case exists:
+		i.queryExists(ctx, ids, filter)
 	}
 
 	// Force to check first if a cancel signal has been send
@@ -189,13 +196,9 @@ func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan
 	case <-ctx.Done():
 		return
 	default:
-		select {
-		case finishedChan <- ids:
-		case <-ctx.Done():
-			return
-		}
 	}
 
+	finishedChan <- ids
 	return
 }
 

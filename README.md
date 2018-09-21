@@ -15,12 +15,24 @@ The goal is to have a fairly simple database which is light and don't needs to f
 
 ### Indexing
 
+The following types are supported and:
+
 - string
 - int, uint, int8, uint8, int16
 - uint16, int32, uint32, int64, uint64
 - time.Time
 
 If the selector point to an array values inside the array are indexed.
+
+### Query
+
+The the following filters can be applied to the indexes:
+
+- equal to
+- equal and greater
+- equal and less
+- equal and betweens
+- field exists
 
 ### File and media content
 

@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// NewEqualFilter builds a Filter interface for equal query
+// NewEqualFilter builds a Filter pointer for equal query
 func NewEqualFilter(value interface{}, s ...string) *Filter {
 	ret := &Filter{
 		operator: equal,
@@ -14,7 +14,7 @@ func NewEqualFilter(value interface{}, s ...string) *Filter {
 	return ret
 }
 
-// NewEqualAndGreaterFilter builds a Filter interface for greater query
+// NewEqualAndGreaterFilter builds a Filter pointer for greater query
 func NewEqualAndGreaterFilter(value interface{}, s ...string) *Filter {
 	ret := &Filter{
 		operator: greater,
@@ -24,7 +24,7 @@ func NewEqualAndGreaterFilter(value interface{}, s ...string) *Filter {
 	return ret
 }
 
-// NewEqualAndLessFilter builds a Filter interface for less query
+// NewEqualAndLessFilter builds a Filter pointer for less query
 func NewEqualAndLessFilter(value interface{}, s ...string) *Filter {
 	ret := &Filter{
 		operator: less,
@@ -34,12 +34,21 @@ func NewEqualAndLessFilter(value interface{}, s ...string) *Filter {
 	return ret
 }
 
-// NewEqualAndBetweenFilter builds a Filter interface for between query
+// NewEqualAndBetweenFilter builds a Filter pointer for between query
 func NewEqualAndBetweenFilter(from, to interface{}, s ...string) *Filter {
 	ret := &Filter{
 		operator: between,
 	}
 	ret.compareTo(from).compareTo(to)
+	ret.setSelector(s...)
+	return ret
+}
+
+// NewFieldExistsFilter builds a Filter pointer for field exists
+func NewFieldExistsFilter(s ...string) *Filter {
+	ret := &Filter{
+		operator: exists,
+	}
 	ret.setSelector(s...)
 	return ret
 }

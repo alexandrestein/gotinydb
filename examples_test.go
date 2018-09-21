@@ -65,7 +65,7 @@ func Example() {
 	}
 
 	// Initialize a query pointer
-	queryPointer := NewQuery()
+	queryPointer := c.NewQuery()
 
 	// Build the filter
 	queryFilter := NewEqualFilter("jonas-90@tlaloc.com", "email")
@@ -74,7 +74,7 @@ func Example() {
 	queryPointer.SetFilter(queryFilter)
 
 	// Or this could be:
-	queryPointer = NewQuery().SetFilter(
+	queryPointer = c.NewQuery().SetFilter(
 		NewEqualFilter("jonas-90@tlaloc.com", "email"),
 	)
 
@@ -182,9 +182,9 @@ func ExampleResponse_One() {
 	// Slice is filled up your code goes here
 }
 
-func ExampleNewQuery() {
+func ExampleCollection_NewQuery() {
 	// Build a new query
-	q := NewQuery().SetFilter(
+	q := collection.NewQuery().SetFilter(
 		NewEqualFilter("jonas-90@tlaloc.com", "email"),
 	)
 

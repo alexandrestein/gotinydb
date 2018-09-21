@@ -141,19 +141,17 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 }
 
 func (i *indexType) queryEqual(ctx context.Context, ids *idsType, filter *Filter) {
-	for _, value := range filter.values {
-		tmpIDs, getErr := i.getIDsForOneValue(ctx, value.Bytes())
-		if getErr != nil {
-			log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
-			return
-		}
-
-		for _, tmpID := range tmpIDs.IDs {
-			tmpID.values[i.selectorHash()] = value.Bytes()
-		}
-
-		ids.AddIDs(tmpIDs)
+	tmpIDs, getErr := i.getIDsForOneValue(ctx, filter.values[0].Bytes())
+	if getErr != nil {
+		log.Printf("Index.runQuery Equal: %s\n", getErr.Error())
+		return
 	}
+
+	for _, tmpID := range tmpIDs.IDs {
+		tmpID.values[i.selectorHash()] = filter.values[0].Bytes()
+	}
+
+	ids.AddIDs(tmpIDs)
 }
 
 func (i *indexType) queryGreaterLess(ctx context.Context, ids *idsType, filter *Filter) {
@@ -183,6 +181,37 @@ func (i *indexType) queryBetween(ctx context.Context, ids *idsType, filter *Filt
 	}
 
 	ids.AddIDs(tmpIDs)
+}
+
+func (i *indexType) queryExists(ctx context.Context, ids *idsType, filter *Filter) {
+	txn := i.getTx(false)
+	defer txn.Discard()
+
+	prefixID := i.getIDBuilder(nil)
+
+	iter := txn.NewIterator(badger.DefaultIteratorOptions)
+	defer iter.Close()
+
+	for iter.Seek(prefixID); iter.ValidForPrefix(prefixID); iter.Next() {
+		asEncryptedBytes, err := iter.Item().Value()
+		if err != nil {
+			return
+		}
+		var asBytes []byte
+		asBytes, err = decrypt(i.options.privateCryptoKey, iter.Item().Key(), asEncryptedBytes)
+		if err != nil {
+			return
+		}
+
+		var tmpIDs *idsType
+		tmpIDs, err = newIDs(ctx, i.selectorHash(), iter.Item().Key()[len(prefixID):], asBytes)
+		if err != nil {
+			return
+		}
+		ids.AddIDs(tmpIDs)
+	}
+
+	return
 }
 
 // convertInterfaceValueFromMapToIndexType is used when indexing after insertion.
