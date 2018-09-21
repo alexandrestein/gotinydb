@@ -123,8 +123,7 @@ func TestCollection_PutGetAndDeleteBin(t *testing.T) {
 		return
 	}
 
-	var retBytes []byte
-	retBytes, err = c.Get(contentID, nil)
+	retBytes, _ := c.Get(contentID, nil)
 
 	if !reflect.DeepEqual(retBytes, content) {
 		t.Errorf("the bin content are not equal")
@@ -159,7 +158,7 @@ func TestCollection_PutGetAndDeleteBin(t *testing.T) {
 		return
 	}
 
-	retBytes, err = c.Get(contentID, nil)
+	retBytes, _ = c.Get(contentID, nil)
 	if !reflect.DeepEqual(retBytes, content) {
 		t.Errorf("the bin content are not equal")
 		return
