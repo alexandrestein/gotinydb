@@ -5,9 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.2.1...dev)
 
-## [0.2.0] - 2018-09-20
+### Changed
+
+- ENCRYPTION: Key management is redesigned to protect the nonce. A random part is generated for every writes and is used to derive the nonce.
+- Optimized the file testing to be more memory efficient and much faster. So short skip has been removed.
+- Upgrade dependencies.
+
+### Add
+
+- Links in the changelog to provide easy diff file with github compare.
+
+## [[0.2.1]](https://github.com/alexandrestein/gotinydb/compare/v0.2.0...v0.2.1) - 2018-09-20
+
+### Fixed
+
+- Race condition.
+
+## [[0.2.0]](https://github.com/alexandrestein/gotinydb/compare/v0.1.0...v0.2.0) - 2018-09-20
 
 ### Changed
 
@@ -17,7 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Add a loop that run garbage collection with a configurable timer.
 
-## [0.1.0] - 2018-09-19
+## [[0.1.0]](https://github.com/alexandrestein/gotinydb/compare/v0.1.0...v0.2.0) - 2018-09-19
 
 ### Changed
 
@@ -28,7 +44,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Bolt database.
 
-## [0.0.8] - 2018-09-07
+## [[0.0.8] ](https://github.com/alexandrestein/gotinydb/compare/v0.0.7...v0.0.8)- 2018-09-07
 
 ### Added
 
@@ -47,7 +63,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Clean tests after complete. Fixes [#1](https://github.com/alexandrestein/gotinydb/issues/1).
 
-## [0.0.7] - 2018-08-16
+## [[0.0.7]](https://github.com/alexandrestein/gotinydb/compare/v0.0.6...v0.0.7) - 2018-08-16
 
 ### Added
 
@@ -57,13 +73,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - String indexed values need to contains the filter value to be referenced
 
-## [0.0.6] - 2018-08-14
+## [[0.0.6]](https://github.com/alexandrestein/gotinydb/compare/v0.0.5...v0.0.6) - 2018-08-14
 
 ### Fixed
 
 - Bug fixe with index range not working
 
-## [0.0.5] - 2018-08-03
+## [[0.0.5]](https://github.com/alexandrestein/gotinydb/compare/v0.0.4...v0.0.5) - 2018-08-03
 
 ### Added
 

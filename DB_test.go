@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/crypto/blake2b"
 	"github.com/dgraph-io/badger"
+	"golang.org/x/crypto/blake2b"
 )
 
 func TestOpen(t *testing.T) {
@@ -567,11 +567,6 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 }
 
 func TestFiles(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 

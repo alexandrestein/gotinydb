@@ -13,5 +13,5 @@ before_install:
   - go get -t ./...
 
 script:
-  - go test -race -short
+  - go test -race -v -cover
 
