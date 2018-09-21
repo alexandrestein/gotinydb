@@ -312,12 +312,7 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 		return 0, err
 	}
 
-	putErr := c.Put(id, contentAsInterface)
-	if putErr != nil {
-		return 0, putErr
-	}
-
-	return timestamp, nil
+	return timestamp, c.Put(id, contentAsInterface)
 }
 
 // GetIndexesInfo retruns a slice with indexes settings

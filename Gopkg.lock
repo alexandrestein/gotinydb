@@ -3,14 +3,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4c5803754aedbf42ec7da8cdfea47d36337397267851828610a4f9a76c1b7fd9"
+  digest = "1:b02e5e3f836f077a3249d1dfe3c57d305e007f71a98f2e69c170a2dd8d2b266c"
   name = "github.com/AndreasBriese/bbloom"
   packages = ["."]
   pruneopts = "UT"
-  revision = "28f7e881ca57bc00e028f9ede9f0d9104cfeef5e"
+  revision = "343706a395b76e5ca5c7dca46a5d937b48febc74"
 
 [[projects]]
-  digest = "1:21ac9938fb1098b3a7b0dd909fb30878d33231177fac11a2821114eb9c1088ff"
+  digest = "1:5f5090f05382959db941fa45acbeb7f4c5241aa8ac0f8f4393dec696e5953f53"
   name = "github.com/dgraph-io/badger"
   packages = [
     ".",
@@ -21,8 +21,8 @@
     "y",
   ]
   pruneopts = "UT"
-  revision = "391b6d3b93e6014fe8c2971fcc0c1266e47dbbd9"
-  version = "v1.5.3"
+  revision = "99233d725dbdd26d156c61b2f42ae1671b794656"
+  version = "v1.5.4"
 
 [[projects]]
   branch = "master"
@@ -41,28 +41,20 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:15042ad3498153684d09f393bbaec6b216c8eec6d61f63dff711de7d64ed8861"
+  digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   pruneopts = "UT"
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:9887333bbef17574b1db5f9893ea137ac44107235d624408a3ac9e0b98fbb2cb"
+  digest = "1:0bfbe13936953a98ae3cfe8ed6670d396ad81edf069a806d2f6515d7bb6950df"
   name = "github.com/google/btree"
   packages = ["."]
   pruneopts = "UT"
-  revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
-
-[[projects]]
-  branch = "master"
-  digest = "1:c99caced18127b6ae7a0be25bdf64155a8b5337d18fce1e7df0a8e68beb18767"
-  name = "github.com/minio/highwayhash"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "85fc8a2dacad36a6beb2865793cd81363a496696"
+  revision = "4030bb1f1f0c35b30ca7009e9ebd06849dd45306"
 
 [[projects]]
   branch = "master"
@@ -82,6 +74,20 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a3089eaf292d30667c4a3b3500224d79b7142097b49f3f7a5a25f6f02f6bfc68"
+  name = "golang.org/x/crypto"
+  packages = [
+    "blake2b",
+    "chacha20poly1305",
+    "internal/chacha20",
+    "internal/subtle",
+    "poly1305",
+  ]
+  pruneopts = "UT"
+  revision = "0e37d006457bf46f9e6692014ba72ef82c33022c"
+
+[[projects]]
+  branch = "master"
   digest = "1:a7b3aa11890fbe342ed4bf76a27986473d13103ae14796dcf2b55521c93e2547"
   name = "golang.org/x/net"
   packages = [
@@ -90,18 +96,18 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "f4c29de78a2a91c00474a2e689954305c350adf9"
+  revision = "2f5d2388922f370f4355f327fcf4cfe9f5583908"
 
 [[projects]]
   branch = "master"
-  digest = "1:bb0fe59917bdd5b89f49b9a8b26e5f465e325d9223b3a8e32254314bdf51e0f1"
+  digest = "1:f154ed6bdd7f4d63e6d9feee4af669d3d0a340f1a5d8d77294e99edd12ba0e22"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "3dc4335d56c789b04b0ba99b7a37249d9b614314"
+  revision = "d641721ec2dead6fe5ca284096fe4b1fcd49e427"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -111,7 +117,8 @@
     "github.com/dgraph-io/badger/options",
     "github.com/fatih/structs",
     "github.com/google/btree",
-    "github.com/minio/highwayhash",
+    "golang.org/x/crypto/blake2b",
+    "golang.org/x/crypto/chacha20poly1305",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

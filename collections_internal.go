@@ -3,14 +3,13 @@ package gotinydb
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
-	"github.com/minio/highwayhash"
+	"golang.org/x/crypto/blake2b"
 )
 
 func (c *Collection) buildCollectionPrefix() []byte {
@@ -23,10 +22,9 @@ func (c *Collection) buildIDWhitPrefixData(id []byte) []byte {
 func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
 	ret := []byte{c.prefix, prefixIndexes}
 
-	bs := make([]byte, 8)
-	binary.LittleEndian.PutUint64(bs, highwayhash.Sum64(indexName, make([]byte, 32)))
+	bs := blake2b.Sum256(indexName)
 
-	ret = append(ret, bs...)
+	ret = append(ret, bs[:8]...)
 	ret = append(ret, indexName...)
 	return append(ret, id...)
 }

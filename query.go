@@ -123,7 +123,7 @@ func (q *Query) nbSelectFilters() (ret int) {
 	return
 }
 
-func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint64, getRefsFunc func(id string) *refs) (func(next btree.Item) (over bool), *struct{ IDs []*idType }) {
+func occurrenceTreeIterator(nbFilters, maxResponse int, orderSelectorHash uint16, getRefsFunc func(id string) *refs) (func(next btree.Item) (over bool), *struct{ IDs []*idType }) {
 	ret := &struct{ IDs []*idType }{}
 	ret.IDs = []*idType{}
 	return func(next btree.Item) bool {
@@ -161,7 +161,7 @@ func newID(ctx context.Context, id string) *idType {
 	ret.ID = id
 	ret.occurrences = 0
 	ret.ch = make(chan int, 0)
-	ret.values = map[uint64][]byte{}
+	ret.values = map[uint16][]byte{}
 
 	go ret.incrementLoop(ctx)
 
@@ -224,7 +224,7 @@ func (i *idType) String() string {
 }
 
 // newIDs build a new Ids pointer from a slice of bytes
-func newIDs(ctx context.Context, selectorHash uint64, referredValue []byte, idsAsBytes []byte) (*idsType, error) {
+func newIDs(ctx context.Context, selectorHash uint16, referredValue []byte, idsAsBytes []byte) (*idsType, error) {
 	ret := new(idsType)
 
 	if idsAsBytes == nil || len(idsAsBytes) == 0 {

@@ -3,9 +3,10 @@ package gotinydb
 import (
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 
-	"github.com/minio/highwayhash"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -61,13 +62,14 @@ func (wt *writeTransaction) addTransaction(trElement ...*writeTransactionElement
 }
 
 // buildSelectorHash returns a string hash of the selector
-func buildSelectorHash(selector []string) uint64 {
-	key := make([]byte, highwayhash.Size)
-	hasher, _ := highwayhash.New64(key)
+func buildSelectorHash(selector []string) uint16 {
+	hasher, _ := blake2b.New256(nil)
 	for _, filedName := range selector {
 		hasher.Write([]byte(filedName))
 	}
-	return hasher.Sum64()
+
+	hash := binary.BigEndian.Uint16(hasher.Sum(nil))
+	return hash
 }
 
 // TypeName return the name of the type as a string
@@ -84,24 +86,32 @@ func (it IndexType) TypeName() string {
 	}
 }
 
-func deriveKey(key, id []byte) (cipherKey []byte) {
-	derived := highwayhash.Sum(id, key)
-	return derived[:]
+func deriveKey(key [32]byte, id, seed []byte) (cipherKey, nonce []byte) {
+	hasher, _ := blake2b.New256(key[:])
+	hasher.Write(id)
+	cipherKey = hasher.Sum(nil)
+	hasher.Write(seed)
+	nonce = hasher.Sum(nil)
+	nonce = nonce[:chacha20poly1305.NonceSizeX]
+	return
 }
 
-func encrypt(key, id, content []byte) []byte {
-	aead, _ := chacha20poly1305.NewX(deriveKey(key, id))
+func encrypt(key [32]byte, id, content []byte) []byte {
+	seed := make([]byte, chacha20poly1305.NonceSizeX)
+	rand.Read(seed)
 
-	nonce := make([]byte, aead.NonceSize())
-	rand.Read(nonce)
+	cipherKey, nonce := deriveKey(key, id, seed)
+	aead, _ := chacha20poly1305.NewX(cipherKey)
 
-	return append(nonce, aead.Seal(nil, nonce, content, nil)...)
+	return append(seed, aead.Seal(nil, nonce, content, nil)...)
 }
 
-func decrypt(key, id, content []byte) ([]byte, error) {
-	aead, _ := chacha20poly1305.NewX(deriveKey(key, id))
+func decrypt(key [32]byte, id, content []byte) ([]byte, error) {
+	seed := content[:chacha20poly1305.NonceSizeX]
+	cipherKey, nonce := deriveKey(key, id, seed)
+	aead, _ := chacha20poly1305.NewX(cipherKey)
 
-	decrypedContent, err := aead.Open(nil, content[:aead.NonceSize()], content[aead.NonceSize():], nil)
+	decrypedContent, err := aead.Open(nil, nonce, content[aead.NonceSize():], nil)
 	if err != nil {
 		return nil, err
 	}

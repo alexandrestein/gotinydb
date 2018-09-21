@@ -7,9 +7,9 @@ require (
 	github.com/fatih/structs v1.0.0
 	github.com/golang/protobuf v1.2.0
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c
-	github.com/minio/highwayhash v0.0.0-20180501080913-85fc8a2dacad
 	github.com/petar/GoLLRB v0.0.0-20130427215148-53be0d36a84c
 	github.com/pkg/errors v0.8.0
-	golang.org/x/net v0.0.0-20180911220305-26e67e76b6c3
-	golang.org/x/sys v0.0.0-20180918153733-ee1b12c67af4
+	golang.org/x/crypto v0.0.0-20180910181607-0e37d006457b
+	golang.org/x/net v0.0.0-20180921000356-2f5d2388922f
+	golang.org/x/sys v0.0.0-20180920110915-d641721ec2de
 )

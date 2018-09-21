@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
-	"github.com/minio/highwayhash"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -295,8 +295,8 @@ func (d *DB) initDB() error {
 		d.freePrefix[i-1] = byte(i)
 	}
 
-	newKey := make([]byte, chacha20poly1305.KeySize)
-	rand.Read(newKey)
+	newKey := [chacha20poly1305.KeySize]byte{}
+	rand.Read(newKey[:])
 	d.options.privateCryptoKey = newKey
 
 	return nil
@@ -306,7 +306,7 @@ func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
 	// Derive the ID to make sure no file ID overlap the other.
 	// Because the files are chunked it needs to have a stable prefix for reading
 	// and deletation.
-	derivedID := highwayhash.Sum([]byte(id), make([]byte, 32))
+	derivedID := blake2b.Sum256([]byte(id))
 
 	// Build the prefix
 	prefixWithID := append([]byte{prefixFile}, derivedID[:]...)

@@ -27,8 +27,9 @@ type (
 	}
 
 	dbExport struct {
-		Collections                  []*collectionExport
-		FreePrefix, PrivateCryptoKey []byte
+		Collections      []*collectionExport
+		FreePrefix       []byte
+		PrivateCryptoKey [32]byte
 	}
 	collectionExport struct {
 		Name    string
@@ -45,10 +46,10 @@ type (
 		PutBufferLimit int
 
 		// CryptoKey if present must be 32 bytes long, Otherwise an empty key is used.
-		CryptoKey []byte
+		CryptoKey [32]byte
 		// privateCryptoKey is saved on the database to provide a way to change the password
 		// without the need to rewrite the all database
-		privateCryptoKey []byte
+		privateCryptoKey [32]byte
 
 		// GCCycle define the time the loop for garbage collection takes to run the GC.
 		GCCycle time.Duration
@@ -82,7 +83,7 @@ type (
 		filters []*Filter
 
 		orderSelector []string
-		order         uint64 // is the selector hash representation
+		order         uint16 // is the selector hash representation
 		ascendent     bool   // defines the way of the order
 
 		limit         int
@@ -97,11 +98,11 @@ type (
 		ch          chan int
 		// values defines the different values and selector that called this ID
 		// selectors are defined by a hash 64
-		values map[uint64][]byte
+		values map[uint16][]byte
 
 		// This is for the ordering
 		less         func(btree.Item) bool
-		selectorHash uint64
+		selectorHash uint16
 		getRefsFunc  func(id string) *refs
 	}
 
@@ -135,7 +136,7 @@ type (
 	// Filter defines the way the query will be performed
 	Filter struct {
 		selector     []string
-		selectorHash uint64
+		selectorHash uint16
 		operator     filterOperator
 		values       []*filterValue
 		exclusion    bool
@@ -174,7 +175,7 @@ type (
 	// ref defines the relations between a object with some index with indexed value
 	ref struct {
 		IndexName    string
-		IndexHash    uint64
+		IndexHash    uint16
 		IndexedValue []byte
 	}
 

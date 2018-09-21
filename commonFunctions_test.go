@@ -30,10 +30,10 @@ func TestBuildSelectorHash(t *testing.T) {
 		{"auth", "ssh"},
 		{"email"},
 	}
-	expectedResults := []uint64{
-		469024096205709603,
-		256693521140565194,
-		17382524093592847791,
+	expectedResults := []uint16{
+		7087,
+		48658,
+		4996,
 	}
 
 	for i := range selectors {

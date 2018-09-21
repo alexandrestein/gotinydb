@@ -74,7 +74,7 @@ func (i *indexType) testJSONTag(fields []*structs.Field, fieldName string) (fiel
 	return
 }
 
-func (i *indexType) selectorHash() uint64 {
+func (i *indexType) selectorHash() uint16 {
 	return buildSelectorHash(i.Selector)
 }
 
@@ -216,7 +216,7 @@ func newRefsFromDB(input []byte) *refs {
 // setIndexedValue add to the list of references this one.
 // The indexName define the index it belongs to and indexedVal defines what value
 // is indexed.
-func (r *refs) setIndexedValue(indexName string, selectorHash uint64, indexedVal []byte) {
+func (r *refs) setIndexedValue(indexName string, selectorHash uint16, indexedVal []byte) {
 	// Looks into existing references
 	for _, ref := range r.Refs {
 		if ref.IndexName == indexName {

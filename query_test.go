@@ -50,12 +50,13 @@ func TestCollection_Query(t *testing.T) {
 		for _, user := range unmarshalDataset(dataset) {
 			wg.Add(1)
 			go func(c *Collection, user *User) {
+				defer wg.Done()
+
 				err := c.Put(user.ID, user)
 				if err != nil {
 					t.Error(err)
 					return
 				}
-				wg.Done()
 			}(c, user)
 		}
 

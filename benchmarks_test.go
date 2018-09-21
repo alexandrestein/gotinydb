@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/minio/highwayhash"
+	"golang.org/x/crypto/blake2b"
 )
 
 var (
@@ -79,8 +79,7 @@ func buildID(id string) string {
 
 // buildIDInternal builds an ID as a slice of bytes from the given string
 func buildIDInternal(id string) []byte {
-	key := make([]byte, highwayhash.Size)
-	hash := highwayhash.Sum128([]byte(id), key)
+	hash := blake2b.Sum256([]byte(id))
 	return []byte(hash[:])
 }
 

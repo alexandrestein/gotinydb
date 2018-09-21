@@ -23,7 +23,7 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	d.ctx = ctx
 
 	if len(d.options.CryptoKey) != chacha20poly1305.KeySize {
-		d.options.CryptoKey = make([]byte, chacha20poly1305.KeySize)
+		d.options.CryptoKey = [chacha20poly1305.KeySize]byte{}
 	}
 
 	d.initWriteTransactionChan(ctx)
