@@ -13,6 +13,8 @@ import (
 	"os"
 
 	"github.com/dgraph-io/badger"
+
+	"github.com/alexandrestein/gotinydb/cipher"
 )
 
 // Open simply opens a new or existing database
@@ -21,7 +23,7 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 	d.options = options
 	d.ctx = ctx
 
-	d.initWriteTransactionChan(ctx)
+	d.initWriteChannels(ctx)
 
 	if err := os.MkdirAll(d.options.Path, FilePermission); err != nil {
 		return nil, err
@@ -143,7 +145,7 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 			}
 
 			var valAsBytes []byte
-			valAsBytes, err = decrypt(d.options.privateCryptoKey, it.Item().Key(), valAsEncryptedBytes)
+			valAsBytes, err = cipher.Decrypt(d.options.privateCryptoKey, it.Item().Key(), valAsEncryptedBytes)
 			if err != nil {
 				return err
 			}

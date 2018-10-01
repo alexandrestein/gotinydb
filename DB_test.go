@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
@@ -405,6 +406,8 @@ func TestDB_Backup_And_Load(t *testing.T) {
 		c.SetIndex("email", StringIndex, "email")
 		c.SetIndex("age", UIntIndex, "Age")
 		c.SetIndex("city", StringIndex, "Address", "city")
+
+		c.SetBleveIndex("index 2", bleve.NewIndexMapping())
 	}
 	addIndexesFunc(baseCols[0])
 	addIndexesFunc(baseCols[1])

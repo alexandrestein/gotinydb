@@ -1,13 +1,16 @@
 package gotinydb
 
 import (
+	"archive/zip"
+	"bytes"
+	"compress/flate"
 	"context"
-	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"io"
+	"io/ioutil"
 
 	"golang.org/x/crypto/blake2b"
-	"golang.org/x/crypto/chacha20poly1305"
 )
 
 func getIDsAsString(input []*idType) (ret []string) {
@@ -86,35 +89,105 @@ func (it IndexType) TypeName() string {
 	}
 }
 
-func deriveKey(key [32]byte, id, seed []byte) (cipherKey, nonce []byte) {
-	hasher, _ := blake2b.New256(key[:])
-	hasher.Write(id)
-	cipherKey = hasher.Sum(nil)
-	hasher.Write(seed)
-	nonce = hasher.Sum(nil)
-	nonce = nonce[:chacha20poly1305.NonceSizeX]
-	return
-}
+func indexZiper(baseFolder string) ([]byte, error) {
+	// Get a Buffer to Write To
+	buff := bytes.NewBuffer(nil)
+	// outFile, err := os.Create(`/Users/tom/Desktop/zip.zip`)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// defer outFile.Close()
 
-func encrypt(key [32]byte, id, content []byte) []byte {
-	seed := make([]byte, chacha20poly1305.NonceSizeX)
-	rand.Read(seed)
+	// Create a new zip archive.
+	w := zip.NewWriter(buff)
+	w.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+		return flate.NewWriter(out, flate.BestCompression)
+	})
 
-	cipherKey, nonce := deriveKey(key, id, seed)
-	aead, _ := chacha20poly1305.NewX(cipherKey)
-
-	return append(seed, aead.Seal(nil, nonce, content, nil)...)
-}
-
-func decrypt(key [32]byte, id, content []byte) ([]byte, error) {
-	seed := content[:chacha20poly1305.NonceSizeX]
-	cipherKey, nonce := deriveKey(key, id, seed)
-	aead, _ := chacha20poly1305.NewX(cipherKey)
-
-	decrypedContent, err := aead.Open(nil, nonce, content[chacha20poly1305.NonceSizeX:], nil)
+	// Add some files to the archive.
+	err := addFiles(w, baseFolder, "")
 	if err != nil {
 		return nil, err
 	}
 
-	return decrypedContent, nil
+	// Make sure to check the error on Close.
+	err = w.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buff.Bytes(), nil
+}
+
+func addFiles(w *zip.Writer, basePath, baseInZip string) error {
+	// Open the Directory
+	files, err := ioutil.ReadDir(basePath)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			dat, err := ioutil.ReadFile(basePath + "/" + file.Name())
+			if err != nil {
+				return err
+			}
+
+			// Add some files to the archive.
+			f, err := w.Create(baseInZip + file.Name())
+			if err != nil {
+				return err
+			}
+			_, err = f.Write(dat)
+			if err != nil {
+				return err
+			}
+		} else if file.IsDir() {
+
+			// Recurse
+			newBase := basePath + file.Name() + "/"
+
+			err := addFiles(w, newBase, file.Name()+"/")
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func indexDeziper(baseFolder string, contentAsZip []byte) error {
+	buff := bytes.NewReader(contentAsZip)
+	// Open a zip archive for reading.
+	r, err := zip.NewReader(buff, int64(buff.Len()))
+	if err != nil {
+		return err
+	}
+	r.RegisterDecompressor(zip.Deflate, func(r io.Reader) io.ReadCloser {
+		return flate.NewReader(r)
+	})
+
+	// Iterate through the files in the archive,
+	// printing some of their contents.
+	for _, f := range r.File {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+
+		var fileBytes []byte
+		fileBytes, err = ioutil.ReadAll(rc)
+		if err != nil {
+			return err
+		}
+
+		err = ioutil.WriteFile(baseFolder+"/"+f.Name, fileBytes, 0640)
+		if err != nil {
+			return err
+		}
+		rc.Close()
+	}
+
+	return nil
 }

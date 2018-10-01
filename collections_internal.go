@@ -5,9 +5,13 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
 	"golang.org/x/crypto/blake2b"
+
+	"github.com/alexandrestein/gotinydb/blevestore"
+	"github.com/alexandrestein/gotinydb/cipher"
 )
 
 func (c *Collection) getCollectionPrefix() []byte {
@@ -29,6 +33,15 @@ func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
 	ret = append(ret, indexName...)
 	return append(ret, id...)
 }
+func (c *Collection) buildIDWhitPrefixBleveIndex(indexName, id []byte) []byte {
+	ret := c.buildCollectionPrefix(prefixBleveIndexes)
+
+	bs := blake2b.Sum256(indexName)
+
+	ret = append(ret, bs[:8]...)
+	ret = append(ret, indexName...)
+	return append(ret, id...)
+}
 func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
 	ret := c.buildCollectionPrefix(prefixRefs)
 	return append(ret, id...)
@@ -36,6 +49,29 @@ func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
 
 func (c *Collection) buildStoreID(id string) []byte {
 	return c.buildIDWhitPrefixData([]byte(id))
+}
+
+func (c *Collection) initBleveIndexes() error {
+	for _, i := range c.bleveIndexes {
+		i.kvConfig = c.buildKvConfig(i.IndexPrefix)
+		err := i.open()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Collection) buildKvConfig(indexPrefix []byte) (config map[string]interface{}) {
+	return map[string]interface{}{
+		"path": "test",
+		"config": blevestore.NewBleveStoreConfig(
+			[32]byte{},
+			indexPrefix,
+			c.store,
+			c.writeBleveIndexChan,
+		),
+	}
 }
 
 func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeTransaction *writeTransactionElement) error {
@@ -79,7 +115,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeT
 
 					// Decrypt value
 					var idsAsBytes []byte
-					idsAsBytes, err = decrypt(c.options.privateCryptoKey, idsAsItem.Key(), idsAsBytesEncrypted)
+					idsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, idsAsItem.Key(), idsAsBytesEncrypted)
 					if err != nil {
 						return err
 					}
@@ -94,7 +130,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeT
 				// Add the list of ID for the given field value
 				e := &badger.Entry{
 					Key:   indexedValueID,
-					Value: encrypt(c.options.privateCryptoKey, indexedValueID, idsAsBytes),
+					Value: cipher.Encrypt(c.options.privateCryptoKey, indexedValueID, idsAsBytes),
 				}
 
 				if err := txn.SetEntry(e); err != nil {
@@ -110,7 +146,7 @@ func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeT
 	// Save the new reference stat on persistent storage
 	e := &badger.Entry{
 		Key:   refID,
-		Value: encrypt(c.options.privateCryptoKey, refID, refs.asBytes()),
+		Value: cipher.Encrypt(c.options.privateCryptoKey, refID, refs.asBytes()),
 	}
 
 	return txn.SetEntry(e)
@@ -133,7 +169,7 @@ func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString 
 			return err
 		}
 
-		refsAsBytes, err = decrypt(c.options.privateCryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
+		refsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
 		if err != nil {
 			return err
 		}
@@ -159,7 +195,7 @@ func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString 
 					return err
 				}
 				var indexedValueAsBytes []byte
-				indexedValueAsBytes, err = decrypt(c.options.privateCryptoKey, indexedValueAsItem.Key(), indexedValueAsEncryptedBytes)
+				indexedValueAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, indexedValueAsItem.Key(), indexedValueAsEncryptedBytes)
 				if err != nil {
 					return err
 				}
@@ -170,7 +206,7 @@ func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString 
 				// And saved again after the clean
 				e := &badger.Entry{
 					Key:   indexIDForTheGivenObjectAsBytes,
-					Value: encrypt(c.options.privateCryptoKey, indexIDForTheGivenObjectAsBytes, ids.MustMarshal()),
+					Value: cipher.Encrypt(c.options.privateCryptoKey, indexIDForTheGivenObjectAsBytes, ids.MustMarshal()),
 				}
 
 				err = txn.SetEntry(e)
@@ -185,7 +221,7 @@ func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString 
 
 	e := &badger.Entry{
 		Key:   refsDbID,
-		Value: encrypt(c.options.privateCryptoKey, refsDbID, refsAsBytes),
+		Value: cipher.Encrypt(c.options.privateCryptoKey, refsDbID, refsAsBytes),
 	}
 
 	return txn.SetEntry(e)
@@ -331,7 +367,7 @@ func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, i
 	if isInsertion {
 		e := &badger.Entry{
 			Key:   storeID,
-			Value: encrypt(c.options.privateCryptoKey, storeID, writeTransaction.contentAsBytes),
+			Value: cipher.Encrypt(c.options.privateCryptoKey, storeID, writeTransaction.contentAsBytes),
 		}
 
 		return txn.SetEntry(e)
@@ -365,7 +401,7 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 			}
 
 			var contentAsBytes []byte
-			contentAsBytes, err = decrypt(c.options.privateCryptoKey, item.Key(), contentAsEncryptedBytes)
+			contentAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, item.Key(), contentAsEncryptedBytes)
 			if err != nil {
 				return err
 			}
@@ -387,7 +423,7 @@ func (c *Collection) getRefs(txn *badger.Txn, id string) (*refs, error) {
 		return nil, err
 	}
 	var refsAsBytes []byte
-	refsAsBytes, err = decrypt(c.options.privateCryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
+	refsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +469,7 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 					return err
 				}
 
-				responseItem.contentAsBytes, err = decrypt(c.options.privateCryptoKey, item.Key(), responseItem.contentAsBytes)
+				responseItem.contentAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, item.Key(), responseItem.contentAsBytes)
 				if err != nil {
 					return err
 				}
@@ -508,4 +544,38 @@ func (c *Collection) isRunning() bool {
 	}
 
 	return true
+}
+
+func (c *Collection) getBleveIndex(name string) (*bleveIndex, error) {
+	var index *bleveIndex
+
+	// Loop all indexes to found the given index
+	found := false
+	for _, i := range c.bleveIndexes {
+		if i.Name == name {
+			index = i
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil, ErrIndexNotFound
+	}
+
+	// If index is already loaded
+	if index.index != nil {
+		return index, nil
+	}
+
+	// Load the index
+	bleveIndex, err := bleve.OpenUsing(c.options.Path+"/"+c.name+"/"+index.Name, c.buildKvConfig(index.IndexPrefix))
+	if err != nil {
+		return nil, err
+	}
+
+	// Save the index interface into the internal index type
+	index.index = bleveIndex
+
+	return index, nil
 }

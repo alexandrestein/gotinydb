@@ -9,6 +9,9 @@ import (
 	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/chacha20poly1305"
+
+	"github.com/alexandrestein/gotinydb/blevestore"
+	"github.com/alexandrestein/gotinydb/cipher"
 )
 
 func (d *DB) initBadger() error {
@@ -41,14 +44,17 @@ func (d *DB) initBadger() error {
 	return nil
 }
 
-func (d *DB) initWriteTransactionChan(ctx context.Context) {
+func (d *DB) initWriteChannels(ctx context.Context) {
 	// Set a limit
 	limit := d.options.PutBufferLimit
 	// Build the queue with 2 times the limit to help writing on disc
 	// in the same order as the operation are called
 	d.writeTransactionChan = make(chan *writeTransaction, limit*2)
-	// Start the infinite loop
 
+	// Build a new channel for writing indexes
+	d.writeBleveIndexChan = make(chan *blevestore.BleveStoreWriteRequest, 0)
+
+	// Start the infinite loop
 	go d.waittingWriteLoop(ctx, limit)
 }
 
@@ -65,6 +71,7 @@ func (d *DB) initCollection(name string) (*Collection, error) {
 	// Set the different values of the collection
 	c.store = d.badgerDB
 	c.writeTransactionChan = d.writeTransactionChan
+	c.writeBleveIndexChan = d.writeBleveIndexChan
 	c.ctx = d.ctx
 	c.options = d.options
 
@@ -160,6 +167,27 @@ func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *w
 			return err
 		}
 
+		// Wait for the bleve index requests
+		go func() {
+			for {
+				select {
+				case request, ok := <-d.writeBleveIndexChan:
+					if !ok {
+						return
+					}
+
+					err := txn.Set(request.ID, request.Content)
+					request.ResponseChan <- err
+
+					if err != nil {
+						return
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
 		// Starts the indexing process
 		if !wtElem.bin {
 			if len(wtElem.collection.indexes) > 0 {
@@ -204,7 +232,7 @@ func (d *DB) loadCollections() error {
 		}
 
 		var configAsBytes []byte
-		configAsBytes, err = decrypt(d.options.CryptoKey, item.Key(), configAsBytesEncrypted)
+		configAsBytes, err = cipher.Decrypt(d.options.CryptoKey, item.Key(), configAsBytesEncrypted)
 		if err != nil {
 			return err
 		}
@@ -282,7 +310,7 @@ func (d *DB) saveCollections() error {
 
 		e := &badger.Entry{
 			Key:   configID,
-			Value: encrypt(d.options.CryptoKey, configID, dbToSaveAsBytes),
+			Value: cipher.Encrypt(d.options.CryptoKey, configID, dbToSaveAsBytes),
 		}
 
 		return txn.SetEntry(e)
@@ -342,7 +370,7 @@ func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtEl
 		storeID := d.buildFilePrefix(wtElem.id, wtElem.chunkN)
 		e := &badger.Entry{
 			Key:   storeID,
-			Value: encrypt(d.options.privateCryptoKey, storeID, wtElem.contentAsBytes),
+			Value: cipher.Encrypt(d.options.privateCryptoKey, storeID, wtElem.contentAsBytes),
 		}
 		return txn.SetEntry(e)
 	}

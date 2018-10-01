@@ -7,7 +7,14 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/index/upsidedown"
+	"github.com/blevesearch/bleve/mapping"
+	"github.com/blevesearch/bleve/search"
 	"github.com/dgraph-io/badger"
+
+	"github.com/alexandrestein/gotinydb/blevestore"
+	"github.com/alexandrestein/gotinydb/cipher"
 )
 
 // Put add the given content to database with the given ID
@@ -297,7 +304,7 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 					return err
 				}
 				var asBytes []byte
-				asBytes, err = decrypt(c.options.privateCryptoKey, item.Key(), asEncryptedBytes)
+				asBytes, err = cipher.Decrypt(c.options.privateCryptoKey, item.Key(), asEncryptedBytes)
 				if err != nil {
 					return err
 				}
@@ -322,6 +329,71 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 	return timestamp, c.Put(id, contentAsInterface)
 }
 
+func (c *Collection) GetBleveIndexesName() (ret []string) {
+	for _, i := range c.indexes {
+		ret = append(ret, i.Name)
+	}
+	return
+}
+
+func (c *Collection) GetBleveIndex(name string) (bleve.Index, error) {
+	index, err := c.getBleveIndex(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return index.index, nil
+}
+
+func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping) error {
+	for _, i := range c.indexes {
+		if i.Name == name {
+			return ErrIndexNameAllreadyExists
+		}
+	}
+
+	i := new(bleveIndex)
+	i.Name = name
+
+	i.IndexPrefix = c.buildIDWhitPrefixBleveIndex([]byte(name), nil)
+
+	// Path of the configuration
+	i.Path = c.options.Path + "/" + c.name + "/" + name
+
+	go func() {
+		for {
+			request, ok := <-c.writeBleveIndexChan
+			if !ok {
+				break
+			}
+			c.store.Update(func(txn *badger.Txn) error {
+				err := txn.Set(request.ID, request.Content)
+
+				request.ResponseChan <- err
+
+				return err
+			})
+		}
+	}()
+
+	i.kvConfig = c.buildKvConfig(i.IndexPrefix)
+	bleveIndex, err := bleve.NewUsing(i.Path, bleveMapping, upsidedown.Name, blevestore.Name, i.kvConfig)
+	if err != nil {
+		return err
+	}
+
+	i.index = bleveIndex
+
+	i.IndexDirZip, err = indexZiper(i.Path)
+	if err != nil {
+		return err
+	}
+
+	c.bleveIndexes = append(c.bleveIndexes, i)
+
+	return c.saveCollections()
+}
+
 // GetIndexesInfo retruns a slice with indexes settings
 func (c *Collection) GetIndexesInfo() []*IndexInfo {
 	indexesInfo := make([]*IndexInfo, len(c.indexes))
@@ -335,4 +407,38 @@ func (c *Collection) GetIndexesInfo() []*IndexInfo {
 	}
 
 	return indexesInfo
+}
+
+func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest) (*SearchResult, error) {
+	ret := new(SearchResult)
+
+	bleveIndex, err := c.GetBleveIndex(indexName)
+	if err != nil {
+		return nil, err
+	}
+
+	ret.BleveSearchResult, err = bleveIndex.Search(searchRequest)
+	if err != nil {
+		return nil, err
+	}
+	ret.c = c
+
+	return ret, nil
+}
+
+func (s *SearchResult) Next(dest interface{}) (*search.DocumentMatch, error) {
+	if s.BleveSearchResult.Total-1 < s.position {
+		return nil, ErrSearchOver
+	}
+
+	doc := s.BleveSearchResult.Hits[s.position]
+
+	_, err := s.c.Get(doc.ID, dest)
+	if err != nil {
+		return nil, err
+	}
+
+	s.position++
+
+	return doc, nil
 }

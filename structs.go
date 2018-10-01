@@ -7,6 +7,8 @@ import (
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
+
+	"github.com/alexandrestein/gotinydb/blevestore"
 )
 
 type (
@@ -21,6 +23,7 @@ type (
 		freeCollectionPrefixes []byte
 
 		writeTransactionChan chan *writeTransaction
+		writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
 
 		ctx     context.Context
 		closing bool
@@ -69,15 +72,12 @@ type (
 		// prefix defines the prefix needed to found the collection into the store
 		prefix byte
 
-		// indexFreePrefixes defines the list of prefix which can be used for a new indexes
-		indexFreePrefixes      []byte
-		bleveIndexFreePrefixes []byte
-
 		options *Options
 
 		store *badger.DB
 
 		writeTransactionChan chan *writeTransaction
+		writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
 
 		ctx context.Context
 
@@ -125,14 +125,12 @@ type (
 
 	bleveIndex struct {
 		Name        string
-		Prefix      byte
 		Path        string
 		IndexDirZip []byte
+		IndexPrefix []byte
 
 		kvConfig map[string]interface{}
 		writeTxn *badger.Txn
-
-		collectionPrefix byte
 
 		index bleve.Index
 	}
@@ -140,6 +138,19 @@ type (
 	// BleveSearchResult is returned when (*Collection).Shearch is call.
 	// It contains the result and a iterator for the reading values directly from database.
 	BleveSearchResult struct {
+		BleveSearchResult *bleve.SearchResult
+
+		position uint64
+		c        *Collection
+
+		// preload      uint
+		// preloaded    [][]byte
+		// preloadedErr []error
+	}
+
+	// SearchResult is returned when (*Collection).Shearch is call.
+	// It contains the result and a iterator for the reading values directly from database.
+	SearchResult struct {
 		BleveSearchResult *bleve.SearchResult
 
 		position uint64

@@ -26,7 +26,7 @@
   revision = "7265e41f48f15fd61751e16da866af3c704bb3ab"
 
 [[projects]]
-  digest = "1:0a911d543a8c44cfe88bc8e56fcaef5aef8fecc7eed598faa334ed64923466c8"
+  digest = "1:42d39e17aac4733b61a630ceb6c2b81c7eb9512e0769fcee1ca53f51509c27d9"
   name = "github.com/blevesearch/bleve"
   packages = [
     ".",
@@ -50,6 +50,7 @@
     "index/store",
     "index/store/boltdb",
     "index/store/gtreap",
+    "index/store/test",
     "index/upsidedown",
     "mapping",
     "numeric",
@@ -275,6 +276,12 @@
   analyzer-version = 1
   input-imports = [
     "github.com/blevesearch/bleve",
+    "github.com/blevesearch/bleve/index/store",
+    "github.com/blevesearch/bleve/index/store/test",
+    "github.com/blevesearch/bleve/index/upsidedown",
+    "github.com/blevesearch/bleve/mapping",
+    "github.com/blevesearch/bleve/registry",
+    "github.com/blevesearch/bleve/search",
     "github.com/dgraph-io/badger",
     "github.com/dgraph-io/badger/options",
     "github.com/fatih/structs",

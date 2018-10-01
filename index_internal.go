@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+
+	"github.com/alexandrestein/gotinydb/cipher"
 )
 
 func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) (ids *idsType, err error) {
@@ -28,7 +30,7 @@ func (i *indexType) getIDsForOneValue(ctx context.Context, indexedValue []byte) 
 		return nil, err
 	}
 	var asBytes []byte
-	asBytes, err = decrypt(i.options.privateCryptoKey, asItem.Key(), asEncryptedBytes)
+	asBytes, err = cipher.Decrypt(i.options.privateCryptoKey, asItem.Key(), asEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +67,7 @@ func (i *indexType) getIDsForRangeOfValues(ctx context.Context, filterValue, lim
 	}
 
 	var firstIDsAsBytes []byte
-	firstIDsAsBytes, err = decrypt(i.options.privateCryptoKey, iter.Item().Key(), firstIDsAsEncryptedBytes)
+	firstIDsAsBytes, err = cipher.Decrypt(i.options.privateCryptoKey, iter.Item().Key(), firstIDsAsEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +102,7 @@ func (i *indexType) getIDsForRangeOfValuesLoop(ctx context.Context, allIDs *idsT
 			return nil, err
 		}
 		var idsAsBytes []byte
-		idsAsBytes, err = decrypt(i.options.privateCryptoKey, iter.Item().Key(), idsAsEncryptedBytes)
+		idsAsBytes, err = cipher.Decrypt(i.options.privateCryptoKey, iter.Item().Key(), idsAsEncryptedBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +193,7 @@ func (i *indexType) queryExists(ctx context.Context, ids *idsType, filter *Filte
 			return
 		}
 		var asBytes []byte
-		asBytes, err = decrypt(i.options.privateCryptoKey, iter.Item().Key(), asEncryptedBytes)
+		asBytes, err = cipher.Decrypt(i.options.privateCryptoKey, iter.Item().Key(), asEncryptedBytes)
 		if err != nil {
 			return
 		}
@@ -230,7 +232,7 @@ func (i *indexType) queryContains(ctx context.Context, ids *idsType, filter *Fil
 			return
 		}
 		var asBytes []byte
-		asBytes, err = decrypt(i.options.privateCryptoKey, iter.Item().Key(), asEncryptedBytes)
+		asBytes, err = cipher.Decrypt(i.options.privateCryptoKey, iter.Item().Key(), asEncryptedBytes)
 		if err != nil {
 			return
 		}
