@@ -306,14 +306,31 @@ func (d *DB) Backup(w io.Writer, since uint64) (uint64, error) {
 
 // Load restor the database from a backup file
 func (d *DB) Load(r io.Reader) error {
+	collection := d.collections
+	d.collections = nil
+
 	err := d.badgerDB.Load(r)
 	if err != nil {
+		d.collections = collection
 		return err
 	}
 
-	d.collections = nil
+	err = d.loadCollections()
+	if err != nil {
+		d.collections = collection
+		return err
+	}
 
-	return d.loadCollections()
+	for _, c := range d.collections {
+		for _, i := range c.bleveIndexes {
+			err = indexUnzipper(i.Path, i.IndexDirZip)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetCollections returns all collection pointers

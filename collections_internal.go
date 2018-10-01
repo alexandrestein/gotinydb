@@ -8,7 +8,6 @@ import (
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
-	"golang.org/x/crypto/blake2b"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
@@ -25,21 +24,11 @@ func (c *Collection) buildIDWhitPrefixData(id []byte) []byte {
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
-	ret := c.buildCollectionPrefix(prefixIndexes)
-
-	bs := blake2b.Sum256(indexName)
-
-	ret = append(ret, bs[:8]...)
-	ret = append(ret, indexName...)
+	ret := append(c.buildCollectionPrefix(prefixIndexes), deriveName(indexName, 8)...)
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixBleveIndex(indexName, id []byte) []byte {
-	ret := c.buildCollectionPrefix(prefixBleveIndexes)
-
-	bs := blake2b.Sum256(indexName)
-
-	ret = append(ret, bs[:8]...)
-	ret = append(ret, indexName...)
+	ret := append(c.buildCollectionPrefix(prefixBleveIndexes), deriveName(indexName, 8)...)
 	return append(ret, id...)
 }
 func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
@@ -569,7 +558,7 @@ func (c *Collection) getBleveIndex(name string) (*bleveIndex, error) {
 	}
 
 	// Load the index
-	bleveIndex, err := bleve.OpenUsing(c.options.Path+"/"+c.name+"/"+index.Name, c.buildKvConfig(index.IndexPrefix))
+	bleveIndex, err := bleve.OpenUsing(index.Path, c.buildKvConfig(index.IndexPrefix))
 	if err != nil {
 		return nil, err
 	}

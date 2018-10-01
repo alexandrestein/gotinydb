@@ -276,6 +276,8 @@ func (d *DB) loadCollections() error {
 				newCol.indexes = append(newCol.indexes, i)
 			}
 
+			newCol.bleveIndexes = savedCol.BleveIndexes
+
 			d.collections = append(d.collections, newCol)
 		}
 
@@ -298,6 +300,7 @@ func (d *DB) saveCollections() error {
 			colToSave.Name = col.name
 			colToSave.Prefix = col.prefix
 			colToSave.Indexes = col.indexes
+			colToSave.BleveIndexes = col.bleveIndexes
 
 			dbToSave.Collections = append(dbToSave.Collections, colToSave)
 		}

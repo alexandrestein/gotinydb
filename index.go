@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/blevesearch/bleve"
 	"github.com/fatih/structs"
 )
 
@@ -258,4 +259,19 @@ func (i *IndexInfo) GetType() string {
 	default:
 		return ""
 	}
+}
+
+func (i *bleveIndex) open() error {
+	if i.index != nil {
+		return nil
+	}
+
+	bleveIndex, err := bleve.OpenUsing(i.Path, i.kvConfig)
+	if err != nil {
+		return err
+	}
+
+	i.index = bleveIndex
+
+	return nil
 }

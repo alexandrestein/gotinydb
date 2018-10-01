@@ -329,6 +329,7 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 	return timestamp, c.Put(id, contentAsInterface)
 }
 
+// GetBleveIndexesName returns the names of every bleve indexes from the given collection.
 func (c *Collection) GetBleveIndexesName() (ret []string) {
 	for _, i := range c.indexes {
 		ret = append(ret, i.Name)
@@ -336,6 +337,7 @@ func (c *Collection) GetBleveIndexesName() (ret []string) {
 	return
 }
 
+// GetBleveIndex returns a bleve index based on the given name
 func (c *Collection) GetBleveIndex(name string) (bleve.Index, error) {
 	index, err := c.getBleveIndex(name)
 	if err != nil {
@@ -345,8 +347,9 @@ func (c *Collection) GetBleveIndex(name string) (bleve.Index, error) {
 	return index.index, nil
 }
 
+// SetBleveIndex defines a new bleve index into the collection.
 func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping) error {
-	for _, i := range c.indexes {
+	for _, i := range c.bleveIndexes {
 		if i.Name == name {
 			return ErrIndexNameAllreadyExists
 		}
@@ -384,7 +387,7 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 
 	i.index = bleveIndex
 
-	i.IndexDirZip, err = indexZiper(i.Path)
+	i.IndexDirZip, err = indexZipper(i.Path)
 	if err != nil {
 		return err
 	}
@@ -409,6 +412,9 @@ func (c *Collection) GetIndexesInfo() []*IndexInfo {
 	return indexesInfo
 }
 
+// Search is used to query a bleve index.
+// Give the index name the corresponding request.
+// It returns a SearchResult pointer.
 func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest) (*SearchResult, error) {
 	ret := new(SearchResult)
 
@@ -426,8 +432,10 @@ func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest
 	return ret, nil
 }
 
+// Next takes a destination pointer as agument and try to get the next value from the request to fillup the destination.
+// You can call this function directly after the query and entil the end when it returns an error.
 func (s *SearchResult) Next(dest interface{}) (*search.DocumentMatch, error) {
-	if s.BleveSearchResult.Total-1 < s.position {
+	if s.BleveSearchResult.Hits.Len()-1 < int(s.position) {
 		return nil, ErrSearchOver
 	}
 

@@ -89,7 +89,7 @@ func (it IndexType) TypeName() string {
 	}
 }
 
-func indexZiper(baseFolder string) ([]byte, error) {
+func indexZipper(baseFolder string) ([]byte, error) {
 	// Get a Buffer to Write To
 	buff := bytes.NewBuffer(nil)
 	// outFile, err := os.Create(`/Users/tom/Desktop/zip.zip`)
@@ -144,7 +144,6 @@ func addFiles(w *zip.Writer, basePath, baseInZip string) error {
 			}
 		} else if file.IsDir() {
 
-			// Recurse
 			newBase := basePath + file.Name() + "/"
 
 			err := addFiles(w, newBase, file.Name()+"/")
@@ -157,7 +156,7 @@ func addFiles(w *zip.Writer, basePath, baseInZip string) error {
 	return nil
 }
 
-func indexDeziper(baseFolder string, contentAsZip []byte) error {
+func indexUnzipper(baseFolder string, contentAsZip []byte) error {
 	buff := bytes.NewReader(contentAsZip)
 	// Open a zip archive for reading.
 	r, err := zip.NewReader(buff, int64(buff.Len()))
@@ -190,4 +189,19 @@ func indexDeziper(baseFolder string, contentAsZip []byte) error {
 	}
 
 	return nil
+}
+
+// deriveName returns a hash of the given name with the requested size.
+// The size can't be greater than 32 or zero.
+// If bigger than 32, the returned slice is 32 bytes long and if zero or less
+// it returns a 8 bytes slice
+func deriveName(name []byte, size int) []byte {
+	if size > 32 {
+		size = 32
+	} else if size <= 0 {
+		size = 8
+	}
+
+	bs := blake2b.Sum256(name)
+	return bs[:size]
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -403,11 +404,16 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	}
 
 	addIndexesFunc := func(c *Collection) {
-		c.SetIndex("email", StringIndex, "email")
-		c.SetIndex("age", UIntIndex, "Age")
-		c.SetIndex("city", StringIndex, "Address", "city")
+		manageErr := func(err error) {
+			if err != nil {
+				t.Error(err)
+			}
+		}
+		manageErr(c.SetIndex("email", StringIndex, "email"))
+		manageErr(c.SetIndex("age", UIntIndex, "Age"))
+		manageErr(c.SetIndex("city", StringIndex, "Address", "city"))
 
-		c.SetBleveIndex("index 2", bleve.NewIndexMapping())
+		manageErr(c.SetBleveIndex("bleve index 1", bleve.NewIndexMapping()))
 	}
 	addIndexesFunc(baseCols[0])
 	addIndexesFunc(baseCols[1])
@@ -472,6 +478,12 @@ func TestDB_Backup_And_Load(t *testing.T) {
 	}
 
 	err = backupAndRestorQueries(ids, baseCols[0], baseCols[1], baseCols[2], restoredCols[0], restoredCols[1], restoredCols[2])
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = backupAndRestorBleveQueries(ids, baseCols[0], baseCols[1], baseCols[2], restoredCols[0], restoredCols[1], restoredCols[2])
 	if err != nil {
 		t.Error(err)
 		return
@@ -582,6 +594,93 @@ func backupAndRestorQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection)
 
 		if user.Address.City != gettedUser.Address.City {
 			return fmt.Errorf("query did not returned value with the same city:\n\t%v\n\t%v", user, gettedUser)
+		}
+
+		return nil
+	}
+
+	for _, id := range ids {
+		err = testFunc(id, c1, rc1)
+		if err != nil {
+			return err
+		}
+		err = testFunc(id, c2, rc2)
+		if err != nil {
+			return err
+		}
+		err = testFunc(id, c3, rc3)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func backupAndRestorBleveQueries(ids []string, c1, c2, c3, rc1, rc2, rc3 *Collection) (err error) {
+	user := &User{}
+	gettedUser := &User{}
+	var response *SearchResult
+
+	testFunc := func(id string, baseCol, restoredCol *Collection) (err error) {
+		baseCol.Get(id, user)
+
+		response, err = restoredCol.Search("bleve index 1", bleve.NewSearchRequest(
+			bleve.NewQueryStringQuery(user.Email),
+		))
+		if err != nil {
+			return err
+		}
+		_, err = response.Next(gettedUser)
+		if err != nil {
+			fmt.Println("merde")
+			return err
+		}
+
+		if !reflect.DeepEqual(user, gettedUser) {
+			return fmt.Errorf("user in original database and in restored database are not equal\n\t%v\n\t%v", user, gettedUser)
+		}
+
+		ageAsFloat := float64(user.Age)
+		inclusive := true
+
+		response, err = restoredCol.Search("bleve index 1",
+			bleve.NewSearchRequest(bleve.NewNumericRangeInclusiveQuery(&ageAsFloat, &ageAsFloat, &inclusive, &inclusive)),
+		)
+		if err != nil {
+			return err
+		}
+		_, err = response.Next(gettedUser)
+		if err != nil {
+			return err
+		}
+
+		if user.Age != gettedUser.Age {
+			if user.Age != gettedUser.Address.ZipCode {
+				return fmt.Errorf("query did not returned value with the same age:\n\t%v\n\t%v", user, gettedUser)
+			}
+		}
+
+		response, err = restoredCol.Search("bleve index 1", bleve.NewSearchRequest(
+			bleve.NewQueryStringQuery(user.Address.City),
+		))
+		if err != nil {
+			return err
+		}
+
+		gettedUser = new(User)
+		if err != nil {
+			return err
+		}
+		_, err = response.Next(gettedUser)
+		if err != nil {
+			return err
+		}
+
+		if user.Address.City != gettedUser.Address.City {
+			if strings.Contains(gettedUser.Email, user.Address.City) {
+				return fmt.Errorf("query did not returned value with the same city:\n\t%v\n\t%v", user, gettedUser)
+			}
 		}
 
 		return nil
