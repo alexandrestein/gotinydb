@@ -12,7 +12,7 @@ import (
 // Defines the default values of the database configuration
 var (
 	// Used to get the configuration after restarting the database
-	configID = []byte{0}
+	configID = []byte{prefixConfig, dbIDPrefixConfigDBConfig}
 
 	DefaultTransactionTimeOut = time.Second * 1
 	DefaultQueryTimeOut       = time.Second * 1
@@ -104,13 +104,25 @@ const (
 	contains filterOperator = "cn"
 )
 
+// Those constants defines the first level of prefixes.
+const (
+	prefixConfig byte = iota
+	prefixCollections
+	prefixFiles
+)
+
+// Those constants defines the second level of prefixes or value from config.
+const (
+	dbIDPrefixConfigDBConfig byte = iota
+)
+
 // Those constants defines the prefix used to split different element of the collection
-// into the store
+// into the store. This is the second level of the collection prefix.
 const (
 	prefixData byte = iota
 	prefixIndexes
 	prefixRefs
-	prefixFile
+	prefixBleveIndexes
 )
 
 // Those define the different type of indexes

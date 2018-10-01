@@ -2,9 +2,9 @@ package gotinydb
 
 import (
 	"context"
-	"os"
 	"time"
 
+	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
 )
@@ -17,8 +17,8 @@ type (
 		badgerDB    *badger.DB
 		collections []*Collection
 
-		// freePrefix defines the list of prefix which can be used for a new collection
-		freePrefix []byte
+		// freeCollectionPrefixes defines the list of prefix which can be used for a new collection
+		freeCollectionPrefixes []byte
 
 		writeTransactionChan chan *writeTransaction
 
@@ -27,14 +27,15 @@ type (
 	}
 
 	dbExport struct {
-		Collections      []*collectionExport
-		FreePrefix       []byte
-		PrivateCryptoKey [32]byte
+		Collections            []*collectionExport
+		FreeCollectionPrefixes []byte
+		PrivateCryptoKey       [32]byte
 	}
 	collectionExport struct {
-		Name    string
-		Indexes []*indexType
-		Prefix  byte
+		Name         string
+		Indexes      []*indexType
+		BleveIndexes []*bleveIndex
+		Prefix       byte
 	}
 
 	// Options defines the deferent configuration elements of the database
@@ -61,11 +62,16 @@ type (
 
 	// Collection defines the storage object
 	Collection struct {
-		name    string
-		indexes []*indexType
+		name         string
+		indexes      []*indexType
+		bleveIndexes []*bleveIndex
 
 		// prefix defines the prefix needed to found the collection into the store
 		prefix byte
+
+		// indexFreePrefixes defines the list of prefix which can be used for a new indexes
+		indexFreePrefixes      []byte
+		bleveIndexFreePrefixes []byte
 
 		options *Options
 
@@ -115,6 +121,33 @@ type (
 	idsTypeMultiSorter struct {
 		IDs    []*idType
 		invert bool
+	}
+
+	bleveIndex struct {
+		Name        string
+		Prefix      byte
+		Path        string
+		IndexDirZip []byte
+
+		kvConfig map[string]interface{}
+		writeTxn *badger.Txn
+
+		collectionPrefix byte
+
+		index bleve.Index
+	}
+
+	// BleveSearchResult is returned when (*Collection).Shearch is call.
+	// It contains the result and a iterator for the reading values directly from database.
+	BleveSearchResult struct {
+		BleveSearchResult *bleve.SearchResult
+
+		position uint64
+		c        *Collection
+
+		// preload      uint
+		// preloaded    [][]byte
+		// preloadedErr []error
 	}
 
 	// FilterOperator defines the type of filter to perform
@@ -194,15 +227,15 @@ type (
 		isInsertion, isFile bool
 	}
 
-	// Archive defines the way archives are saved inside the zip file
-	archive struct {
-		StartTime, EndTime time.Time
-		Indexes            map[string][]*indexType
-		Collections        []string
-		Timestamp          uint64
+	// // Archive defines the way archives are saved inside the zip file
+	// archive struct {
+	// 	StartTime, EndTime time.Time
+	// 	Indexes            map[string][]*indexType
+	// 	Collections        []string
+	// 	Timestamp          uint64
 
-		file *os.File
-	}
+	// 	file *os.File
+	// }
 
 	// IndexInfo is returned by *Collection.GetIndexesInfo and let call see
 	// what indexes are present in the collection.

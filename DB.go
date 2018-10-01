@@ -78,6 +78,8 @@ func (d *DB) SetOptions(options *Options) error {
 
 // PutFile let caller insert large element into the database via a reader interface
 func (d *DB) PutFile(id string, reader io.Reader) error {
+	d.DeleteFile(id)
+
 	// Track the numbers of chunks
 	nChunk := 0
 	// Open a loop
@@ -133,7 +135,9 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 		it := txn.NewIterator(opt)
 		defer it.Close()
 		for it.Seek(storeID); it.ValidForPrefix(storeID); it.Next() {
-			valAsEncryptedBytes, err := it.Item().Value()
+			var err error
+			var valAsEncryptedBytes []byte
+			valAsEncryptedBytes, err = it.Item().ValueCopy(valAsEncryptedBytes)
 			if err != nil {
 				return err
 			}
@@ -188,6 +192,11 @@ func (d *DB) DeleteFile(id string) error {
 		return err
 	}
 
+	// No need to open a new transaction if nothing needs to be removed
+	if len(idsToDelete) == 0 {
+		return nil
+	}
+
 	// Start the write operation and returns the error if any
 	return d.badgerDB.Update(func(txn *badger.Txn) error {
 		// Loop for every IDs to remove and remove it
@@ -225,46 +234,45 @@ func (d *DB) Close() error {
 // DeleteCollection delete the given collection
 func (d *DB) DeleteCollection(collectionName string) error {
 	var c *Collection
-	for i, col := range d.collections {
+	for _, col := range d.collections {
 		if col.name == collectionName {
 			// Save the collection pointer for future cleanup
 			c = col
-			// Delete the collection form the list of collection pointers
-			copy(d.collections[i:], d.collections[i+1:])
-			d.collections[len(d.collections)-1] = nil
-			d.collections = d.collections[:len(d.collections)-1]
 			break
 		}
 	}
 
 	txn := d.badgerDB.NewTransaction(true)
 	defer txn.Discard()
-	opt := badger.DefaultIteratorOptions
-	opt.PrefetchValues = false
-	it := txn.NewIterator(opt)
-	// Make sure that the iterator is closed.
-	// But we have to make sure that close is called only onces
-	// but we need to run it before commit.
-	defer func() {
-		if r := recover(); r != nil {
-			it.Close()
-		}
-	}()
 
-	// Prevent panic
-	if c == nil {
-		return nil
-	}
-
-	// Remove the index DB files
-	prefix := c.buildCollectionPrefix()
-	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-		err := txn.Delete(it.Item().Key())
+	for {
+		done, err := d.iterationDeleteCollection(c)
 		if err != nil {
 			return err
 		}
+		if done {
+			break
+		}
 	}
-	it.Close()
+	// opt := badger.DefaultIteratorOptions
+	// opt.PrefetchValues = false
+	// it := txn.NewIterator(opt)
+	// defer it.Close()
+
+	// // Prevent panic
+	// if c == nil {
+	// 	return nil
+	// }
+
+	// // Remove the index DB files
+	// prefix := c.buildCollectionPrefix()
+	// for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+	// 	err := txn.Delete(it.Item().Key())
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+	// it.Close()
 
 	// Commit changes
 	err := txn.Commit(nil)
@@ -273,7 +281,18 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	}
 
 	// Put the prefix again into the free prefix list
-	d.freePrefix = append(d.freePrefix, c.prefix)
+	d.freeCollectionPrefixes = append(d.freeCollectionPrefixes, c.prefix)
+
+	// Clean the in memory collections list
+	for i, col := range d.collections {
+		if col.name == collectionName {
+			// Delete the collection form the list of collection pointers
+			copy(d.collections[i:], d.collections[i+1:])
+			d.collections[len(d.collections)-1] = nil
+			d.collections = d.collections[:len(d.collections)-1]
+			break
+		}
+	}
 
 	return nil
 }

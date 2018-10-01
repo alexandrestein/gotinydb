@@ -292,7 +292,7 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 				item := iterator.Item()
 
 				var asEncryptedBytes []byte
-				asEncryptedBytes, err = item.Value()
+				asEncryptedBytes, err = item.ValueCopy(asEncryptedBytes)
 				if err != nil {
 					return err
 				}

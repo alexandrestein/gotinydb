@@ -57,12 +57,12 @@ func (d *DB) initCollection(name string) (*Collection, error) {
 	c.name = name
 
 	// Set the prefix
-	c.prefix = d.freePrefix[0]
+	c.prefix = d.freeCollectionPrefixes[0]
 
 	// Remove the prefix from the list of free prefixes
-	d.freePrefix = append(d.freePrefix[:0], d.freePrefix[1:]...)
+	d.freeCollectionPrefixes = append(d.freeCollectionPrefixes[:0], d.freeCollectionPrefixes[1:]...)
 
-	// Set the different values af the collection
+	// Set the different values of the collection
 	c.store = d.badgerDB
 	c.writeTransactionChan = d.writeTransactionChan
 	c.ctx = d.ctx
@@ -72,7 +72,7 @@ func (d *DB) initCollection(name string) (*Collection, error) {
 
 	c.saveCollections = d.saveCollections
 
-	return c, nil
+	return c, c.saveCollections()
 }
 
 func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
@@ -198,7 +198,7 @@ func (d *DB) loadCollections() error {
 			return err
 		}
 		var configAsBytesEncrypted []byte
-		configAsBytesEncrypted, err = item.Value()
+		configAsBytesEncrypted, err = item.ValueCopy(configAsBytesEncrypted)
 		if err != nil {
 			return err
 		}
@@ -220,7 +220,7 @@ func (d *DB) loadCollections() error {
 		d.options.privateCryptoKey = savedDB.PrivateCryptoKey
 
 		// Save the free prefixes
-		d.freePrefix = savedDB.FreePrefix
+		d.freeCollectionPrefixes = savedDB.FreeCollectionPrefixes
 
 		// Fill up collections
 		for _, savedCol := range savedDB.Collections {
@@ -259,7 +259,7 @@ func (d *DB) saveCollections() error {
 	return d.badgerDB.Update(func(txn *badger.Txn) error {
 		dbToSave := new(dbExport)
 		// Save the free prefixes
-		dbToSave.FreePrefix = d.freePrefix
+		dbToSave.FreeCollectionPrefixes = d.freeCollectionPrefixes
 
 		// Save the internal key for encryption
 		dbToSave.PrivateCryptoKey = d.options.privateCryptoKey
@@ -290,9 +290,9 @@ func (d *DB) saveCollections() error {
 }
 
 func (d *DB) initDB() error {
-	d.freePrefix = make([]byte, 255)
-	for i := 1; i < 256; i++ {
-		d.freePrefix[i-1] = byte(i)
+	d.freeCollectionPrefixes = make([]byte, 256)
+	for i := 0; i < 256; i++ {
+		d.freeCollectionPrefixes[i] = byte(i)
 	}
 
 	newKey := [chacha20poly1305.KeySize]byte{}
@@ -309,7 +309,7 @@ func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
 	derivedID := blake2b.Sum256([]byte(id))
 
 	// Build the prefix
-	prefixWithID := append([]byte{prefixFile}, derivedID[:]...)
+	prefixWithID := append([]byte{prefixFiles}, derivedID[:]...)
 
 	// Initialize the chunk part of the ID
 	chunkPart := []byte{}
@@ -348,3 +348,34 @@ func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtEl
 	}
 	return nil
 }
+
+func (d *DB) iterationDeleteCollection(c *Collection) (done bool, _ error) {
+	done = false
+	return done, d.badgerDB.Update(func(txn *badger.Txn) error {
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchValues = false
+		it := txn.NewIterator(opt)
+		defer it.Close()
+
+		counter := 1
+
+		// Remove the index DB files
+		prefix := c.getCollectionPrefix()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			err := txn.Delete(it.Item().Key())
+			if err != nil {
+				return err
+			}
+
+			if counter%10000 == 0 {
+				return nil
+			}
+
+			counter++
+		}
+
+		done = true
+		return nil
+	})
+}
+
