@@ -201,6 +201,10 @@ func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *w
 	if err != nil {
 		return err
 	}
+	err = wtElem.collection.cleanFromBleve(ctx, txn, wtElem.id)
+	if err != nil {
+		return err
+	}
 	return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
 }
 
@@ -380,33 +384,33 @@ func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtEl
 	return nil
 }
 
-func (d *DB) iterationDeleteCollection(c *Collection) (done bool, _ error) {
-	done = false
-	return done, d.badgerDB.Update(func(txn *badger.Txn) error {
-		opt := badger.DefaultIteratorOptions
-		opt.PrefetchValues = false
-		it := txn.NewIterator(opt)
-		defer it.Close()
+// func (d *DB) iterationDeleteCollection(c *Collection) (done bool, _ error) {
+// 	done = false
+// 	return done, d.badgerDB.Update(func(txn *badger.Txn) error {
+// 		opt := badger.DefaultIteratorOptions
+// 		opt.PrefetchValues = false
+// 		it := txn.NewIterator(opt)
+// 		defer it.Close()
 
-		counter := 1
+// 		counter := 1
 
-		// Remove the index DB files
-		prefix := c.getCollectionPrefix()
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			err := txn.Delete(it.Item().Key())
-			if err != nil {
-				return err
-			}
+// 		// Remove the index DB files
+// 		prefix := c.getCollectionPrefix()
+// 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+// 			err := txn.Delete(it.Item().Key())
+// 			if err != nil {
+// 				return err
+// 			}
 
-			if counter%10000 == 0 {
-				return nil
-			}
+// 			if counter%10000 == 0 {
+// 				return nil
+// 			}
 
-			counter++
-		}
+// 			counter++
+// 		}
 
-		done = true
-		return nil
-	})
-}
+// 		done = true
+// 		return nil
+// 	})
+// }
 

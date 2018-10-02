@@ -244,11 +244,11 @@ func (d *DB) DeleteCollection(collectionName string) error {
 		}
 	}
 
-	txn := d.badgerDB.NewTransaction(true)
-	defer txn.Discard()
+	// txn := d.badgerDB.NewTransaction(true)
+	// defer txn.Discard()
 
 	for {
-		done, err := d.iterationDeleteCollection(c)
+		done, err := deleteLoop(d.badgerDB, c.getCollectionPrefix())
 		if err != nil {
 			return err
 		}
@@ -276,11 +276,11 @@ func (d *DB) DeleteCollection(collectionName string) error {
 	// }
 	// it.Close()
 
-	// Commit changes
-	err := txn.Commit(nil)
-	if err != nil {
-		return err
-	}
+	// // Commit changes
+	// err := txn.Commit(nil)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Put the prefix again into the free prefix list
 	d.freeCollectionPrefixes = append(d.freeCollectionPrefixes, c.prefix)

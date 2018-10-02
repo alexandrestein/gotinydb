@@ -216,6 +216,17 @@ func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString 
 	return txn.SetEntry(e)
 }
 
+func (c *Collection) cleanFromBleve(ctx context.Context, txn *badger.Txn, idAsString string) error {
+	for _, bleveIndex := range c.bleveIndexes {
+		err := bleveIndex.index.Delete(idAsString)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, error) {
 	// Init the destination
 	tree := btree.New(10)

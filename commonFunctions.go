@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -204,4 +205,36 @@ func deriveName(name []byte, size int) []byte {
 
 	bs := blake2b.Sum256(name)
 	return bs[:size]
+}
+
+func deleteLoop(db *badger.DB, prefix []byte) (done bool, err error) {
+	return done, db.Update(func(txn *badger.Txn) error {
+		done, err = deleteLoopViaTxn(txn, prefix)
+		return err
+	})
+}
+
+func deleteLoopViaTxn(txn *badger.Txn, prefix []byte) (done bool, _ error) {
+	opt := badger.DefaultIteratorOptions
+	opt.PrefetchValues = false
+	it := txn.NewIterator(opt)
+	defer it.Close()
+
+	counter := 1
+
+	// Remove the index DB files
+	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		err := txn.Delete(it.Item().Key())
+		if err != nil {
+			return false, err
+		}
+
+		if counter%10000 == 0 {
+			return false, nil
+		}
+
+		counter++
+	}
+
+	return true, nil
 }

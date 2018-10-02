@@ -155,50 +155,78 @@ func (c *Collection) SetIndex(name string, t IndexType, selector ...string) erro
 
 // DeleteIndex remove the index from the collection
 func (c *Collection) DeleteIndex(name string) error {
-	txn := c.store.NewTransaction(true)
-	defer txn.Discard()
+	var index *indexType
+
 	// Find the correct index from the list
+	for _, activeIndex := range c.indexes {
+		if activeIndex.Name == name {
+			index = activeIndex
+		}
+	}
+
+	if index == nil {
+		return ErrNotFound
+	}
+
+	indexPrefix := c.buildIDWhitPrefixIndex([]byte(name), nil)
+	for {
+		done, err := deleteLoop(c.store, indexPrefix)
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+	}
+
 	for i, activeIndex := range c.indexes {
 		if activeIndex.Name == name {
 			// Clean the collection list from the index pointer
 			copy(c.indexes[i:], c.indexes[i+1:])
 			c.indexes[len(c.indexes)-1] = nil
 			c.indexes = c.indexes[:len(c.indexes)-1]
-
-			// Remove all indexed values from database
-			iteratorOptions := badger.DefaultIteratorOptions
-			iteratorOptions.PrefetchValues = false
-			iterator := txn.NewIterator(iteratorOptions)
-			// Make sure that the iterator is closed.
-			// But we have to make sure that close is called only onces
-			// but we need to run it before commit.
-			defer func() {
-				if r := recover(); r != nil {
-					iterator.Close()
-				}
-			}()
-
-			indexPrefix := c.buildIDWhitPrefixIndex([]byte(name), nil)
-			for iterator.Seek(indexPrefix); iterator.ValidForPrefix(indexPrefix); iterator.Next() {
-				err := txn.Delete(iterator.Item().Key())
-				if err != nil {
-					return err
-				}
-			}
-
-			// Need to close the iterator before commit
-			iterator.Close()
-
-			err := txn.Commit(nil)
-			if err != nil {
-				return err
-			}
-
-			return c.saveCollections()
 		}
 	}
 
-	return ErrNotFound
+	return c.saveCollections()
+}
+
+// DeleteBleveIndex remove the bleve index from the collection
+func (c *Collection) DeleteBleveIndex(name string) error {
+	var index *bleveIndex
+
+	// Find the correct index from the list
+	for _, activeIndex := range c.bleveIndexes {
+		if activeIndex.Name == name {
+			index = activeIndex
+		}
+	}
+
+	if index == nil {
+		return ErrNotFound
+	}
+
+	indexPrefix := c.buildIDWhitPrefixBleveIndex([]byte(name), nil)
+	for {
+		done, err := deleteLoop(c.store, indexPrefix)
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+	}
+
+	for i, activeIndex := range c.bleveIndexes {
+		if activeIndex.Name == name {
+			// Clean the collection list from the index pointer
+			copy(c.bleveIndexes[i:], c.bleveIndexes[i+1:])
+			c.bleveIndexes[len(c.bleveIndexes)-1] = nil
+			c.bleveIndexes = c.bleveIndexes[:len(c.bleveIndexes)-1]
+		}
+	}
+
+	return c.saveCollections()
 }
 
 // Query run the given query to all the collection indexes
