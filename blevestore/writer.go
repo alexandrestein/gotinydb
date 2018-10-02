@@ -31,11 +31,17 @@ func (w *Writer) NewBatch() store.KVBatch {
 }
 
 func (w *Writer) set(dbID, content []byte) error {
-	req := NewBleveStoreWriteRequest(dbID, content)
+	encrypted := cipher.Encrypt(w.store.config.key, dbID, content)
+	req := NewBleveStoreWriteRequest(dbID, encrypted)
 
 	w.store.config.bleveWriteChan <- req
 
-	return <-req.ResponseChan
+	err := <-req.ResponseChan
+	if err != nil {
+		fmt.Println("done", err)
+	}
+
+	return err
 }
 
 func (w *Writer) NewBatchEx(options store.KVBatchOptions) ([]byte, store.KVBatch, error) {
@@ -98,7 +104,7 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 		}
 
 		// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, mergedVal))
-		err = w.set(storeID, cipher.Encrypt(w.store.config.key, storeID, mergedVal))
+		err = w.set(storeID, mergedVal)
 		if err != nil {
 			return
 		}
@@ -109,7 +115,7 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 
 		if op.V != nil {
 			// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, op.V))
-			err = w.set(storeID, cipher.Encrypt(w.store.config.key, storeID, op.V))
+			err = w.set(storeID, op.V)
 			if err != nil {
 				return
 			}

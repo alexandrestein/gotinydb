@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	"github.com/blevesearch/bleve"
-	"github.com/fatih/structs"
 )
 
 // newIndex build a new Index pointer
@@ -19,87 +18,120 @@ func newIndex(name string, t IndexType, selector ...string) *indexType {
 	return ret
 }
 
-// apply take the full object to add in the collection and check if is must be
-// indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
 func (i *indexType) apply(object interface{}) (contentToIndex [][]byte, ok bool) {
-	if structs.IsStruct(object) {
-		return i.applyToStruct(structs.New(object))
-	}
-
-	if mp, ok := object.(map[string]interface{}); ok {
-		return i.applyToMap(mp)
+	fieldToIndex, toIndex := i.Selector.apply(object)
+	if toIndex {
+		return i.testType(fieldToIndex)
 	}
 
 	return nil, false
 }
 
-func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex [][]byte, ok bool) {
-	var field *structs.Field
-	for j, fieldName := range i.Selector {
-		// If this is a first level selector
-		if j == 0 {
-			field, ok = object.FieldOk(fieldName)
-			// Check the JSON tag
-			if !ok {
-				field, ok = i.testJSONTag(object.Fields(), fieldName)
-			}
-		} else {
-			var tmpField *structs.Field
-			tmpField, ok = field.FieldOk(fieldName)
-			// Check the JSON tag
-			if !ok {
-				field, ok = i.testJSONTag(field.Fields(), fieldName)
-			} else {
-				field = tmpField
-			}
-		}
+// func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex [][]byte, ok bool) {
+// 	return i.Selector.applyToStruct(object)
+// }
 
-		if !ok {
-			// return i.testJSONTag(object)
-			return nil, false
-		}
-	}
-	return i.testType(field.Value())
-}
-
-func (i *indexType) testJSONTag(fields []*structs.Field, fieldName string) (field *structs.Field, ok bool) {
-	for _, fieldToTryWithJSONTags := range fields {
-		JSONTag := fieldToTryWithJSONTags.Tag("json")
-		if JSONTag == fieldName || JSONTag == fieldName+",omitempty" {
-			ok = true
-			field = fieldToTryWithJSONTags
-			return
-		}
-	}
-
-	return
-}
+// func (i *indexType) testJSONTag(fields []*structs.Field, fieldName string) (field *structs.Field, ok bool) {
+// 	return i.Selector.testJSONTag(fields, fieldName)
+// }
 
 func (i *indexType) selectorHash() uint16 {
-	return buildSelectorHash(i.Selector)
+	return i.Selector.selectorHash()
 }
 
-func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex [][]byte, ok bool) {
-	var field interface{}
-	for i, fieldName := range i.Selector {
-		if i == 0 {
-			field, ok = object[fieldName]
-		} else {
-			fieldMap, mapConvertionOk := field.(map[string]interface{})
-			if !mapConvertionOk {
-				return nil, false
-			}
-			field, ok = fieldMap[fieldName]
-			if !ok {
-				return nil, false
-			}
-		}
-		if !ok {
-			return nil, false
-		}
-	}
-	return i.testType(i.convertInterfaceValueFromMapToIndexType(field))
-}
+// func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex [][]byte, ok bool) {
+// 	return i.Selector.applyToMap(object)
+// }
+
+// func (i *indexType) testType(value interface{}) (contentToIndexes [][]byte, ok bool) {
+// 	return i.Selector.testType(value)
+// }
+
+// func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bool) {
+// 	return i.Selector.convertType(value)
+// }
+
+// // apply take the full object to add in the collection and check if is must be
+// // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
+// func (i *indexType) apply(object interface{}) (contentToIndex [][]byte, ok bool) {
+// 	if structs.IsStruct(object) {
+// 		return i.applyToStruct(structs.New(object))
+// 	}
+
+// 	if mp, ok := object.(map[string]interface{}); ok {
+// 		return i.applyToMap(mp)
+// 	}
+
+// 	return nil, false
+// }
+
+// func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex [][]byte, ok bool) {
+// 	var field *structs.Field
+// 	for j, fieldName := range i.Selector {
+// 		// If this is a first level selector
+// 		if j == 0 {
+// 			field, ok = object.FieldOk(fieldName)
+// 			// Check the JSON tag
+// 			if !ok {
+// 				field, ok = i.testJSONTag(object.Fields(), fieldName)
+// 			}
+// 		} else {
+// 			var tmpField *structs.Field
+// 			tmpField, ok = field.FieldOk(fieldName)
+// 			// Check the JSON tag
+// 			if !ok {
+// 				field, ok = i.testJSONTag(field.Fields(), fieldName)
+// 			} else {
+// 				field = tmpField
+// 			}
+// 		}
+
+// 		if !ok {
+// 			// return i.testJSONTag(object)
+// 			return nil, false
+// 		}
+// 	}
+// 	return i.testType(field.Value())
+// }
+
+// func (i *indexType) testJSONTag(fields []*structs.Field, fieldName string) (field *structs.Field, ok bool) {
+// 	for _, fieldToTryWithJSONTags := range fields {
+// 		JSONTag := fieldToTryWithJSONTags.Tag("json")
+// 		if JSONTag == fieldName || JSONTag == fieldName+",omitempty" {
+// 			ok = true
+// 			field = fieldToTryWithJSONTags
+// 			return
+// 		}
+// 	}
+
+// 	return
+// }
+
+// func (i *indexType) selectorHash() uint16 {
+// 	return buildSelectorHash(i.Selector)
+// }
+
+// func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex [][]byte, ok bool) {
+// 	var field interface{}
+// 	for i, fieldName := range i.Selector {
+// 		if i == 0 {
+// 			field, ok = object[fieldName]
+// 		} else {
+// 			fieldMap, mapConvertionOk := field.(map[string]interface{})
+// 			if !mapConvertionOk {
+// 				return nil, false
+// 			}
+// 			field, ok = fieldMap[fieldName]
+// 			if !ok {
+// 				return nil, false
+// 			}
+// 		}
+// 		if !ok {
+// 			return nil, false
+// 		}
+// 	}
+// 	return i.testType(i.convertInterfaceValueFromMapToIndexType(field))
+// }
 
 // doesFilterApplyToIndex only check if the filter belongs to the index
 func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
@@ -124,12 +156,14 @@ func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
 }
 
 func (i *indexType) testType(value interface{}) (contentToIndexes [][]byte, ok bool) {
+	var contentToIndex []byte
+
 	switch reflect.TypeOf(value).Kind() {
 	case reflect.Slice:
 		s := reflect.ValueOf(value)
 
 		for j := 0; j < s.Len(); j++ {
-			contentToIndex, ok := i.convertType(s.Index(j).Interface())
+			contentToIndex, ok = i.convertType(s.Index(j).Interface())
 			if !ok {
 				continue
 			}
@@ -137,7 +171,7 @@ func (i *indexType) testType(value interface{}) (contentToIndexes [][]byte, ok b
 			contentToIndexes = append(contentToIndexes, contentToIndex)
 		}
 	default:
-		contentToIndex, ok := i.convertType(value)
+		contentToIndex, ok = i.convertType(value)
 		if !ok {
 			return nil, false
 		}

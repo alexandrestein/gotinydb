@@ -7,8 +7,6 @@ import (
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
-
-	"github.com/alexandrestein/gotinydb/blevestore"
 )
 
 type (
@@ -23,7 +21,7 @@ type (
 		freeCollectionPrefixes []byte
 
 		writeTransactionChan chan *writeTransaction
-		writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
+		// writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
 
 		ctx     context.Context
 		closing bool
@@ -77,7 +75,7 @@ type (
 		store *badger.DB
 
 		writeTransactionChan chan *writeTransaction
-		writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
+		// writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
 
 		ctx context.Context
 
@@ -88,7 +86,7 @@ type (
 	Query struct {
 		filters []*Filter
 
-		orderSelector []string
+		orderSelector selector
 		order         uint16 // is the selector hash representation
 		ascendent     bool   // defines the way of the order
 
@@ -128,6 +126,7 @@ type (
 		Path        string
 		IndexDirZip []byte
 		IndexPrefix []byte
+		Selector    selector
 
 		kvConfig map[string]interface{}
 		writeTxn *badger.Txn
@@ -179,7 +178,7 @@ type (
 
 	// Filter defines the way the query will be performed
 	Filter struct {
-		selector     []string
+		selector     selector
 		selectorHash uint16
 		operator     filterOperator
 		values       []*filterValue
@@ -198,7 +197,7 @@ type (
 	// Index defines the struct to manage indexation
 	indexType struct {
 		Name     string
-		Selector []string
+		Selector selector
 		Type     IndexType
 
 		options *Options
@@ -236,6 +235,7 @@ type (
 		chunkN              int
 		bin                 bool
 		isInsertion, isFile bool
+		bleveIndex          bool
 	}
 
 	// // Archive defines the way archives are saved inside the zip file
@@ -252,7 +252,9 @@ type (
 	// what indexes are present in the collection.
 	IndexInfo struct {
 		Name     string
-		Selector []string
+		Selector selector
 		Type     IndexType
 	}
+
+	selector []string
 )

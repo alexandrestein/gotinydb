@@ -376,7 +376,7 @@ func (c *Collection) GetBleveIndex(name string) (bleve.Index, error) {
 }
 
 // SetBleveIndex defines a new bleve index into the collection.
-func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping) error {
+func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping, selector ...string) error {
 	for _, i := range c.bleveIndexes {
 		if i.Name == name {
 			return ErrIndexNameAllreadyExists
@@ -385,27 +385,29 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 
 	i := new(bleveIndex)
 	i.Name = name
+	i.Selector = selector
 
 	i.IndexPrefix = c.buildIDWhitPrefixBleveIndex([]byte(name), nil)
 
 	// Path of the configuration
 	i.Path = c.options.Path + "/" + c.name + "/" + name
 
-	go func() {
-		for {
-			request, ok := <-c.writeBleveIndexChan
-			if !ok {
-				break
-			}
-			c.store.Update(func(txn *badger.Txn) error {
-				err := txn.Set(request.ID, request.Content)
+	// go func() {
+	// 	for {
+	// 		request, ok := <-c.writeBleveIndexChan
+	// 		if !ok {
+	// 			break
+	// 		}
+	// 		c.store.Update(func(txn *badger.Txn) error {
+	// 			err := txn.Set(request.ID, cipher.Encrypt(c.options.privateCryptoKey, request.ID, request.Content))
+	// 			// err := txn.Set(request.ID, request.Content)
 
-				request.ResponseChan <- err
+	// 			request.ResponseChan <- err
 
-				return err
-			})
-		}
-	}()
+	// 			return err
+	// 		})
+	// 	}
+	// }()
 
 	i.kvConfig = c.buildKvConfig(i.IndexPrefix)
 	bleveIndex, err := bleve.NewUsing(i.Path, bleveMapping, upsidedown.Name, blevestore.Name, i.kvConfig)

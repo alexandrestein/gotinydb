@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger"
@@ -167,36 +168,42 @@ func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *w
 			return err
 		}
 
-		// Wait for the bleve index requests
-		go func() {
-			for {
-				select {
-				case request, ok := <-d.writeBleveIndexChan:
-					if !ok {
-						return
-					}
+		// // Wait for the bleve index requests
+		// go func() {
+		// 	for {
+		// 		select {
+		// 		case request, ok := <-d.writeBleveIndexChan:
+		// 			if !ok {
+		// 				return
+		// 			}
 
-					err := txn.Set(request.ID, request.Content)
-					request.ResponseChan <- err
+		// 			err := txn.Set(request.ID, request.Content)
+		// 			request.ResponseChan <- err
 
-					if err != nil {
-						return
-					}
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
+		// 			if err != nil {
+		// 				return
+		// 			}
+		// 		case <-ctx.Done():
+		// 			return
+		// 		}
+		// 	}
+		// }()
 
 		// Starts the indexing process
 		if !wtElem.bin {
 			if len(wtElem.collection.indexes) > 0 {
-				return wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+				err := wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+				if err != nil {
+					fmt.Println("err 32168732175", err)
+				}
+				return err
 			}
+			return nil
 		}
 		return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
 	}
-	// Else is because it's a deletation
+
+	// Else because it's a deletation
 	err := wtElem.collection.insertOrDeleteStore(ctx, txn, false, wtElem)
 	if err != nil {
 		return err

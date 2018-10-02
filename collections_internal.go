@@ -132,6 +132,20 @@ func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeT
 		}
 	}
 
+	for _, index := range c.bleveIndexes {
+		if indexedValues, apply := index.Selector.apply(writeTransaction.contentInterface); apply {
+			var err error
+			index, err = c.getBleveIndex(index.Name)
+			if err != nil {
+				return err
+			}
+			err = index.index.Index(writeTransaction.id, indexedValues)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	// Save the new reference stat on persistent storage
 	e := &badger.Entry{
 		Key:   refID,
