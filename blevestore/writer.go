@@ -20,28 +20,42 @@ import (
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/blevesearch/bleve/index/store"
 	"github.com/dgraph-io/badger"
+
+	"github.com/alexandrestein/gotinydb/transactions"
 )
 
 type Writer struct {
-	store *Store
+	store            *Store
+	writeTransaction *transactions.WriteTransaction
 }
 
 func (w *Writer) NewBatch() store.KVBatch {
 	return store.NewEmulatedBatch(w.store.mo)
 }
 
-func (w *Writer) set(dbID, content []byte) error {
-	encrypted := cipher.Encrypt(w.store.config.key, dbID, content)
-	req := NewBleveStoreWriteRequest(dbID, encrypted)
+// func (w *Writer) add(dbID, content []byte) {
+// 	elem := new(transactions.WriteElement)
+// 	elem.DBKey = dbID
+// 	elem.ContentAsBytes = content
+// 	w.listOfWrites = append(w.listOfWrites, elem)
 
-	w.store.config.bleveWriteChan <- req
+// 	// encrypted := cipher.Encrypt(w.store.config.key, dbID, content)
+// 	// req := NewBleveStoreWriteRequest(dbID, encrypted)
 
-	err := <-req.ResponseChan
-	if err != nil {
-		fmt.Println("done", err)
-	}
+// 	// w.store.config.bleveWriteChan <- req
 
-	return err
+// 	// err := <-req.ResponseChan
+// 	// if err != nil {
+// 	// 	fmt.Println("done", err)
+// 	// }
+
+// 	// return err
+// }
+
+func (w *Writer) write() error {
+	w.store.config.bleveWriteChan <- w.writeTransaction
+
+	return <-w.writeTransaction.ResponseChan
 }
 
 func (w *Writer) NewBatchEx(options store.KVBatchOptions) ([]byte, store.KVBatch, error) {
@@ -104,10 +118,9 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 		}
 
 		// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, mergedVal))
-		err = w.set(storeID, mergedVal)
-		if err != nil {
-			return
-		}
+		w.writeTransaction.AddTransaction(
+			transactions.NewTransactionElement(storeID, mergedVal),
+		)
 	}
 
 	for _, op := range emulatedBatch.Ops {
@@ -115,18 +128,17 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 
 		if op.V != nil {
 			// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, op.V))
-			err = w.set(storeID, op.V)
-			if err != nil {
-				return
-			}
+			w.writeTransaction.AddTransaction(
+				transactions.NewTransactionElement(storeID, op.V),
+			)
 		} else {
-			err = txn.Delete(storeID)
-			if err != nil {
-				return
-			}
+			w.writeTransaction.AddTransaction(
+				transactions.NewTransactionElement(storeID, nil),
+			)
 		}
 	}
-	return
+
+	return w.write()
 }
 
 func (w *Writer) Close() error {

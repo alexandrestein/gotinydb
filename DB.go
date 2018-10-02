@@ -15,6 +15,7 @@ import (
 	"github.com/dgraph-io/badger"
 
 	"github.com/alexandrestein/gotinydb/cipher"
+	"github.com/alexandrestein/gotinydb/transactions"
 )
 
 // Open simply opens a new or existing database
@@ -106,14 +107,16 @@ func (d *DB) PutFile(id string, reader io.Reader) error {
 		buff = buff[:nWritten]
 
 		// Build the write element
-		tr := newTransaction(ctx)
-		trElem := newFileTransactionElement(id, nChunk, buff, true)
-		tr.addTransaction(trElem)
+		tr := transactions.NewTransaction(ctx)
+		// trElem := newFileTransactionElement(id, nChunk, buff, true)
+		fmt.Println("id is not correct")
+		trElem := transactions.NewTransactionElement([]byte(id), buff)
+		tr.AddTransaction(trElem)
 
 		// Run the insertion
 		d.writeTransactionChan <- tr
 		// And wait for the end of the insertion
-		err = <-tr.responseChan
+		err = <-tr.ResponseChan
 		if err != nil {
 			return err
 		}

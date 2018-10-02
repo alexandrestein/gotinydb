@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/alexandrestein/gotinydb/transactions"
 	"github.com/dgraph-io/badger"
 
 	"github.com/blevesearch/bleve/index/store"
@@ -48,7 +49,7 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 		t.Error(err)
 		return nil
 	}
-	var bleveWriteChan chan *BleveStoreWriteRequest
+	var bleveWriteChan chan *transactions.WriteTransaction
 	var rv store.KVStore
 	rv, err = New(mo, map[string]interface{}{
 		"path": "test",

@@ -4,15 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/chacha20poly1305"
 
-	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
+	"github.com/alexandrestein/gotinydb/transactions"
 )
 
 func (d *DB) initBadger() error {
@@ -50,10 +49,7 @@ func (d *DB) initWriteChannels(ctx context.Context) {
 	limit := d.options.PutBufferLimit
 	// Build the queue with 2 times the limit to help writing on disc
 	// in the same order as the operation are called
-	d.writeTransactionChan = make(chan *writeTransaction, limit*2)
-
-	// Build a new channel for writing indexes
-	d.writeBleveIndexChan = make(chan *blevestore.BleveStoreWriteRequest, 0)
+	d.writeTransactionChan = make(chan *transactions.WriteTransaction, limit*2)
 
 	// Start the infinite loop
 	go d.waittingWriteLoop(ctx, limit)
@@ -72,7 +68,6 @@ func (d *DB) initCollection(name string) (*Collection, error) {
 	// Set the different values of the collection
 	c.store = d.badgerDB
 	c.writeTransactionChan = d.writeTransactionChan
-	c.writeBleveIndexChan = d.writeBleveIndexChan
 	c.ctx = d.ctx
 	c.options = d.options
 
@@ -88,15 +83,22 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 		select {
 		// A request came up
 		case tr := <-d.writeTransactionChan:
+			// In case ctx is nil this make sure the channel wont be hold for ever
+			if tr.Ctx == nil {
+				var cancel context.CancelFunc
+				tr.Ctx, cancel = context.WithTimeout(d.ctx, d.options.TransactionTimeOut)
+				defer cancel()
+			}
+
 			// Build a new write request
-			newTr := newTransaction(tr.ctx)
+			newTr := transactions.NewTransaction(tr.Ctx)
 			// Add the first request to the waiting list
-			newTr.addTransaction(tr.transactions...)
+			newTr.AddTransaction(tr.Transactions...)
 
 			// Build the slice of chan the writer will respond
 			waittingForResponseList := []chan error{}
 			// Same the first response channel
-			waittingForResponseList = append(waittingForResponseList, tr.responseChan)
+			waittingForResponseList = append(waittingForResponseList, tr.ResponseChan)
 
 			// Try to empty the queue if any
 		tryToGetAnOtherRequest:
@@ -104,12 +106,12 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 			// There is an other request in the queue
 			case trBis := <-d.writeTransactionChan:
 				// Save the request
-				newTr.addTransaction(trBis.transactions...)
+				newTr.AddTransaction(trBis.Transactions...)
 				// And save the response channel
-				waittingForResponseList = append(waittingForResponseList, trBis.responseChan)
+				waittingForResponseList = append(waittingForResponseList, trBis.ResponseChan)
 
 				// Check if the limit is not reach
-				if len(newTr.transactions) < limit {
+				if len(newTr.Transactions) < limit {
 					// If not lets try to empty the queue a bit more
 					goto tryToGetAnOtherRequest
 				}
@@ -132,16 +134,16 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 	}
 }
 
-func (d *DB) writeTransactions(tr *writeTransaction) error {
+func (d *DB) writeTransactions(tr *transactions.WriteTransaction) error {
 	// Start the new transaction
 	txn := d.badgerDB.NewTransaction(true)
 	defer txn.Discard()
 
 	var err error
 
-	if len(tr.transactions) == 1 {
+	if len(tr.Transactions) == 1 {
 		// Respond to the caller with the error if any
-		err := d.writeOneTransaction(tr.ctx, txn, tr.transactions[0])
+		err := d.writeOneTransaction(tr.Ctx, txn, tr.Transactions[0])
 		if err != nil {
 			return err
 		}
@@ -149,7 +151,7 @@ func (d *DB) writeTransactions(tr *writeTransaction) error {
 		goto commit
 	}
 
-	err = d.writeMultipleTransaction(tr.ctx, txn, tr)
+	err = d.writeMultipleTransaction(tr.Ctx, txn, tr)
 	if err != nil {
 		return err
 	}
@@ -158,66 +160,72 @@ commit:
 	return txn.Commit(nil)
 }
 
-func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
-	if wtElem.isFile {
-		return d.insertOrDeleteFileChunks(ctx, txn, wtElem)
-	} else if wtElem.isInsertion {
-		// Runs saving into the store
-		err := wtElem.collection.insertOrDeleteStore(ctx, txn, true, wtElem)
-		if err != nil {
-			return err
-		}
+func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *transactions.WriteElement) error {
+	e := new(badger.Entry)
+	e.Key = wtElem.DBKey
+	e.Value = cipher.Encrypt(d.options.privateCryptoKey, wtElem.DBKey, wtElem.ContentAsBytes)
 
-		// // Wait for the bleve index requests
-		// go func() {
-		// 	for {
-		// 		select {
-		// 		case request, ok := <-d.writeBleveIndexChan:
-		// 			if !ok {
-		// 				return
-		// 			}
+	return txn.SetEntry(e)
 
-		// 			err := txn.Set(request.ID, request.Content)
-		// 			request.ResponseChan <- err
+	// if wtElem.isFile {
+	// 	return d.insertOrDeleteFileChunks(ctx, txn, wtElem)
+	// } else if wtElem.isInsertion {
+	// 	// Runs saving into the store
+	// 	err := wtElem.collection.insertOrDeleteStore(ctx, txn, true, wtElem)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		// 			if err != nil {
-		// 				return
-		// 			}
-		// 		case <-ctx.Done():
-		// 			return
-		// 		}
-		// 	}
-		// }()
+	// 	// // Wait for the bleve index requests
+	// 	// go func() {
+	// 	// 	for {
+	// 	// 		select {
+	// 	// 		case request, ok := <-d.writeBleveIndexChan:
+	// 	// 			if !ok {
+	// 	// 				return
+	// 	// 			}
 
-		// Starts the indexing process
-		if !wtElem.bin {
-			if len(wtElem.collection.indexes) > 0 {
-				err := wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
-				if err != nil {
-					fmt.Println("err 32168732175", err)
-				}
-				return err
-			}
-			return nil
-		}
-		return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
-	}
+	// 	// 			err := txn.Set(request.ID, request.Content)
+	// 	// 			request.ResponseChan <- err
 
-	// Else because it's a deletation
-	err := wtElem.collection.insertOrDeleteStore(ctx, txn, false, wtElem)
-	if err != nil {
-		return err
-	}
-	err = wtElem.collection.cleanFromBleve(ctx, txn, wtElem.id)
-	if err != nil {
-		return err
-	}
-	return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
+	// 	// 			if err != nil {
+	// 	// 				return
+	// 	// 			}
+	// 	// 		case <-ctx.Done():
+	// 	// 			return
+	// 	// 		}
+	// 	// 	}
+	// 	// }()
+
+	// 	// Starts the indexing process
+	// 	if !wtElem.bin {
+	// 		if len(wtElem.collection.indexes) > 0 {
+	// 			err := wtElem.collection.putIntoIndexes(ctx, txn, wtElem)
+	// 			if err != nil {
+	// 				fmt.Println("err 32168732175", err)
+	// 			}
+	// 			return err
+	// 		}
+	// 		return nil
+	// 	}
+	// 	return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
+	// }
+
+	// // Else because it's a deletation
+	// err := wtElem.collection.insertOrDeleteStore(ctx, txn, false, wtElem)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = wtElem.collection.cleanFromBleve(ctx, txn, wtElem.id)
+	// if err != nil {
+	// 	return err
+	// }
+	// return wtElem.collection.cleanRefs(ctx, txn, wtElem.id)
 }
 
-func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *writeTransaction) error {
+func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *transactions.WriteTransaction) error {
 	// Loop for every insertion
-	for _, wtElem := range wt.transactions {
+	for _, wtElem := range wt.Transactions {
 		err := d.writeOneTransaction(ctx, txn, wtElem)
 		if err != nil {
 			return err
@@ -379,17 +387,17 @@ func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
 	return append(prefixWithID, chunkPart...)
 }
 
-func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
-	if wtElem.isInsertion {
-		storeID := d.buildFilePrefix(wtElem.id, wtElem.chunkN)
-		e := &badger.Entry{
-			Key:   storeID,
-			Value: cipher.Encrypt(d.options.privateCryptoKey, storeID, wtElem.contentAsBytes),
-		}
-		return txn.SetEntry(e)
-	}
-	return nil
-}
+// func (d *DB) insertOrDeleteFileChunks(ctx context.Context, txn *badger.Txn, wtElem *writeTransactionElement) error {
+// 	if wtElem.isInsertion {
+// 		storeID := d.buildFilePrefix(wtElem.id, wtElem.chunkN)
+// 		e := &badger.Entry{
+// 			Key:   storeID,
+// 			Value: cipher.Encrypt(d.options.privateCryptoKey, storeID, wtElem.contentAsBytes),
+// 		}
+// 		return txn.SetEntry(e)
+// 	}
+// 	return nil
+// }
 
 // func (d *DB) iterationDeleteCollection(c *Collection) (done bool, _ error) {
 // 	done = false

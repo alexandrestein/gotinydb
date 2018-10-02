@@ -4,9 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/flate"
-	"context"
 	"encoding/binary"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 
@@ -21,49 +19,34 @@ func getIDsAsString(input []*idType) (ret []string) {
 	return ret
 }
 
-func newTransactionElement(id string, content interface{}, isInsertion bool, col *Collection) (wtElem *writeTransactionElement) {
-	wtElem = &writeTransactionElement{
-		id: id, contentInterface: content, isInsertion: isInsertion, collection: col,
-	}
+// func newTransactionElement(id string, content interface{}, isInsertion bool, col *Collection) (wtElem *transactions.WriteTransaction) {
+// 	fmt.Println("newTransactionElement")
+// 	return nil
 
-	if !isInsertion {
-		return
-	}
+// 	// wtElem = &transactions.WriteElement{
+// 	// 	id: id, contentInterface: content, isInsertion: isInsertion, collection: col,
+// 	// }
 
-	if bytes, ok := content.([]byte); ok {
-		wtElem.bin = true
-		wtElem.contentAsBytes = bytes
-	}
+// 	// if !isInsertion {
+// 	// 	return
+// 	// }
 
-	if !wtElem.bin {
-		jsonBytes, marshalErr := json.Marshal(content)
-		if marshalErr != nil {
-			return nil
-		}
+// 	// if bytes, ok := content.([]byte); ok {
+// 	// 	wtElem.bin = true
+// 	// 	wtElem.contentAsBytes = bytes
+// 	// }
 
-		wtElem.contentAsBytes = jsonBytes
-	}
+// 	// if !wtElem.bin {
+// 	// 	jsonBytes, marshalErr := json.Marshal(content)
+// 	// 	if marshalErr != nil {
+// 	// 		return nil
+// 	// 	}
 
-	return
-}
+// 	// 	wtElem.contentAsBytes = jsonBytes
+// 	// }
 
-func newFileTransactionElement(id string, chunkN int, content []byte, isInsertion bool) *writeTransactionElement {
-	return &writeTransactionElement{
-		id: id, chunkN: chunkN, contentAsBytes: content, isInsertion: isInsertion, isFile: true,
-	}
-}
-
-func newTransaction(ctx context.Context) *writeTransaction {
-	wt := new(writeTransaction)
-	wt.ctx = ctx
-	wt.responseChan = make(chan error, 0)
-
-	return wt
-}
-
-func (wt *writeTransaction) addTransaction(trElement ...*writeTransactionElement) {
-	wt.transactions = append(wt.transactions, trElement...)
-}
+// 	// return
+// }
 
 // buildSelectorHash returns a string hash of the selector
 func buildSelectorHash(selector []string) uint16 {

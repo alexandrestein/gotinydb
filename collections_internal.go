@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
+	"github.com/alexandrestein/gotinydb/transactions"
 )
 
 func (c *Collection) getCollectionPrefix() []byte {
@@ -58,176 +60,182 @@ func (c *Collection) buildKvConfig(indexPrefix []byte) (config map[string]interf
 			[32]byte{},
 			indexPrefix,
 			c.store,
-			c.writeBleveIndexChan,
+			c.writeTransactionChan,
 		),
 	}
 }
 
-func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeTransaction *writeTransactionElement) error {
-	err := c.cleanRefs(ctx, txn, writeTransaction.id)
-	if err != nil {
-		if err != badger.ErrKeyNotFound {
-			return err
-		}
-	}
+func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeElem *transactions.WriteElement) error {
+	// err := c.cleanRefs(ctx, txn, writeElem.CollectionID)
+	// if err != nil {
+	// 	if err != badger.ErrKeyNotFound {
+	// 		return err
+	// 	}
+	// }
 
-	refID := c.buildIDWhitPrefixRefs([]byte(writeTransaction.id))
+	// refID := c.buildIDWhitPrefixRefs([]byte(writeElem.CollectionID))
 
-	refs := newRefs()
+	// refs := newRefs()
 
-	if refs.ObjectID == "" {
-		refs.ObjectID = writeTransaction.id
-	}
+	// if refs.ObjectID == "" {
+	// 	refs.ObjectID = writeElem.CollectionID
+	// }
 
-	for _, index := range c.indexes {
-		if indexedValues, apply := index.apply(writeTransaction.contentInterface); apply {
-			// If the selector hit a slice.
-			// apply can returns more than one value to index
-			for _, indexedValue := range indexedValues {
-				var ids = new(idsType)
+	// for _, index := range c.indexes {
+	// 	if indexedValues, apply := index.apply(writeTransaction.contentInterface); apply {
+	// 		// If the selector hit a slice.
+	// 		// apply can returns more than one value to index
+	// 		for _, indexedValue := range indexedValues {
+	// 			var ids = new(idsType)
 
-				indexedValueID := append(index.getIDBuilder(nil), indexedValue...)
-				// Try to get the ids related to the field value
-				idsAsItem, err := txn.Get(indexedValueID)
-				if err != nil {
-					if err != badger.ErrKeyNotFound {
-						return err
-					}
-				} else {
-					// If the list of ids is present for this index field value,
-					// this save the actual status of the given filed value.
-					var idsAsBytesEncrypted []byte
-					idsAsBytesEncrypted, err = idsAsItem.ValueCopy(idsAsBytesEncrypted)
-					if err != nil {
-						return err
-					}
+	// 			indexedValueID := append(index.getIDBuilder(nil), indexedValue...)
+	// 			// Try to get the ids related to the field value
+	// 			idsAsItem, err := txn.Get(indexedValueID)
+	// 			if err != nil {
+	// 				if err != badger.ErrKeyNotFound {
+	// 					return err
+	// 				}
+	// 			} else {
+	// 				// If the list of ids is present for this index field value,
+	// 				// this save the actual status of the given filed value.
+	// 				var idsAsBytesEncrypted []byte
+	// 				idsAsBytesEncrypted, err = idsAsItem.ValueCopy(idsAsBytesEncrypted)
+	// 				if err != nil {
+	// 					return err
+	// 				}
 
-					// Decrypt value
-					var idsAsBytes []byte
-					idsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, idsAsItem.Key(), idsAsBytesEncrypted)
-					if err != nil {
-						return err
-					}
+	// 				// Decrypt value
+	// 				var idsAsBytes []byte
+	// 				idsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, idsAsItem.Key(), idsAsBytesEncrypted)
+	// 				if err != nil {
+	// 					return err
+	// 				}
 
-					ids, _ = newIDs(ctx, 0, nil, idsAsBytes)
-				}
+	// 				ids, _ = newIDs(ctx, 0, nil, idsAsBytes)
+	// 			}
 
-				id := newID(ctx, writeTransaction.id)
-				ids.AddID(id)
-				idsAsBytes := ids.MustMarshal()
+	// 			id := newID(ctx, writeTransaction.id)
+	// 			ids.AddID(id)
+	// 			idsAsBytes := ids.MustMarshal()
 
-				// Add the list of ID for the given field value
-				e := &badger.Entry{
-					Key:   indexedValueID,
-					Value: cipher.Encrypt(c.options.privateCryptoKey, indexedValueID, idsAsBytes),
-				}
+	// 			// Add the list of ID for the given field value
+	// 			e := &badger.Entry{
+	// 				Key:   indexedValueID,
+	// 				Value: cipher.Encrypt(c.options.privateCryptoKey, indexedValueID, idsAsBytes),
+	// 			}
 
-				if err := txn.SetEntry(e); err != nil {
-					return err
-				}
+	// 			if err := txn.SetEntry(e); err != nil {
+	// 				return err
+	// 			}
 
-				// Update the object references at the memory level
-				refs.setIndexedValue(index.Name, index.selectorHash(), indexedValue)
-			}
-		}
-	}
+	// 			// Update the object references at the memory level
+	// 			refs.setIndexedValue(index.Name, index.selectorHash(), indexedValue)
+	// 		}
+	// 	}
+	// }
 
-	for _, index := range c.bleveIndexes {
-		if indexedValues, apply := index.Selector.apply(writeTransaction.contentInterface); apply {
-			var err error
-			index, err = c.getBleveIndex(index.Name)
-			if err != nil {
-				return err
-			}
-			err = index.index.Index(writeTransaction.id, indexedValues)
-			if err != nil {
-				return err
-			}
-		}
-	}
+	// for _, index := range c.bleveIndexes {
+	// 	if indexedValues, apply := index.Selector.apply(writeTransaction.contentInterface); apply {
+	// 		var err error
+	// 		index, err = c.getBleveIndex(index.Name)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 		err = index.index.Index(writeTransaction.id, indexedValues)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// }
 
-	// Save the new reference stat on persistent storage
-	e := &badger.Entry{
-		Key:   refID,
-		Value: cipher.Encrypt(c.options.privateCryptoKey, refID, refs.asBytes()),
-	}
+	// // Save the new reference stat on persistent storage
+	// e := &badger.Entry{
+	// 	Key:   refID,
+	// 	Value: cipher.Encrypt(c.options.privateCryptoKey, refID, refs.asBytes()),
+	// }
 
-	return txn.SetEntry(e)
+	// return txn.SetEntry(e)
+
+	fmt.Println("putIntoIndex")
+	return nil
 }
 
 func (c *Collection) cleanRefs(ctx context.Context, txn *badger.Txn, idAsString string) error {
-	var refsAsBytes []byte
+	// var refsAsBytes []byte
 
-	// Get the references of the given ID
-	refsDbID := c.buildIDWhitPrefixRefs([]byte(idAsString))
-	refsAsItem, err := txn.Get(refsDbID)
-	if err != nil {
-		if err != badger.ErrKeyNotFound {
-			return err
-		}
-	} else {
-		var refsAsEncryptedBytes []byte
-		refsAsEncryptedBytes, err = refsAsItem.ValueCopy(refsAsEncryptedBytes)
-		if err != nil {
-			return err
-		}
+	// // Get the references of the given ID
+	// refsDbID := c.buildIDWhitPrefixRefs([]byte(idAsString))
+	// refsAsItem, err := txn.Get(refsDbID)
+	// if err != nil {
+	// 	if err != badger.ErrKeyNotFound {
+	// 		return err
+	// 	}
+	// } else {
+	// 	var refsAsEncryptedBytes []byte
+	// 	refsAsEncryptedBytes, err = refsAsItem.ValueCopy(refsAsEncryptedBytes)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		refsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
-		if err != nil {
-			return err
-		}
-	}
+	// 	refsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
-	refs := newRefs()
-	if refsAsBytes != nil && len(refsAsBytes) > 0 {
-		json.Unmarshal(refsAsBytes, refs)
-	}
+	// refs := newRefs()
+	// if refsAsBytes != nil && len(refsAsBytes) > 0 {
+	// 	json.Unmarshal(refsAsBytes, refs)
+	// }
 
-	// Clean every reference of the object In all indexes if present
-	for _, ref := range refs.Refs {
-		for _, index := range c.indexes {
-			if index.Name == ref.IndexName {
-				indexIDForTheGivenObjectAsBytes := c.buildIDWhitPrefixIndex([]byte(index.Name), ref.IndexedValue)
-				indexedValueAsItem, err := txn.Get(indexIDForTheGivenObjectAsBytes)
-				if err != nil {
-					return err
-				}
-				var indexedValueAsEncryptedBytes []byte
-				indexedValueAsEncryptedBytes, err = indexedValueAsItem.ValueCopy(indexedValueAsEncryptedBytes)
-				if err != nil {
-					return err
-				}
-				var indexedValueAsBytes []byte
-				indexedValueAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, indexedValueAsItem.Key(), indexedValueAsEncryptedBytes)
-				if err != nil {
-					return err
-				}
-				// If reference present in this index the reference is cleaned
-				ids, _ := newIDs(ctx, 0, nil, indexedValueAsBytes)
-				ids.RmID(idAsString)
+	// // Clean every reference of the object In all indexes if present
+	// for _, ref := range refs.Refs {
+	// 	for _, index := range c.indexes {
+	// 		if index.Name == ref.IndexName {
+	// 			indexIDForTheGivenObjectAsBytes := c.buildIDWhitPrefixIndex([]byte(index.Name), ref.IndexedValue)
+	// 			indexedValueAsItem, err := txn.Get(indexIDForTheGivenObjectAsBytes)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			var indexedValueAsEncryptedBytes []byte
+	// 			indexedValueAsEncryptedBytes, err = indexedValueAsItem.ValueCopy(indexedValueAsEncryptedBytes)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			var indexedValueAsBytes []byte
+	// 			indexedValueAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, indexedValueAsItem.Key(), indexedValueAsEncryptedBytes)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			// If reference present in this index the reference is cleaned
+	// 			ids, _ := newIDs(ctx, 0, nil, indexedValueAsBytes)
+	// 			ids.RmID(idAsString)
 
-				// And saved again after the clean
-				e := &badger.Entry{
-					Key:   indexIDForTheGivenObjectAsBytes,
-					Value: cipher.Encrypt(c.options.privateCryptoKey, indexIDForTheGivenObjectAsBytes, ids.MustMarshal()),
-				}
+	// 			// And saved again after the clean
+	// 			e := &badger.Entry{
+	// 				Key:   indexIDForTheGivenObjectAsBytes,
+	// 				Value: cipher.Encrypt(c.options.privateCryptoKey, indexIDForTheGivenObjectAsBytes, ids.MustMarshal()),
+	// 			}
 
-				err = txn.SetEntry(e)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
+	// 			err = txn.SetEntry(e)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 		}
+	// 	}
+	// }
 
-	refsAsBytes, _ = json.Marshal(refs)
+	// refsAsBytes, _ = json.Marshal(refs)
 
-	e := &badger.Entry{
-		Key:   refsDbID,
-		Value: cipher.Encrypt(c.options.privateCryptoKey, refsDbID, refsAsBytes),
-	}
+	// e := &badger.Entry{
+	// 	Key:   refsDbID,
+	// 	Value: cipher.Encrypt(c.options.privateCryptoKey, refsDbID, refsAsBytes),
+	// }
 
-	return txn.SetEntry(e)
+	// return txn.SetEntry(e)
+
+	fmt.Println("cleanRefs")
+	return nil
 }
 
 func (c *Collection) cleanFromBleve(ctx context.Context, txn *badger.Txn, idAsString string) error {
@@ -374,19 +382,20 @@ func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btr
 	return
 }
 
-func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, isInsertion bool, writeTransaction *writeTransactionElement) error {
+func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, isInsertion bool, writeTransaction *transactions.WriteTransaction) error {
+	fmt.Println("insertOrDeleteStore")
+	return nil
+	// storeID := c.buildStoreID(writeTransaction.id)
 
-	storeID := c.buildStoreID(writeTransaction.id)
+	// if isInsertion {
+	// 	e := &badger.Entry{
+	// 		Key:   storeID,
+	// 		Value: cipher.Encrypt(c.options.privateCryptoKey, storeID, writeTransaction.contentAsBytes),
+	// 	}
 
-	if isInsertion {
-		e := &badger.Entry{
-			Key:   storeID,
-			Value: cipher.Encrypt(c.options.privateCryptoKey, storeID, writeTransaction.contentAsBytes),
-		}
-
-		return txn.SetEntry(e)
-	}
-	return txn.Delete(storeID)
+	// 	return txn.SetEntry(e)
+	// }
+	// return txn.Delete(storeID)
 }
 
 func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
@@ -534,7 +543,9 @@ newLoop:
 		ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
 		defer cancel()
 
-		trElement := newTransactionElement(savedElement.GetID(), m, true, c)
+		fmt.Println("id is not valid", savedElement.GetID())
+		trElement := transactions.NewTransactionElement([]byte(savedElement.GetID()), savedElement.GetContent())
+		// trElement := newTransactionElement(savedElement.GetID(), m, true, c)
 
 		err := c.putIntoIndexes(ctx, txn, trElement)
 		if err != nil {

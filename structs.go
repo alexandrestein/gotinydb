@@ -7,6 +7,8 @@ import (
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
 	"github.com/google/btree"
+
+	"github.com/alexandrestein/gotinydb/transactions"
 )
 
 type (
@@ -20,7 +22,7 @@ type (
 		// freeCollectionPrefixes defines the list of prefix which can be used for a new collection
 		freeCollectionPrefixes []byte
 
-		writeTransactionChan chan *writeTransaction
+		writeTransactionChan chan *transactions.WriteTransaction
 		// writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
 
 		ctx     context.Context
@@ -74,7 +76,7 @@ type (
 
 		store *badger.DB
 
-		writeTransactionChan chan *writeTransaction
+		writeTransactionChan chan *transactions.WriteTransaction
 		// writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
 
 		ctx context.Context
@@ -222,21 +224,23 @@ type (
 		IndexedValue []byte
 	}
 
-	writeTransaction struct {
-		responseChan chan error
-		ctx          context.Context
-		transactions []*writeTransactionElement
-	}
-	writeTransactionElement struct {
-		id                  string
-		collection          *Collection
-		contentInterface    interface{}
-		contentAsBytes      []byte
-		chunkN              int
-		bin                 bool
-		isInsertion, isFile bool
-		bleveIndex          bool
-	}
+	// writeTransaction struct {
+	// 	responseChan chan error
+	// 	ctx          context.Context
+	// 	transactions []*transactions.WriteElement
+	// }
+	// WriteTransactionElement struct {
+	// 	// id                  string
+	// 	// collection          *Collection
+	// 	// contentInterface    interface{}
+	// 	// chunkN              int
+	// 	// bin                 bool
+	// 	// isInsertion, isFile bool
+	// 	// bleveIndex          bool
+
+	// 	DBKey          []byte
+	// 	ContentAsBytes []byte
+	// }
 
 	// // Archive defines the way archives are saved inside the zip file
 	// archive struct {

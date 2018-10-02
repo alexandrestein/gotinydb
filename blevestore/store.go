@@ -8,6 +8,8 @@ import (
 
 	"github.com/blevesearch/bleve/index/store"
 	"github.com/blevesearch/bleve/registry"
+
+	"github.com/alexandrestein/gotinydb/transactions"
 )
 
 const (
@@ -19,13 +21,13 @@ type (
 		key            [32]byte
 		prefix         []byte
 		db             *badger.DB
-		bleveWriteChan chan *BleveStoreWriteRequest
+		bleveWriteChan chan *transactions.WriteTransaction
 	}
 
-	BleveStoreWriteRequest struct {
-		ID, Content  []byte
-		ResponseChan chan error
-	}
+	// BleveStoreWriteRequest struct {
+	// 	ID, Content  []byte
+	// 	ResponseChan chan error
+	// }
 
 	Store struct {
 		// name is defined by the path
@@ -117,7 +119,7 @@ func (bs *Store) buildID(key []byte) []byte {
 	return append(bs.config.prefix, key...)
 }
 
-func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeChan chan *BleveStoreWriteRequest) (config *BleveStoreConfig) {
+func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeChan chan *transactions.WriteTransaction) (config *BleveStoreConfig) {
 	return &BleveStoreConfig{
 		key:            key,
 		prefix:         prefix,
@@ -126,12 +128,10 @@ func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeChan c
 	}
 }
 
-func NewBleveStoreWriteRequest(dbID, content []byte) *BleveStoreWriteRequest {
-	ret := new(BleveStoreWriteRequest)
-	ret.ID = dbID
-	ret.Content = content
+// func NewBleveStoreWriteRequest(requests []*transactions.WriteElement) *transactions.WriteTransaction {
+// 	ret := new(transactions.WriteTransaction)
+// 	ret.ResponseChan = make(chan error, 0)
+// 	ret.Transactions = requests
 
-	ret.ResponseChan = make(chan error, 0)
-
-	return ret
-}
+// 	return ret
+// }
