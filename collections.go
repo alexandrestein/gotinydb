@@ -49,21 +49,19 @@ func (c *Collection) Put(id string, content interface{}) error {
 
 	tr := transactions.NewTransaction(ctx)
 	trElem := transactions.NewTransactionElement(dbKey, contentAsBytes)
-
-	for _, i := range c.bleveIndexes {
-		contentToIndex, apply := i.Selector.Apply(content)
-		if apply {
-			err = i.index.Index(id, contentToIndex)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	tr.AddTransaction(trElem)
 
 	// Run the insertion
 	c.writeTransactionChan <- tr
+
+	for _, i := range c.bleveIndexes {
+		contentToIndex, apply := i.Selector.Apply(content)
+		if apply {
+			i.index.Index(id, contentToIndex)
+			// go i.index.Index(id, contentToIndex)
+		}
+	}
+
 	// And wait for the end of the insertion
 	return <-tr.ResponseChan
 }
@@ -465,10 +463,7 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 		return err
 	}
 
-	err = c.indexAllValues()
-	if err != nil {
-		return err
-	}
+	i.indexAllValues(c)
 
 	return nil
 }

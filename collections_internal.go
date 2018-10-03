@@ -529,62 +529,62 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 	})
 }
 
-func (c *Collection) indexAllValues() error {
-	fmt.Println("index all values")
-	return nil
+// func (c *Collection) indexAllValues() error {
+// 	fmt.Println("index all values")
+// 	return nil
 
-	// 	lastID := ""
+// 	// 	lastID := ""
 
-	// newLoop:
-	// 	savedElements, getErr := c.getStoredIDsAndValues(lastID, c.options.PutBufferLimit, false)
-	// 	if getErr != nil {
-	// 		return getErr
-	// 	}
+// 	// newLoop:
+// 	// 	savedElements, getErr := c.getStoredIDsAndValues(lastID, c.options.PutBufferLimit, false)
+// 	// 	if getErr != nil {
+// 	// 		return getErr
+// 	// 	}
 
-	// 	if len(savedElements) <= 1 {
-	// 		return nil
-	// 	}
+// 	// 	if len(savedElements) <= 1 {
+// 	// 		return nil
+// 	// 	}
 
-	// 	txn := c.store.NewTransaction(true)
-	// 	defer txn.Discard()
+// 	// 	txn := c.store.NewTransaction(true)
+// 	// 	defer txn.Discard()
 
-	// 	for _, savedElement := range savedElements {
-	// 		if savedElement.GetID() == lastID {
-	// 			continue
-	// 		}
+// 	// 	for _, savedElement := range savedElements {
+// 	// 		if savedElement.GetID() == lastID {
+// 	// 			continue
+// 	// 		}
 
-	// 		var elem interface{}
-	// 		decoder := json.NewDecoder(bytes.NewBuffer(savedElement.ContentAsBytes))
-	// 		decoder.UseNumber()
+// 	// 		var elem interface{}
+// 	// 		decoder := json.NewDecoder(bytes.NewBuffer(savedElement.ContentAsBytes))
+// 	// 		decoder.UseNumber()
 
-	// 		if jsonErr := decoder.Decode(&elem); jsonErr != nil {
-	// 			return jsonErr
-	// 		}
+// 	// 		if jsonErr := decoder.Decode(&elem); jsonErr != nil {
+// 	// 			return jsonErr
+// 	// 		}
 
-	// 		m := elem.(map[string]interface{})
+// 	// 		m := elem.(map[string]interface{})
 
-	// 		ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
-	// 		defer cancel()
+// 	// 		ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
+// 	// 		defer cancel()
 
-	// 		fmt.Println("id is not valid", savedElement.GetID())
-	// 		trElement := transactions.NewTransactionElement([]byte(savedElement.GetID()), savedElement.GetContent())
-	// 		// trElement := newTransactionElement(savedElement.GetID(), m, true, c)
+// 	// 		fmt.Println("id is not valid", savedElement.GetID())
+// 	// 		trElement := transactions.NewTransactionElement([]byte(savedElement.GetID()), savedElement.GetContent())
+// 	// 		// trElement := newTransactionElement(savedElement.GetID(), m, true, c)
 
-	// 		err := c.putIntoIndexes(ctx, txn, trElement)
-	// 		if err != nil {
-	// 			return err
-	// 		}
+// 	// 		err := c.putIntoIndexes(ctx, txn, trElement)
+// 	// 		if err != nil {
+// 	// 			return err
+// 	// 		}
 
-	// 		lastID = savedElement.GetID()
-	// 	}
+// 	// 		lastID = savedElement.GetID()
+// 	// 	}
 
-	// 	err := txn.Commit(nil)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+// 	// 	err := txn.Commit(nil)
+// 	// 	if err != nil {
+// 	// 		return err
+// 	// 	}
 
-	// 	goto newLoop
-}
+// 	// 	goto newLoop
+// }
 
 func (c *Collection) isRunning() bool {
 	if c.ctx.Err() != nil {
