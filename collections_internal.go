@@ -8,7 +8,6 @@ import (
 
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
-	"github.com/google/btree"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
@@ -249,138 +248,138 @@ func (c *Collection) cleanFromBleve(ctx context.Context, txn *badger.Txn, idAsSt
 	return nil
 }
 
-func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, error) {
-	// Init the destination
-	tree := btree.New(10)
+// func (c *Collection) queryGetIDs(ctx context.Context, q *Query) (*btree.BTree, error) {
+// 	// Init the destination
+// 	tree := btree.New(10)
 
-	// Initialize the channel which will confirm that all queries are done
-	finishedChan := make(chan *idsType, 16)
-	defer close(finishedChan)
+// 	// Initialize the channel which will confirm that all queries are done
+// 	finishedChan := make(chan *idsType, 16)
+// 	defer close(finishedChan)
 
-	excludeFinishedChan := make(chan *idsType, 16)
-	defer close(excludeFinishedChan)
+// 	excludeFinishedChan := make(chan *idsType, 16)
+// 	defer close(excludeFinishedChan)
 
-	// This count the number of running index query for this actual collection query
-	nbToDo := 0
+// 	// This count the number of running index query for this actual collection query
+// 	nbToDo := 0
 
-	// Goes through all index of the collection to define which index
-	// will take care of the given filter
-	for _, index := range c.indexes {
-		for _, filter := range q.filters {
-			if index.doesFilterApplyToIndex(filter) {
-				if !filter.exclusion {
-					go index.query(ctx, filter, finishedChan)
-				} else {
-					go index.query(ctx, filter, excludeFinishedChan)
-				}
-				nbToDo++
-			}
-		}
-	}
+// 	// Goes through all index of the collection to define which index
+// 	// will take care of the given filter
+// 	for _, index := range c.indexes {
+// 		for _, filter := range q.filters {
+// 			if index.doesFilterApplyToIndex(filter) {
+// 				if !filter.exclusion {
+// 					go index.query(ctx, filter, finishedChan)
+// 				} else {
+// 					go index.query(ctx, filter, excludeFinishedChan)
+// 				}
+// 				nbToDo++
+// 			}
+// 		}
+// 	}
 
-	if nbToDo == 0 {
-		return nil, ErrIndexNotFound
-	}
+// 	if nbToDo == 0 {
+// 		return nil, ErrIndexNotFound
+// 	}
 
-	// Loop every response from the index query
-	return c.queryGetIDsLoop(ctx, tree, finishedChan, excludeFinishedChan, nbToDo)
-}
+// 	// Loop every response from the index query
+// 	return c.queryGetIDsLoop(ctx, tree, finishedChan, excludeFinishedChan, nbToDo)
+// }
 
-func (c *Collection) queryGetIDsLoop(ctx context.Context, tree *btree.BTree, finishedChan, excludeFinishedChan chan *idsType, nbToDo int) (*btree.BTree, error) {
-	for {
-		select {
-		case tmpIDs := <-finishedChan:
-			if tmpIDs != nil {
-				// Add IDs into the response tree
-				for _, id := range tmpIDs.IDs {
-					c.queryGetIDsLoopIncrementFuncfunc(tree, id, 1)
-				}
-			}
-		case tmpIDs := <-excludeFinishedChan:
-			if tmpIDs != nil {
-				// Add IDs into the response tree
-				for _, id := range tmpIDs.IDs {
-					c.queryGetIDsLoopIncrementFuncfunc(tree, id, -1)
-				}
-			}
-		case <-ctx.Done():
-			return nil, ErrTimeOut
-		}
+// func (c *Collection) queryGetIDsLoop(ctx context.Context, tree *btree.BTree, finishedChan, excludeFinishedChan chan *idsType, nbToDo int) (*btree.BTree, error) {
+// 	for {
+// 		select {
+// 		case tmpIDs := <-finishedChan:
+// 			if tmpIDs != nil {
+// 				// Add IDs into the response tree
+// 				for _, id := range tmpIDs.IDs {
+// 					c.queryGetIDsLoopIncrementFuncfunc(tree, id, 1)
+// 				}
+// 			}
+// 		case tmpIDs := <-excludeFinishedChan:
+// 			if tmpIDs != nil {
+// 				// Add IDs into the response tree
+// 				for _, id := range tmpIDs.IDs {
+// 					c.queryGetIDsLoopIncrementFuncfunc(tree, id, -1)
+// 				}
+// 			}
+// 		case <-ctx.Done():
+// 			return nil, ErrTimeOut
+// 		}
 
-		// Save the fact that one more query has respond
-		nbToDo--
-		// If nomore query to wait, quit the loop
-		if nbToDo <= 0 {
-			if tree.Len() == 0 {
-				return nil, ErrNotFound
-			}
-			return tree, nil
-		}
-	}
-}
+// 		// Save the fact that one more query has respond
+// 		nbToDo--
+// 		// If nomore query to wait, quit the loop
+// 		if nbToDo <= 0 {
+// 			if tree.Len() == 0 {
+// 				return nil, ErrNotFound
+// 			}
+// 			return tree, nil
+// 		}
+// 	}
+// }
 
-func (c *Collection) queryGetIDsLoopIncrementFuncfunc(tree *btree.BTree, id *idType, nb int) {
-	// Try to get the id from the tree
-	fromTree := tree.Get(id)
-	if fromTree == nil {
-		// If not in the tree add it
-		id.Increment(nb)
-		tree.ReplaceOrInsert(id)
-		return
-	}
-	// if already increment the counter
-	fromTree.(*idType).Increment(nb)
-}
+// func (c *Collection) queryGetIDsLoopIncrementFuncfunc(tree *btree.BTree, id *idType, nb int) {
+// 	// Try to get the id from the tree
+// 	fromTree := tree.Get(id)
+// 	if fromTree == nil {
+// 		// If not in the tree add it
+// 		id.Increment(nb)
+// 		tree.ReplaceOrInsert(id)
+// 		return
+// 	}
+// 	// if already increment the counter
+// 	fromTree.(*idType).Increment(nb)
+// }
 
-func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btree.BTree) (response *Response, _ error) {
-	getRefFunc := func(id string) (refs *refs) {
-		c.store.View(func(tx *badger.Txn) error {
-			refs, _ = c.getRefs(tx, id)
-			return nil
-		})
-		return refs
-	}
+// func (c *Collection) queryCleanAndOrder(ctx context.Context, q *Query, tree *btree.BTree) (response *Response, _ error) {
+// 	getRefFunc := func(id string) (refs *refs) {
+// 		c.store.View(func(tx *badger.Txn) error {
+// 			refs, _ = c.getRefs(tx, id)
+// 			return nil
+// 		})
+// 		return refs
+// 	}
 
-	// Iterate the response tree to get only IDs which has been found in every index queries.
-	// The response goes to idsSlice.
-	occurrenceFunc, idsSlice := occurrenceTreeIterator(q.nbSelectFilters(), q.internalLimit, q.order, getRefFunc)
-	tree.Ascend(occurrenceFunc)
+// 	// Iterate the response tree to get only IDs which has been found in every index queries.
+// 	// The response goes to idsSlice.
+// 	occurrenceFunc, idsSlice := occurrenceTreeIterator(q.nbSelectFilters(), q.internalLimit, q.order, getRefFunc)
+// 	tree.Ascend(occurrenceFunc)
 
-	// Build the new sorter
-	idsMs := new(idsTypeMultiSorter)
-	idsMs.IDs = idsSlice.IDs
+// 	// Build the new sorter
+// 	idsMs := new(idsTypeMultiSorter)
+// 	idsMs.IDs = idsSlice.IDs
 
-	// Invert the sort order
-	if !q.ascendent {
-		idsMs.invert = true
-	}
+// 	// Invert the sort order
+// 	if !q.ascendent {
+// 		idsMs.invert = true
+// 	}
 
-	// Do the sorting
-	idsMs.Sort(q.limit)
+// 	// Do the sorting
+// 	idsMs.Sort(q.limit)
 
-	// Build the response for the caller
-	response = newResponse(len(idsMs.IDs))
-	response.query = q
+// 	// Build the response for the caller
+// 	response = newResponse(len(idsMs.IDs))
+// 	response.query = q
 
-	// Get every content of the query from the database
-	responsesAsBytes, err := c.get(ctx, getIDsAsString(idsSlice.IDs)...)
-	if err != nil {
-		return nil, err
-	}
+// 	// Get every content of the query from the database
+// 	responsesAsBytes, err := c.get(ctx, getIDsAsString(idsSlice.IDs)...)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	// Range the response values as slice of bytes
-	for i := range responsesAsBytes {
-		if i >= q.limit {
-			break
-		}
+// 	// Range the response values as slice of bytes
+// 	for i := range responsesAsBytes {
+// 		if i >= q.limit {
+// 			break
+// 		}
 
-		response.list[i] = &ResponseElem{
-			_ID:            idsSlice.IDs[i],
-			contentAsBytes: responsesAsBytes[i],
-		}
-	}
-	return
-}
+// 		response.list[i] = &ResponseElem{
+// 			_ID:            idsSlice.IDs[i],
+// 			contentAsBytes: responsesAsBytes[i],
+// 		}
+// 	}
+// 	return
+// }
 
 func (c *Collection) insertOrDeleteStore(ctx context.Context, txn *badger.Txn, isInsertion bool, writeTransaction *transactions.WriteTransaction) error {
 	fmt.Println("insertOrDeleteStore")
@@ -435,24 +434,24 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 	})
 }
 
-func (c *Collection) getRefs(txn *badger.Txn, id string) (*refs, error) {
-	refsAsItem, err := txn.Get(c.buildIDWhitPrefixRefs([]byte(id)))
-	if err != nil {
-		return nil, err
-	}
-	var refsAsEncryptedBytes []byte
-	refsAsEncryptedBytes, err = refsAsItem.ValueCopy(refsAsEncryptedBytes)
-	if err != nil {
-		return nil, err
-	}
-	var refsAsBytes []byte
-	refsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
-	if err != nil {
-		return nil, err
-	}
-	refs := newRefsFromDB(refsAsBytes)
-	return refs, nil
-}
+// func (c *Collection) getRefs(txn *badger.Txn, id string) (*refs, error) {
+// 	refsAsItem, err := txn.Get(c.buildIDWhitPrefixRefs([]byte(id)))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	var refsAsEncryptedBytes []byte
+// 	refsAsEncryptedBytes, err = refsAsItem.ValueCopy(refsAsEncryptedBytes)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	var refsAsBytes []byte
+// 	refsAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, refsAsItem.Key(), refsAsEncryptedBytes)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	refs := newRefsFromDB(refsAsBytes)
+// 	return refs, nil
+// }
 
 // getStoredIDs returns all ids if it does not exceed the limit.
 // This will not returned the ID used to set the value inside the collection

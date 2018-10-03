@@ -17,11 +17,17 @@ const (
 )
 
 type (
+	// IndexRequest struct {
+	// 	ID               string
+	// 	Data             interface{}
+	// 	WriteOpperations chan []*transactions.WriteElement
+	// }
+
 	BleveStoreConfig struct {
-		key            [32]byte
-		prefix         []byte
-		db             *badger.DB
-		bleveWriteChan chan *transactions.WriteTransaction
+		key        [32]byte
+		prefix     []byte
+		db         *badger.DB
+		writesChan chan *transactions.WriteTransaction
 	}
 
 	// BleveStoreWriteRequest struct {
@@ -119,14 +125,25 @@ func (bs *Store) buildID(key []byte) []byte {
 	return append(bs.config.prefix, key...)
 }
 
-func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeChan chan *transactions.WriteTransaction) (config *BleveStoreConfig) {
+func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB) (config *BleveStoreConfig, writeElementsChan chan *transactions.WriteTransaction) {
+	writeElementsChan = make(chan *transactions.WriteTransaction, 0)
 	return &BleveStoreConfig{
-		key:            key,
-		prefix:         prefix,
-		db:             db,
-		bleveWriteChan: writeChan,
-	}
+		key:        key,
+		prefix:     prefix,
+		db:         db,
+		writesChan: writeElementsChan,
+	}, writeElementsChan
 }
+
+// func NewIndexRequest(ctx context.Context, id string, data interface{}) *IndexRequest {
+// 	writesChan := make(chan []*transactions.WriteElement, 0)
+
+// 	return &IndexRequest{
+// 		ID:               id,
+// 		Data:             data,
+// 		WriteOpperations: writesChan,
+// 	}
+// }
 
 // func NewBleveStoreWriteRequest(requests []*transactions.WriteElement) *transactions.WriteTransaction {
 // 	ret := new(transactions.WriteTransaction)

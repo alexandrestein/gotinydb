@@ -26,6 +26,7 @@ type Reader struct {
 	store         *Store
 	txn           *badger.Txn
 	indexPrefixID []byte
+	iterators     []*badger.Iterator
 }
 
 func (r *Reader) get(key []byte) ([]byte, error) {
@@ -78,6 +79,8 @@ func (r *Reader) iterator() *Iterator {
 		iterator: iter,
 	}
 
+	r.iterators = append(r.iterators, iter)
+
 	return rv
 }
 
@@ -99,6 +102,10 @@ func (r *Reader) RangeIterator(start, end []byte) store.KVIterator {
 }
 
 func (r *Reader) Close() error {
+	for _, iter := range r.iterators {
+		iter.Close()
+	}
+
 	r.txn.Discard()
 	return nil
 }

@@ -25,8 +25,8 @@ import (
 )
 
 type Writer struct {
-	store            *Store
-	writeTransaction *transactions.WriteTransaction
+	store      *Store
+	operations []*transactions.WriteElement
 }
 
 func (w *Writer) NewBatch() store.KVBatch {
@@ -53,9 +53,12 @@ func (w *Writer) NewBatch() store.KVBatch {
 // }
 
 func (w *Writer) write() error {
-	w.store.config.bleveWriteChan <- w.writeTransaction
+	tx := transactions.NewTransaction(nil)
+	tx.AddTransaction(w.operations...)
 
-	return <-w.writeTransaction.ResponseChan
+	w.store.config.writesChan <- tx
+
+	return <-tx.ResponseChan
 }
 
 func (w *Writer) NewBatchEx(options store.KVBatchOptions) ([]byte, store.KVBatch, error) {
@@ -118,9 +121,11 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 		}
 
 		// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, mergedVal))
-		w.writeTransaction.AddTransaction(
-			transactions.NewTransactionElement(storeID, mergedVal),
-		)
+		// w.writeTransaction.AddTransaction(
+		// 	transactions.NewTransactionElement(storeID, mergedVal),
+		// )
+		elem := transactions.NewTransactionElement(storeID, mergedVal)
+		w.operations = append(w.operations, elem)
 	}
 
 	for _, op := range emulatedBatch.Ops {
@@ -128,13 +133,17 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 
 		if op.V != nil {
 			// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, op.V))
-			w.writeTransaction.AddTransaction(
-				transactions.NewTransactionElement(storeID, op.V),
-			)
+			// w.writeTransaction.AddTransaction(
+			// 	transactions.NewTransactionElement(storeID, op.V),
+			// )
+			elem := transactions.NewTransactionElement(storeID, op.V)
+			w.operations = append(w.operations, elem)
 		} else {
-			w.writeTransaction.AddTransaction(
-				transactions.NewTransactionElement(storeID, nil),
-			)
+			// w.writeTransaction.AddTransaction(
+			// 	transactions.NewTransactionElement(storeID, nil),
+			// )
+			elem := transactions.NewTransactionElement(storeID, nil)
+			w.operations = append(w.operations, elem)
 		}
 	}
 

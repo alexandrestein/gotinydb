@@ -279,21 +279,21 @@ func (d *DB) loadCollections() error {
 			newCol.writeTransactionChan = d.writeTransactionChan
 			newCol.ctx = d.ctx
 			newCol.options = d.options
-			for _, tmpIndex := range savedCol.Indexes {
-				i := new(indexType)
+			// for _, tmpIndex := range savedCol.Indexes {
+			// 	i := new(indexType)
 
-				i.Name = tmpIndex.Name
-				i.Selector = tmpIndex.Selector
-				i.Type = tmpIndex.Type
+			// 	i.Name = tmpIndex.Name
+			// 	i.Selector = tmpIndex.Selector
+			// 	i.Type = tmpIndex.Type
 
-				i.options = d.options
-				i.getTx = d.badgerDB.NewTransaction
-				i.getIDBuilder = func(id []byte) []byte {
-					return newCol.buildIDWhitPrefixIndex([]byte(i.Name), id)
-				}
+			// 	i.options = d.options
+			// 	i.getTx = d.badgerDB.NewTransaction
+			// 	i.getIDBuilder = func(id []byte) []byte {
+			// 		return newCol.buildIDWhitPrefixIndex([]byte(i.Name), id)
+			// 	}
 
-				newCol.indexes = append(newCol.indexes, i)
-			}
+			// 	newCol.indexes = append(newCol.indexes, i)
+			// }
 
 			newCol.bleveIndexes = savedCol.BleveIndexes
 

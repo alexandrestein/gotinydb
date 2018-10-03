@@ -17,9 +17,9 @@ package blevestore
 import (
 	"crypto/rand"
 	"os"
-	"reflect"
 	"testing"
 
+	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transactions"
 	"github.com/dgraph-io/badger"
 
@@ -27,7 +27,13 @@ import (
 	"github.com/blevesearch/bleve/index/store/test"
 )
 
-var key = [32]byte{}
+var (
+	key        = [32]byte{}
+	db         *badger.DB
+	writesChan chan *transactions.WriteTransaction
+
+	prefix = []byte{1, 9}
+)
 
 // var (
 // 	key = [32]byte{}
@@ -44,21 +50,23 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 	opt := badger.DefaultOptions
 	opt.Dir = "test"
 	opt.ValueDir = "test"
-	db, err := badger.Open(opt)
+
+	var err error
+	db, err = badger.Open(opt)
 	if err != nil {
 		t.Error(err)
 		return nil
 	}
-	var bleveWriteChan chan *transactions.WriteTransaction
+
+	rand.Read(key[:])
+
+	var config *BleveStoreConfig
+	config, writesChan = NewBleveStoreConfig(key, prefix, db)
+
 	var rv store.KVStore
 	rv, err = New(mo, map[string]interface{}{
-		"path": "test",
-		"config": &BleveStoreConfig{
-			key:            [32]byte{},
-			prefix:         []byte{1, 9},
-			db:             db,
-			bleveWriteChan: bleveWriteChan,
-		},
+		"path":   "test",
+		"config": config,
 	})
 	// rv, err = New(mo, map[string]interface{}{
 	// 	"path":     "test",
@@ -70,12 +78,43 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 		t.Error(err)
 	}
 
-	rand.Read(key[:])
+	go goRoutineLoopForWrites(t)
 
 	return rv
 }
 
+func goRoutineLoopForWrites(t *testing.T) {
+	for {
+		ops, ok := <-writesChan
+		if !ok {
+			return
+		}
+
+		err := db.Update(func(txn *badger.Txn) error {
+			for _, op := range ops.Transactions {
+				var err error
+				if op.ContentAsBytes == nil || len(op.ContentAsBytes) == 0 {
+					err = txn.Delete(op.DBKey)
+				} else {
+					err = txn.Set(op.DBKey, cipher.Encrypt(key, op.DBKey, op.ContentAsBytes))
+				}
+				if err != nil {
+					t.Error(err)
+				}
+			}
+			return nil
+		})
+		ops.ResponseChan <- err
+
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 func cleanup(t *testing.T, s store.KVStore) {
+	close(writesChan)
+
 	err := s.Close()
 	if err != nil {
 		t.Error(err)
@@ -142,71 +181,71 @@ func TestBadgerDBMerge(t *testing.T) {
 	test.CommonTestMerge(t, s)
 }
 
-func TestBadgerDBConfig(t *testing.T) {
-	path := "test"
-	defer os.RemoveAll(path)
-	os.RemoveAll(path)
+// func TestBadgerDBConfig(t *testing.T) {
+// 	path := "test"
+// 	defer os.RemoveAll(path)
+// 	os.RemoveAll(path)
 
-	opt := badger.DefaultOptions
-	opt.Dir = path
-	db, _ := badger.Open(opt)
+// 	opt := badger.DefaultOptions
+// 	opt.Dir = path
+// 	db, _ := badger.Open(opt)
 
-	var writeTxn *badger.Txn
+// 	var writeTxn *badger.Txn
 
-	var tests = []struct {
-		in            map[string]interface{}
-		name          string
-		indexPrefixID []byte
-		db            *badger.DB
-	}{
-		{
-			map[string]interface{}{
-				"path":     "test",
-				"prefix":   []byte{1, 9},
-				"db":       db,
-				"key":      &[32]byte{},
-				"writeTxn": writeTxn,
-			},
-			"test",
-			[]byte{1, 9},
-			db,
-		},
-		{
-			map[string]interface{}{
-				"path":     "test 2",
-				"prefix":   []byte{2, 5},
-				"key":      &[32]byte{},
-				"db":       db,
-				"writeTxn": writeTxn,
-			},
-			"test 2",
-			[]byte{2, 5},
-			db,
-		},
-	}
+// 	var tests = []struct {
+// 		in            map[string]interface{}
+// 		name          string
+// 		indexPrefixID []byte
+// 		db            *badger.DB
+// 	}{
+// 		{
+// 			map[string]interface{}{
+// 				"path":     "test",
+// 				"prefix":   []byte{1, 9},
+// 				"db":       db,
+// 				"key":      &[32]byte{},
+// 				"writeTxn": writeTxn,
+// 			},
+// 			"test",
+// 			[]byte{1, 9},
+// 			db,
+// 		},
+// 		{
+// 			map[string]interface{}{
+// 				"path":     "test 2",
+// 				"prefix":   []byte{2, 5},
+// 				"key":      &[32]byte{},
+// 				"db":       db,
+// 				"writeTxn": writeTxn,
+// 			},
+// 			"test 2",
+// 			[]byte{2, 5},
+// 			db,
+// 		},
+// 	}
 
-	for _, test := range tests {
-		kv, err := New(nil, test.in)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		bs, ok := kv.(*Store)
-		if !ok {
-			t.Error("failed type assertion to *boltdb.Store")
-			return
-		}
-		if bs.name != test.name {
-			t.Errorf("path: expected %q, got %q", test.name, bs.name)
-			return
-		}
-		if !reflect.DeepEqual(bs.config.prefix, test.indexPrefixID) {
-			t.Errorf("prefix: expected %X, got %X", test.indexPrefixID, bs.config.prefix)
-			return
-		}
-		if bs.config.db != test.db {
-			t.Errorf("db: expected %v, got %v", test.db, bs.config.db)
-			return
-		}
-	}
-}
+// 	for _, test := range tests {
+// 		kv, err := New(nil, test.in)
+// 		if err != nil {
+// 			t.Error(err)
+// 			return
+// 		}
+// 		bs, ok := kv.(*Store)
+// 		if !ok {
+// 			t.Error("failed type assertion to *boltdb.Store")
+// 			return
+// 		}
+// 		if bs.name != test.name {
+// 			t.Errorf("path: expected %q, got %q", test.name, bs.name)
+// 			return
+// 		}
+// 		if !reflect.DeepEqual(bs.config.prefix, test.indexPrefixID) {
+// 			t.Errorf("prefix: expected %X, got %X", test.indexPrefixID, bs.config.prefix)
+// 			return
+// 		}
+// 		if bs.config.db != test.db {
+// 			t.Errorf("db: expected %v, got %v", test.db, bs.config.db)
+// 			return
+// 		}
+// 	}
+// }

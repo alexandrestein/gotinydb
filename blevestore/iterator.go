@@ -85,7 +85,9 @@ func (i *Iterator) Value() []byte {
 
 	val := []byte{}
 	val, _ = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
-	// val, _ = i.store.decrypt(item.Key(), encryptVal)
+	// var err error
+	// val, err = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
+	// fmt.Println("err", err, item.Key())
 
 	return val
 }

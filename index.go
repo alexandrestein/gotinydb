@@ -1,31 +1,27 @@
 package gotinydb
 
 import (
-	"context"
-	"encoding/json"
-	"reflect"
-
 	"github.com/blevesearch/bleve"
 )
 
-// newIndex build a new Index pointer
-func newIndex(name string, t IndexType, selector ...string) *indexType {
-	ret := new(indexType)
-	ret.Name = name
-	ret.Selector = selector
-	ret.Type = t
+// // newIndex build a new Index pointer
+// func newIndex(name string, t IndexType, selector ...string) *indexType {
+// 	ret := new(indexType)
+// 	ret.Name = name
+// 	ret.Selector = selector
+// 	ret.Type = t
 
-	return ret
-}
+// 	return ret
+// }
 
-func (i *indexType) apply(object interface{}) (contentToIndex [][]byte, ok bool) {
-	fieldToIndex, toIndex := i.Selector.apply(object)
-	if toIndex {
-		return i.testType(fieldToIndex)
-	}
+// func (i *indexType) apply(object interface{}) (contentToIndex [][]byte, ok bool) {
+// 	fieldToIndex, toIndex := i.Selector.apply(object)
+// 	if toIndex {
+// 		return i.testType(fieldToIndex)
+// 	}
 
-	return nil, false
-}
+// 	return nil, false
+// }
 
 // func (i *indexType) applyToStruct(object *structs.Struct) (contentToIndex [][]byte, ok bool) {
 // 	return i.Selector.applyToStruct(object)
@@ -35,9 +31,9 @@ func (i *indexType) apply(object interface{}) (contentToIndex [][]byte, ok bool)
 // 	return i.Selector.testJSONTag(fields, fieldName)
 // }
 
-func (i *indexType) selectorHash() uint16 {
-	return i.Selector.selectorHash()
-}
+// func (i *indexType) selectorHash() uint16 {
+// 	return i.Selector.selectorHash()
+// }
 
 // func (i *indexType) applyToMap(object map[string]interface{}) (contentToIndex [][]byte, ok bool) {
 // 	return i.Selector.applyToMap(object)
@@ -133,167 +129,167 @@ func (i *indexType) selectorHash() uint16 {
 // 	return i.testType(i.convertInterfaceValueFromMapToIndexType(field))
 // }
 
-// doesFilterApplyToIndex only check if the filter belongs to the index
-func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
-	// Check the selector
-	if filter.selectorHash != i.selectorHash() {
-		return false
-	}
+// // doesFilterApplyToIndex only check if the filter belongs to the index
+// func (i *indexType) doesFilterApplyToIndex(filter *Filter) (ok bool) {
+// 	// Check the selector
+// 	if filter.selectorHash != i.selectorHash() {
+// 		return false
+// 	}
 
-	// If at least one of the value has the right type the index need to be queried
-	for _, value := range filter.values {
-		if value.Type == i.Type {
-			return true
-		}
-	}
+// 	// If at least one of the value has the right type the index need to be queried
+// 	for _, value := range filter.values {
+// 		if value.Type == i.Type {
+// 			return true
+// 		}
+// 	}
 
-	// Returns true to apply if the filter is a exists filter
-	if len(filter.values) == 0 && filter.getType() == exists {
-		return true
-	}
+// 	// Returns true to apply if the filter is a exists filter
+// 	if len(filter.values) == 0 && filter.getType() == exists {
+// 		return true
+// 	}
 
-	return false
-}
+// 	return false
+// }
 
-func (i *indexType) testType(value interface{}) (contentToIndexes [][]byte, ok bool) {
-	var contentToIndex []byte
+// func (i *indexType) testType(value interface{}) (contentToIndexes [][]byte, ok bool) {
+// 	var contentToIndex []byte
 
-	switch reflect.TypeOf(value).Kind() {
-	case reflect.Slice:
-		s := reflect.ValueOf(value)
+// 	switch reflect.TypeOf(value).Kind() {
+// 	case reflect.Slice:
+// 		s := reflect.ValueOf(value)
 
-		for j := 0; j < s.Len(); j++ {
-			contentToIndex, ok = i.convertType(s.Index(j).Interface())
-			if !ok {
-				continue
-			}
+// 		for j := 0; j < s.Len(); j++ {
+// 			contentToIndex, ok = i.convertType(s.Index(j).Interface())
+// 			if !ok {
+// 				continue
+// 			}
 
-			contentToIndexes = append(contentToIndexes, contentToIndex)
-		}
-	default:
-		contentToIndex, ok = i.convertType(value)
-		if !ok {
-			return nil, false
-		}
+// 			contentToIndexes = append(contentToIndexes, contentToIndex)
+// 		}
+// 	default:
+// 		contentToIndex, ok = i.convertType(value)
+// 		if !ok {
+// 			return nil, false
+// 		}
 
-		contentToIndexes = append(contentToIndexes, contentToIndex)
-	}
+// 		contentToIndexes = append(contentToIndexes, contentToIndex)
+// 	}
 
-	if len(contentToIndexes) <= 0 {
-		return nil, false
-	}
+// 	if len(contentToIndexes) <= 0 {
+// 		return nil, false
+// 	}
 
-	return contentToIndexes, true
-}
+// 	return contentToIndexes, true
+// }
 
-func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bool) {
-	var conversionFunc func(interface{}) ([]byte, error)
-	switch i.Type {
-	case StringIndex:
-		conversionFunc = stringToBytes
-	case IntIndex:
-		conversionFunc = intToBytes
-	case UIntIndex:
-		conversionFunc = uintToBytes
-	case TimeIndex:
-		conversionFunc = timeToBytes
-	default:
-		return nil, false
-	}
+// func (i *indexType) convertType(value interface{}) (contentToIndex []byte, ok bool) {
+// 	var conversionFunc func(interface{}) ([]byte, error)
+// 	switch i.Type {
+// 	case StringIndex:
+// 		conversionFunc = stringToBytes
+// 	case IntIndex:
+// 		conversionFunc = intToBytes
+// 	case UIntIndex:
+// 		conversionFunc = uintToBytes
+// 	case TimeIndex:
+// 		conversionFunc = timeToBytes
+// 	default:
+// 		return nil, false
+// 	}
 
-	var err error
-	if contentToIndex, err = conversionFunc(value); err != nil {
-		return nil, false
-	}
+// 	var err error
+// 	if contentToIndex, err = conversionFunc(value); err != nil {
+// 		return nil, false
+// 	}
 
-	return contentToIndex, true
-}
+// 	return contentToIndex, true
+// }
 
-// query do the given filter and ad it to the tree
-func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
-	ids, _ := newIDs(ctx, filter.selectorHash, nil, nil)
+// // query do the given filter and ad it to the tree
+// func (i *indexType) query(ctx context.Context, filter *Filter, finishedChan chan *idsType) {
+// 	ids, _ := newIDs(ctx, filter.selectorHash, nil, nil)
 
-	switch filter.getType() {
-	// If equal just this leave will be send
-	case equal:
-		i.queryEqual(ctx, ids, filter)
-	case greater, less:
-		i.queryGreaterLess(ctx, ids, filter)
-	case between:
-		i.queryBetween(ctx, ids, filter)
-	case exists:
-		i.queryExists(ctx, ids, filter)
-	case contains:
-		i.queryContains(ctx, ids, filter)
-	}
+// 	switch filter.getType() {
+// 	// If equal just this leave will be send
+// 	case equal:
+// 		i.queryEqual(ctx, ids, filter)
+// 	case greater, less:
+// 		i.queryGreaterLess(ctx, ids, filter)
+// 	case between:
+// 		i.queryBetween(ctx, ids, filter)
+// 	case exists:
+// 		i.queryExists(ctx, ids, filter)
+// 	case contains:
+// 		i.queryContains(ctx, ids, filter)
+// 	}
 
-	// Force to check first if a cancel signal has been send
-	// If not already canceled it wait for done or cancel
-	select {
-	case <-ctx.Done():
-		return
-	default:
-	}
+// 	// Force to check first if a cancel signal has been send
+// 	// If not already canceled it wait for done or cancel
+// 	select {
+// 	case <-ctx.Done():
+// 		return
+// 	default:
+// 	}
 
-	finishedChan <- ids
-	return
-}
+// 	finishedChan <- ids
+// 	return
+// }
 
-// newRefs builds a new empty Refs pointer
-func newRefs() *refs {
-	refs := new(refs)
-	refs.Refs = []*ref{}
-	return refs
-}
+// // newRefs builds a new empty Refs pointer
+// func newRefs() *refs {
+// 	refs := new(refs)
+// 	refs.Refs = []*ref{}
+// 	return refs
+// }
 
-// newRefsFromDB builds a Refs pointer based on the saved value in database
-func newRefsFromDB(input []byte) *refs {
-	refs := new(refs)
-	json.Unmarshal(input, refs)
-	return refs
-}
+// // newRefsFromDB builds a Refs pointer based on the saved value in database
+// func newRefsFromDB(input []byte) *refs {
+// 	refs := new(refs)
+// 	json.Unmarshal(input, refs)
+// 	return refs
+// }
 
-// setIndexedValue add to the list of references this one.
-// The indexName define the index it belongs to and indexedVal defines what value
-// is indexed.
-func (r *refs) setIndexedValue(indexName string, selectorHash uint16, indexedVal []byte) {
-	// Looks into existing references
-	for _, ref := range r.Refs {
-		if ref.IndexName == indexName {
-			ref.IndexedValue = indexedVal
-			return
-		}
-	}
+// // setIndexedValue add to the list of references this one.
+// // The indexName define the index it belongs to and indexedVal defines what value
+// // is indexed.
+// func (r *refs) setIndexedValue(indexName string, selectorHash uint16, indexedVal []byte) {
+// 	// Looks into existing references
+// 	for _, ref := range r.Refs {
+// 		if ref.IndexName == indexName {
+// 			ref.IndexedValue = indexedVal
+// 			return
+// 		}
+// 	}
 
-	// Build a new reference
-	ref := new(ref)
-	ref.IndexName = indexName
-	ref.IndexedValue = indexedVal
-	ref.IndexHash = selectorHash
-	r.Refs = append(r.Refs, ref)
-}
+// 	// Build a new reference
+// 	ref := new(ref)
+// 	ref.IndexName = indexName
+// 	ref.IndexedValue = indexedVal
+// 	ref.IndexHash = selectorHash
+// 	r.Refs = append(r.Refs, ref)
+// }
 
-// asBytes marshals the given Refs pointer into a slice of bytes fo saving
-func (r *refs) asBytes() []byte {
-	ret, _ := json.Marshal(r)
-	return ret
-}
+// // asBytes marshals the given Refs pointer into a slice of bytes fo saving
+// func (r *refs) asBytes() []byte {
+// 	ret, _ := json.Marshal(r)
+// 	return ret
+// }
 
-// GetType returns the string representation of the index type
-func (i *IndexInfo) GetType() string {
-	switch i.Type {
-	case StringIndex:
-		return string(StringIndexString)
-	case IntIndex:
-		return string(IntIndexString)
-	case UIntIndex:
-		return string(UIntIndexString)
-	case TimeIndex:
-		return string(TimeIndexString)
-	default:
-		return ""
-	}
-}
+// // GetType returns the string representation of the index type
+// func (i *IndexInfo) GetType() string {
+// 	switch i.Type {
+// 	case StringIndex:
+// 		return string(StringIndexString)
+// 	case IntIndex:
+// 		return string(IntIndexString)
+// 	case UIntIndex:
+// 		return string(UIntIndexString)
+// 	case TimeIndex:
+// 		return string(TimeIndexString)
+// 	default:
+// 		return ""
+// 	}
+// }
 
 func (i *bleveIndex) open() error {
 	if i.index != nil {

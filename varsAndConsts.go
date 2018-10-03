@@ -99,15 +99,15 @@ var (
 	ErrResponseOver = fmt.Errorf("the response has no more values")
 )
 
-// Those constants defines the different types of filter to perform at query
-const (
-	equal    filterOperator = "eq"
-	greater  filterOperator = "gr"
-	less     filterOperator = "le"
-	between  filterOperator = "bw"
-	exists   filterOperator = "ex"
-	contains filterOperator = "cn"
-)
+// // Those constants defines the different types of filter to perform at query
+// const (
+// 	equal    filterOperator = "eq"
+// 	greater  filterOperator = "gr"
+// 	less     filterOperator = "le"
+// 	between  filterOperator = "bw"
+// 	exists   filterOperator = "ex"
+// 	contains filterOperator = "cn"
+// )
 
 // Those constants defines the first level of prefixes.
 const (

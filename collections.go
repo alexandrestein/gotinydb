@@ -15,6 +15,7 @@ import (
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
+	"github.com/alexandrestein/gotinydb/transactions"
 )
 
 // Put add the given content to database with the given ID
@@ -27,10 +28,24 @@ func (c *Collection) Put(id string, content interface{}) error {
 		return ErrClosedDB
 	}
 
-	tr := newTransaction(ctx)
-	trElem := newTransactionElement(id, content, true, c)
+	dbKey := c.buildIDWhitPrefixData([]byte(id))
 
-	tr.addTransaction(trElem)
+	var err error
+	var contentAsBytes []byte
+
+	if tryBytes, ok := content.([]byte); ok {
+		contentAsBytes = tryBytes
+	} else {
+		contentAsBytes, err = json.Marshal(content)
+		if err != nil {
+			return err
+		}
+	}
+
+	tr := transactions.NewTransaction(ctx)
+	trElem := transactions.NewTransactionElement(dbKey, contentAsBytes)
+
+	tr.AddTransaction(trElem)
 
 	// Run the insertion
 	c.writeTransactionChan <- tr
@@ -229,50 +244,50 @@ func (c *Collection) DeleteBleveIndex(name string) error {
 	return c.saveCollections()
 }
 
-// Query run the given query to all the collection indexes
-func (c *Collection) Query(q *Query) (response *Response, _ error) {
-	if q == nil {
-		return
-	}
+// // Query run the given query to all the collection indexes
+// func (c *Collection) Query(q *Query) (response *Response, _ error) {
+// 	if q == nil {
+// 		return
+// 	}
 
-	// If no filter the query stops
-	if len(q.filters) <= 0 {
-		return nil, fmt.Errorf("query has no filter")
-	}
+// 	// If no filter the query stops
+// 	if len(q.filters) <= 0 {
+// 		return nil, fmt.Errorf("query has no filter")
+// 	}
 
-	// If no index stop the query
-	if len(c.indexes) <= 0 {
-		return nil, fmt.Errorf("no index in the collection")
-	}
+// 	// If no index stop the query
+// 	if len(c.indexes) <= 0 {
+// 		return nil, fmt.Errorf("no index in the collection")
+// 	}
 
-	if q.internalLimit > c.options.InternalQueryLimit {
-		q.internalLimit = c.options.InternalQueryLimit
-	}
-	if q.timeout > c.options.QueryTimeOut {
-		q.timeout = c.options.QueryTimeOut
-	}
+// 	if q.internalLimit > c.options.InternalQueryLimit {
+// 		q.internalLimit = c.options.InternalQueryLimit
+// 	}
+// 	if q.timeout > c.options.QueryTimeOut {
+// 		q.timeout = c.options.QueryTimeOut
+// 	}
 
-	// Set a timout
-	ctx, cancel := context.WithTimeout(context.Background(), q.timeout)
-	defer cancel()
+// 	// Set a timout
+// 	ctx, cancel := context.WithTimeout(context.Background(), q.timeout)
+// 	defer cancel()
 
-	tree, err := c.queryGetIDs(ctx, q)
-	if err != nil {
-		return nil, err
-	}
+// 	tree, err := c.queryGetIDs(ctx, q)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return c.queryCleanAndOrder(ctx, q, tree)
-}
+// 	return c.queryCleanAndOrder(ctx, q, tree)
+// }
 
-// NewQuery build a new query object.
-// It also set the default limit.
-func (c *Collection) NewQuery() *Query {
-	return &Query{
-		limit:         c.options.InternalQueryLimit,
-		internalLimit: c.options.InternalQueryLimit * 10,
-		timeout:       c.options.QueryTimeOut,
-	}
-}
+// // NewQuery build a new query object.
+// // It also set the default limit.
+// func (c *Collection) NewQuery() *Query {
+// 	return &Query{
+// 		limit:         c.options.InternalQueryLimit,
+// 		internalLimit: c.options.InternalQueryLimit * 10,
+// 		timeout:       c.options.QueryTimeOut,
+// 	}
+// }
 
 // GetIDs returns a list of IDs for the given collection and starting
 // at the given ID. The limit paramiter let caller ask for a portion of the collection.
@@ -427,20 +442,20 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	return c.saveCollections()
 }
 
-// GetIndexesInfo retruns a slice with indexes settings
-func (c *Collection) GetIndexesInfo() []*IndexInfo {
-	indexesInfo := make([]*IndexInfo, len(c.indexes))
-	for i := 0; i < len(c.indexes); i++ {
-		indexInfo := &IndexInfo{
-			Name:     c.indexes[i].Name,
-			Selector: c.indexes[i].Selector,
-			Type:     c.indexes[i].Type,
-		}
-		indexesInfo[i] = indexInfo
-	}
+// // GetIndexesInfo retruns a slice with indexes settings
+// func (c *Collection) GetIndexesInfo() []*IndexInfo {
+// 	indexesInfo := make([]*IndexInfo, len(c.indexes))
+// 	for i := 0; i < len(c.indexes); i++ {
+// 		indexInfo := &IndexInfo{
+// 			Name:     c.indexes[i].Name,
+// 			Selector: c.indexes[i].Selector,
+// 			Type:     c.indexes[i].Type,
+// 		}
+// 		indexesInfo[i] = indexInfo
+// 	}
 
-	return indexesInfo
-}
+// 	return indexesInfo
+// }
 
 // Search is used to query a bleve index.
 // Give the index name the corresponding request.

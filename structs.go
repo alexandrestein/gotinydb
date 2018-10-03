@@ -6,7 +6,6 @@ import (
 
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
-	"github.com/google/btree"
 
 	"github.com/alexandrestein/gotinydb/transactions"
 )
@@ -23,6 +22,7 @@ type (
 		freeCollectionPrefixes []byte
 
 		writeTransactionChan chan *transactions.WriteTransaction
+		bleveIndexChan chan 
 		// writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
 
 		ctx     context.Context
@@ -35,8 +35,8 @@ type (
 		PrivateCryptoKey       [32]byte
 	}
 	collectionExport struct {
-		Name         string
-		Indexes      []*indexType
+		Name string
+		// Indexes      []*indexType
 		BleveIndexes []*bleveIndex
 		Prefix       byte
 	}
@@ -65,8 +65,8 @@ type (
 
 	// Collection defines the storage object
 	Collection struct {
-		name         string
-		indexes      []*indexType
+		name string
+		// indexes      []*indexType
 		bleveIndexes []*bleveIndex
 
 		// prefix defines the prefix needed to found the collection into the store
@@ -84,44 +84,44 @@ type (
 		saveCollections func() error
 	}
 
-	// Query defines the object to request index query.
-	Query struct {
-		filters []*Filter
+	// // Query defines the object to request index query.
+	// Query struct {
+	// 	filters []*Filter
 
-		orderSelector selector
-		order         uint16 // is the selector hash representation
-		ascendent     bool   // defines the way of the order
+	// 	orderSelector selector
+	// 	order         uint16 // is the selector hash representation
+	// 	ascendent     bool   // defines the way of the order
 
-		limit         int
-		internalLimit int
-		timeout       time.Duration
-	}
+	// 	limit         int
+	// 	internalLimit int
+	// 	timeout       time.Duration
+	// }
 
-	// idType is a type to order IDs during query to be compatible with the tree query
-	idType struct {
-		ID          string
-		occurrences int
-		ch          chan int
-		// values defines the different values and selector that called this ID
-		// selectors are defined by a hash 64
-		values map[uint16][]byte
+	// // idType is a type to order IDs during query to be compatible with the tree query
+	// idType struct {
+	// 	ID          string
+	// 	occurrences int
+	// 	ch          chan int
+	// 	// values defines the different values and selector that called this ID
+	// 	// selectors are defined by a hash 64
+	// 	values map[uint16][]byte
 
-		// This is for the ordering
-		less         func(btree.Item) bool
-		selectorHash uint16
-		getRefsFunc  func(id string) *refs
-	}
+	// 	// This is for the ordering
+	// 	less         func(btree.Item) bool
+	// 	selectorHash uint16
+	// 	getRefsFunc  func(id string) *refs
+	// }
 
-	// idsType defines a list of ID. The struct is needed to build a pointer to be
-	// passed to deferent functions
-	idsType struct {
-		IDs []*idType
-	}
+	// // idsType defines a list of ID. The struct is needed to build a pointer to be
+	// // passed to deferent functions
+	// idsType struct {
+	// 	IDs []*idType
+	// }
 
-	idsTypeMultiSorter struct {
-		IDs    []*idType
-		invert bool
-	}
+	// idsTypeMultiSorter struct {
+	// 	IDs    []*idType
+	// 	invert bool
+	// }
 
 	bleveIndex struct {
 		Name        string
@@ -162,67 +162,68 @@ type (
 		// preloadedErr []error
 	}
 
-	// FilterOperator defines the type of filter to perform
-	filterOperator string
+	// // FilterOperator defines the type of filter to perform
+	// filterOperator string
 
 	// Response holds the results of a query
 	Response struct {
 		list           []*ResponseElem
 		actualPosition int
-		query          *Query
+		// query          *Query
 	}
 
 	// ResponseElem defines the response as a pointer
 	ResponseElem struct {
-		_ID            *idType
-		contentAsBytes []byte
+		// _ID            *idType
+		ID             string
+		ContentAsBytes []byte
 	}
 
-	// Filter defines the way the query will be performed
-	Filter struct {
-		selector     selector
-		selectorHash uint16
-		operator     filterOperator
-		values       []*filterValue
-		exclusion    bool
-	}
+	// // Filter defines the way the query will be performed
+	// Filter struct {
+	// 	selector     selector
+	// 	selectorHash uint16
+	// 	operator     filterOperator
+	// 	values       []*filterValue
+	// 	exclusion    bool
+	// }
 
 	// IndexType defines what kind of field the index is scanning
 	IndexType int
 
-	// filterValue defines the value we need to compare to
-	filterValue struct {
-		Value interface{}
-		Type  IndexType
-	}
+	// // filterValue defines the value we need to compare to
+	// filterValue struct {
+	// 	Value interface{}
+	// 	Type  IndexType
+	// }
 
-	// Index defines the struct to manage indexation
-	indexType struct {
-		Name     string
-		Selector selector
-		Type     IndexType
+	// // Index defines the struct to manage indexation
+	// indexType struct {
+	// 	Name     string
+	// 	Selector selector
+	// 	Type     IndexType
 
-		options *Options
+	// 	options *Options
 
-		getTx        func(update bool) *badger.Txn
-		getIDBuilder func(id []byte) []byte
-	}
+	// 	getTx        func(update bool) *badger.Txn
+	// 	getIDBuilder func(id []byte) []byte
+	// }
 
-	// refs defines an struct to manage the references of a given object
-	// in all the indexes it belongs to
-	refs struct {
-		ObjectID string
-		// ObjectHashID string
+	// // refs defines an struct to manage the references of a given object
+	// // in all the indexes it belongs to
+	// refs struct {
+	// 	ObjectID string
+	// 	// ObjectHashID string
 
-		Refs []*ref
-	}
+	// 	Refs []*ref
+	// }
 
-	// ref defines the relations between a object with some index with indexed value
-	ref struct {
-		IndexName    string
-		IndexHash    uint16
-		IndexedValue []byte
-	}
+	// // ref defines the relations between a object with some index with indexed value
+	// ref struct {
+	// 	IndexName    string
+	// 	IndexHash    uint16
+	// 	IndexedValue []byte
+	// }
 
 	// writeTransaction struct {
 	// 	responseChan chan error
@@ -252,13 +253,13 @@ type (
 	// 	file *os.File
 	// }
 
-	// IndexInfo is returned by *Collection.GetIndexesInfo and let call see
-	// what indexes are present in the collection.
-	IndexInfo struct {
-		Name     string
-		Selector selector
-		Type     IndexType
-	}
+	// // IndexInfo is returned by *Collection.GetIndexesInfo and let call see
+	// // what indexes are present in the collection.
+	// IndexInfo struct {
+	// 	Name     string
+	// 	Selector selector
+	// 	Type     IndexType
+	// }
 
 	selector []string
 )

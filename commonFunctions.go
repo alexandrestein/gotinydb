@@ -12,12 +12,12 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-func getIDsAsString(input []*idType) (ret []string) {
-	for _, id := range input {
-		ret = append(ret, id.ID)
-	}
-	return ret
-}
+// func getIDsAsString(input []*idType) (ret []string) {
+// 	for _, id := range input {
+// 		ret = append(ret, id.ID)
+// 	}
+// 	return ret
+// }
 
 // func newTransactionElement(id string, content interface{}, isInsertion bool, col *Collection) (wtElem *transactions.WriteTransaction) {
 // 	fmt.Println("newTransactionElement")
