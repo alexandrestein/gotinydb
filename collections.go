@@ -30,27 +30,42 @@ func (c *Collection) Put(id string, content interface{}) error {
 
 	dbKey := c.buildIDWhitPrefixData([]byte(id))
 
-	var err error
-	var contentAsBytes []byte
+	// var err error
+	// var contentAsBytes []byte
 
-	if tryBytes, ok := content.([]byte); ok {
-		contentAsBytes = tryBytes
-	} else {
-		contentAsBytes, err = json.Marshal(content)
-		if err != nil {
-			return err
-		}
+	// if tryBytes, ok := content.([]byte); ok {
+	// 	contentAsBytes = tryBytes
+	// } else {
+	// 	contentAsBytes, err = json.Marshal(content)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	contentAsBytes, err := c.getInterfaceAsBytes(content)
+	if err != nil {
+		return err
 	}
 
 	tr := transactions.NewTransaction(ctx)
 	trElem := transactions.NewTransactionElement(dbKey, contentAsBytes)
+
+	for _, i := range c.bleveIndexes {
+		contentToIndex, apply := i.Selector.Apply(content)
+		if apply {
+			err = i.index.Index(id, contentToIndex)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	tr.AddTransaction(trElem)
 
 	// Run the insertion
 	c.writeTransactionChan <- tr
 	// And wait for the end of the insertion
-	return <-tr.responseChan
+	return <-tr.ResponseChan
 }
 
 // PutMulti put the given elements in the DB with one single write transaction.
@@ -70,22 +85,25 @@ func (c *Collection) PutMulti(IDs []string, content []interface{}) error {
 		return ErrClosedDB
 	}
 
-	tr := newTransaction(ctx)
-	tr.transactions = make([]*writeTransactionElement, len(IDs))
+	tr := transactions.NewTransaction(ctx)
+	tr.Transactions = make([]*transactions.WriteElement, len(IDs))
 
 	for i := range IDs {
-		tr.transactions[i] = newTransactionElement(
-			IDs[i],
-			content[i],
-			true,
-			c,
+		contentAsBytes, err := c.getInterfaceAsBytes(content[i])
+		if err != nil {
+			return err
+		}
+
+		tr.Transactions[i] = transactions.NewTransactionElement(
+			c.buildIDWhitPrefixData([]byte(IDs[i])),
+			contentAsBytes,
 		)
 	}
 
 	// Run the insertion
 	c.writeTransactionChan <- tr
 	// And wait for the end of the insertion
-	return <-tr.responseChan
+	return <-tr.ResponseChan
 }
 
 // Get retrieves the content of the given ID
@@ -132,79 +150,79 @@ func (c *Collection) Delete(id string) error {
 		return ErrClosedDB
 	}
 
-	tr := newTransaction(ctx)
-	trElem := newTransactionElement(id, nil, false, c)
+	tr := transactions.NewTransaction(ctx)
+	trElem := transactions.NewTransactionElement(c.buildIDWhitPrefixData([]byte(id)), nil)
 
-	tr.addTransaction(trElem)
+	tr.AddTransaction(trElem)
 
 	// Run the insertion
 	c.writeTransactionChan <- tr
 	// And wait for the end of the insertion
-	return <-tr.responseChan
+	return <-tr.ResponseChan
 }
 
-// SetIndex enable the collection to index field or sub field
-func (c *Collection) SetIndex(name string, t IndexType, selector ...string) error {
-	for _, index := range c.indexes {
-		if index.Name == name {
-			return ErrIndexNameAllreadyExists
-		}
-	}
+// // SetIndex enable the collection to index field or sub field
+// func (c *Collection) SetIndex(name string, t IndexType, selector ...string) error {
+// 	for _, index := range c.indexes {
+// 		if index.Name == name {
+// 			return ErrIndexNameAllreadyExists
+// 		}
+// 	}
 
-	i := newIndex(name, t, selector...)
-	i.options = c.options
-	i.getTx = c.store.NewTransaction
-	i.getIDBuilder = func(id []byte) []byte {
-		return c.buildIDWhitPrefixIndex([]byte(i.Name), id)
-	}
+// 	i := newIndex(name, t, selector...)
+// 	i.options = c.options
+// 	i.getTx = c.store.NewTransaction
+// 	i.getIDBuilder = func(id []byte) []byte {
+// 		return c.buildIDWhitPrefixIndex([]byte(i.Name), id)
+// 	}
 
-	c.indexes = append(c.indexes, i)
+// 	c.indexes = append(c.indexes, i)
 
-	err := c.indexAllValues()
-	if err != nil {
-		return err
-	}
+// 	err := c.indexAllValues()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return c.saveCollections()
-}
+// 	return c.saveCollections()
+// }
 
-// DeleteIndex remove the index from the collection
-func (c *Collection) DeleteIndex(name string) error {
-	var index *indexType
+// // DeleteIndex remove the index from the collection
+// func (c *Collection) DeleteIndex(name string) error {
+// 	var index *indexType
 
-	// Find the correct index from the list
-	for _, activeIndex := range c.indexes {
-		if activeIndex.Name == name {
-			index = activeIndex
-		}
-	}
+// 	// Find the correct index from the list
+// 	for _, activeIndex := range c.indexes {
+// 		if activeIndex.Name == name {
+// 			index = activeIndex
+// 		}
+// 	}
 
-	if index == nil {
-		return ErrNotFound
-	}
+// 	if index == nil {
+// 		return ErrNotFound
+// 	}
 
-	indexPrefix := c.buildIDWhitPrefixIndex([]byte(name), nil)
-	for {
-		done, err := deleteLoop(c.store, indexPrefix)
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-	}
+// 	indexPrefix := c.buildIDWhitPrefixIndex([]byte(name), nil)
+// 	for {
+// 		done, err := deleteLoop(c.store, indexPrefix)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		if done {
+// 			break
+// 		}
+// 	}
 
-	for i, activeIndex := range c.indexes {
-		if activeIndex.Name == name {
-			// Clean the collection list from the index pointer
-			copy(c.indexes[i:], c.indexes[i+1:])
-			c.indexes[len(c.indexes)-1] = nil
-			c.indexes = c.indexes[:len(c.indexes)-1]
-		}
-	}
+// 	for i, activeIndex := range c.indexes {
+// 		if activeIndex.Name == name {
+// 			// Clean the collection list from the index pointer
+// 			copy(c.indexes[i:], c.indexes[i+1:])
+// 			c.indexes[len(c.indexes)-1] = nil
+// 			c.indexes = c.indexes[:len(c.indexes)-1]
+// 		}
+// 	}
 
-	return c.saveCollections()
-}
+// 	return c.saveCollections()
+// }
 
 // DeleteBleveIndex remove the bleve index from the collection
 func (c *Collection) DeleteBleveIndex(name string) error {
@@ -374,7 +392,7 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 
 // GetBleveIndexesName returns the names of every bleve indexes from the given collection.
 func (c *Collection) GetBleveIndexesName() (ret []string) {
-	for _, i := range c.indexes {
+	for _, i := range c.bleveIndexes {
 		ret = append(ret, i.Name)
 	}
 	return
@@ -405,7 +423,10 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	i.IndexPrefix = c.buildIDWhitPrefixBleveIndex([]byte(name), nil)
 
 	// Path of the configuration
-	i.Path = c.options.Path + "/" + c.name + "/" + name
+	// colHash := blake2b.Sum256([]byte(c.name))
+	// nameHash := blake2b.Sum256([]byte(c.name))
+	i.Path = c.buildIndexPath(name)
+	// i.Path = c.options.Path + "/" + c.name + "/" + name
 
 	// go func() {
 	// 	for {
@@ -424,7 +445,7 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	// 	}
 	// }()
 
-	i.kvConfig = c.buildKvConfig(i.IndexPrefix)
+	i.kvConfig = c.buildKvConfig(i.Path, i.IndexPrefix)
 	bleveIndex, err := bleve.NewUsing(i.Path, bleveMapping, upsidedown.Name, blevestore.Name, i.kvConfig)
 	if err != nil {
 		return err
@@ -439,7 +460,17 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 
 	c.bleveIndexes = append(c.bleveIndexes, i)
 
-	return c.saveCollections()
+	err = c.saveCollections()
+	if err != nil {
+		return err
+	}
+
+	err = c.indexAllValues()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // // GetIndexesInfo retruns a slice with indexes settings

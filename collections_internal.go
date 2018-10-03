@@ -1,13 +1,13 @@
 package gotinydb
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
+	"golang.org/x/crypto/blake2b"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
@@ -24,18 +24,20 @@ func (c *Collection) buildIDWhitPrefixData(id []byte) []byte {
 	ret := c.buildCollectionPrefix(prefixData)
 	return append(ret, id...)
 }
-func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
-	ret := append(c.buildCollectionPrefix(prefixIndexes), deriveName(indexName, 8)...)
-	return append(ret, id...)
-}
+
+// func (c *Collection) buildIDWhitPrefixIndex(indexName, id []byte) []byte {
+// 	ret := append(c.buildCollectionPrefix(prefixIndexes), deriveName(indexName, 8)...)
+// 	return append(ret, id...)
+// }
 func (c *Collection) buildIDWhitPrefixBleveIndex(indexName, id []byte) []byte {
 	ret := append(c.buildCollectionPrefix(prefixBleveIndexes), deriveName(indexName, 8)...)
 	return append(ret, id...)
 }
-func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
-	ret := c.buildCollectionPrefix(prefixRefs)
-	return append(ret, id...)
-}
+
+// func (c *Collection) buildIDWhitPrefixRefs(id []byte) []byte {
+// 	ret := c.buildCollectionPrefix(prefixRefs)
+// 	return append(ret, id...)
+// }
 
 func (c *Collection) buildStoreID(id string) []byte {
 	return c.buildIDWhitPrefixData([]byte(id))
@@ -43,7 +45,7 @@ func (c *Collection) buildStoreID(id string) []byte {
 
 func (c *Collection) initBleveIndexes() error {
 	for _, i := range c.bleveIndexes {
-		i.kvConfig = c.buildKvConfig(i.IndexPrefix)
+		i.kvConfig = c.buildKvConfig(i.Path, i.IndexPrefix)
 		err := i.open()
 		if err != nil {
 			return err
@@ -52,16 +54,36 @@ func (c *Collection) initBleveIndexes() error {
 	return nil
 }
 
-func (c *Collection) buildKvConfig(indexPrefix []byte) (config map[string]interface{}) {
+func (c *Collection) buildIndexPath(name string) string {
+	colHash := blake2b.Sum256([]byte(c.name))
+	nameHash := blake2b.Sum256([]byte(name))
+
+	return fmt.Sprintf("%s/%x/%x", c.options.Path, colHash[:8], nameHash[:8])
+}
+
+func (c *Collection) buildKvConfig(path string, indexPrefix []byte) (config map[string]interface{}) {
 	return map[string]interface{}{
-		"path": "test",
+		"path": path,
 		"config": blevestore.NewBleveStoreConfig(
-			[32]byte{},
+			c.options.privateCryptoKey,
 			indexPrefix,
 			c.store,
 			c.writeTransactionChan,
 		),
 	}
+}
+
+func (c *Collection) getInterfaceAsBytes(input interface{}) (contentAsBytes []byte, err error) {
+	if tryBytes, ok := input.([]byte); ok {
+		contentAsBytes = tryBytes
+	} else {
+		contentAsBytes, err = json.Marshal(input)
+		if err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 func (c *Collection) putIntoIndexes(ctx context.Context, txn *badger.Txn, writeElem *transactions.WriteElement) error {
@@ -481,17 +503,16 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 				continue
 			}
 
-			responseItem._ID = new(idType)
-			responseItem._ID.ID = string(item.Key()[len(c.buildIDWhitPrefixData(nil)):])
+			responseItem.ID = string(item.Key()[len(c.buildIDWhitPrefixData(nil)):])
 
 			if !IDsOnly {
 				var err error
-				responseItem.contentAsBytes, err = item.ValueCopy(responseItem.contentAsBytes)
+				responseItem.ContentAsBytes, err = item.ValueCopy(responseItem.ContentAsBytes)
 				if err != nil {
 					return err
 				}
 
-				responseItem.contentAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, item.Key(), responseItem.contentAsBytes)
+				responseItem.ContentAsBytes, err = cipher.Decrypt(c.options.privateCryptoKey, item.Key(), responseItem.ContentAsBytes)
 				if err != nil {
 					return err
 				}
@@ -509,57 +530,60 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 }
 
 func (c *Collection) indexAllValues() error {
-	lastID := ""
+	fmt.Println("index all values")
+	return nil
 
-newLoop:
-	savedElements, getErr := c.getStoredIDsAndValues(lastID, c.options.PutBufferLimit, false)
-	if getErr != nil {
-		return getErr
-	}
+	// 	lastID := ""
 
-	if len(savedElements) <= 1 {
-		return nil
-	}
+	// newLoop:
+	// 	savedElements, getErr := c.getStoredIDsAndValues(lastID, c.options.PutBufferLimit, false)
+	// 	if getErr != nil {
+	// 		return getErr
+	// 	}
 
-	txn := c.store.NewTransaction(true)
-	defer txn.Discard()
+	// 	if len(savedElements) <= 1 {
+	// 		return nil
+	// 	}
 
-	for _, savedElement := range savedElements {
-		if savedElement.GetID() == lastID {
-			continue
-		}
+	// 	txn := c.store.NewTransaction(true)
+	// 	defer txn.Discard()
 
-		var elem interface{}
-		decoder := json.NewDecoder(bytes.NewBuffer(savedElement.contentAsBytes))
-		decoder.UseNumber()
+	// 	for _, savedElement := range savedElements {
+	// 		if savedElement.GetID() == lastID {
+	// 			continue
+	// 		}
 
-		if jsonErr := decoder.Decode(&elem); jsonErr != nil {
-			return jsonErr
-		}
+	// 		var elem interface{}
+	// 		decoder := json.NewDecoder(bytes.NewBuffer(savedElement.ContentAsBytes))
+	// 		decoder.UseNumber()
 
-		m := elem.(map[string]interface{})
+	// 		if jsonErr := decoder.Decode(&elem); jsonErr != nil {
+	// 			return jsonErr
+	// 		}
 
-		ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
-		defer cancel()
+	// 		m := elem.(map[string]interface{})
 
-		fmt.Println("id is not valid", savedElement.GetID())
-		trElement := transactions.NewTransactionElement([]byte(savedElement.GetID()), savedElement.GetContent())
-		// trElement := newTransactionElement(savedElement.GetID(), m, true, c)
+	// 		ctx, cancel := context.WithTimeout(c.ctx, c.options.TransactionTimeOut)
+	// 		defer cancel()
 
-		err := c.putIntoIndexes(ctx, txn, trElement)
-		if err != nil {
-			return err
-		}
+	// 		fmt.Println("id is not valid", savedElement.GetID())
+	// 		trElement := transactions.NewTransactionElement([]byte(savedElement.GetID()), savedElement.GetContent())
+	// 		// trElement := newTransactionElement(savedElement.GetID(), m, true, c)
 
-		lastID = savedElement.GetID()
-	}
+	// 		err := c.putIntoIndexes(ctx, txn, trElement)
+	// 		if err != nil {
+	// 			return err
+	// 		}
 
-	err := txn.Commit(nil)
-	if err != nil {
-		return err
-	}
+	// 		lastID = savedElement.GetID()
+	// 	}
 
-	goto newLoop
+	// 	err := txn.Commit(nil)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// 	goto newLoop
 }
 
 func (c *Collection) isRunning() bool {
@@ -593,7 +617,7 @@ func (c *Collection) getBleveIndex(name string) (*bleveIndex, error) {
 	}
 
 	// Load the index
-	bleveIndex, err := bleve.OpenUsing(index.Path, c.buildKvConfig(index.IndexPrefix))
+	bleveIndex, err := bleve.OpenUsing(index.Path, c.buildKvConfig(index.Path, index.IndexPrefix))
 	if err != nil {
 		return nil, err
 	}

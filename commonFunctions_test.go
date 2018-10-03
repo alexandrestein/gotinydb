@@ -4,25 +4,25 @@ import (
 	"testing"
 )
 
-func TestTypeName(t *testing.T) {
-	if StringIndex.TypeName() != "StringIndex" {
-		t.Error("returned name is not correct")
-		return
-	}
-	if IntIndex.TypeName() != "IntIndex" {
-		t.Error("returned name is not correct")
-		return
-	}
-	if TimeIndex.TypeName() != "TimeIndex" {
-		t.Error("returned name is not correct")
-		return
-	}
+// func TestTypeName(t *testing.T) {
+// 	if StringIndex.TypeName() != "StringIndex" {
+// 		t.Error("returned name is not correct")
+// 		return
+// 	}
+// 	if IntIndex.TypeName() != "IntIndex" {
+// 		t.Error("returned name is not correct")
+// 		return
+// 	}
+// 	if TimeIndex.TypeName() != "TimeIndex" {
+// 		t.Error("returned name is not correct")
+// 		return
+// 	}
 
-	if IndexType(-1).TypeName() != "" {
-		t.Error("returned name is not correct")
-		return
-	}
-}
+// 	if IndexType(-1).TypeName() != "" {
+// 		t.Error("returned name is not correct")
+// 		return
+// 	}
+// }
 
 func TestBuildSelectorHash(t *testing.T) {
 	selectors := [][]string{

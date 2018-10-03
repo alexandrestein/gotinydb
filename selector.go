@@ -6,7 +6,7 @@ import (
 
 // apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
-func (s selector) apply(object interface{}) (contentToIndex interface{}, ok bool) {
+func (s Selector) Apply(object interface{}) (contentToIndex interface{}, ok bool) {
 	if structs.IsStruct(object) {
 		return s.applyToStruct(structs.New(object))
 	}
@@ -18,7 +18,7 @@ func (s selector) apply(object interface{}) (contentToIndex interface{}, ok bool
 	return nil, false
 }
 
-func (s selector) applyToStruct(object *structs.Struct) (contentToIndex interface{}, ok bool) {
+func (s Selector) applyToStruct(object *structs.Struct) (contentToIndex interface{}, ok bool) {
 	var field *structs.Field
 	for j, fieldName := range s {
 		// If this is a first level selector
@@ -48,7 +48,7 @@ func (s selector) applyToStruct(object *structs.Struct) (contentToIndex interfac
 	return field.Value(), true
 }
 
-func (s selector) testJSONTag(fields []*structs.Field, fieldName string) (field *structs.Field, ok bool) {
+func (s Selector) testJSONTag(fields []*structs.Field, fieldName string) (field *structs.Field, ok bool) {
 	for _, fieldToTryWithJSONTags := range fields {
 		JSONTag := fieldToTryWithJSONTags.Tag("json")
 		if JSONTag == fieldName || JSONTag == fieldName+",omitempty" {
@@ -61,11 +61,11 @@ func (s selector) testJSONTag(fields []*structs.Field, fieldName string) (field 
 	return
 }
 
-func (s selector) selectorHash() uint16 {
-	return buildSelectorHash(s)
-}
+// func (s Selector) selectorHash() uint16 {
+// 	return buildSelectorHash(s)
+// }
 
-func (s selector) applyToMap(object map[string]interface{}) (contentToIndex interface{}, ok bool) {
+func (s Selector) applyToMap(object map[string]interface{}) (contentToIndex interface{}, ok bool) {
 	var field interface{}
 	for i, fieldName := range s {
 		if i == 0 {

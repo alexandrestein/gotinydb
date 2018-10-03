@@ -125,20 +125,20 @@ const (
 // into the store. This is the second level of the collection prefix.
 const (
 	prefixData byte = iota
-	prefixIndexes
-	prefixRefs
+	// prefixIndexes
+	// prefixRefs
 	prefixBleveIndexes
 )
 
-// Those define the different type of indexes
-const (
-	StringIndex IndexType = iota
-	IntIndex
-	UIntIndex
-	TimeIndex
+// // Those define the different type of indexes
+// const (
+// 	StringIndex IndexType = iota
+// 	IntIndex
+// 	UIntIndex
+// 	TimeIndex
 
-	StringIndexString filterOperator = "string"
-	IntIndexString    filterOperator = "int"
-	UIntIndexString   filterOperator = "uint"
-	TimeIndexString   filterOperator = "time"
-)
+// 	StringIndexString filterOperator = "string"
+// 	IntIndexString    filterOperator = "int"
+// 	UIntIndexString   filterOperator = "uint"
+// 	TimeIndexString   filterOperator = "time"
+// )

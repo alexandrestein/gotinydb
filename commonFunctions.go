@@ -59,19 +59,19 @@ func buildSelectorHash(selector []string) uint16 {
 	return hash
 }
 
-// TypeName return the name of the type as a string
-func (it IndexType) TypeName() string {
-	switch it {
-	case StringIndex:
-		return "StringIndex"
-	case IntIndex:
-		return "IntIndex"
-	case TimeIndex:
-		return "TimeIndex"
-	default:
-		return ""
-	}
-}
+// // TypeName return the name of the type as a string
+// func (it IndexType) TypeName() string {
+// 	switch it {
+// 	case StringIndex:
+// 		return "StringIndex"
+// 	case IntIndex:
+// 		return "IntIndex"
+// 	case TimeIndex:
+// 		return "TimeIndex"
+// 	default:
+// 		return ""
+// 	}
+// }
 
 func indexZipper(baseFolder string) ([]byte, error) {
 	// Get a Buffer to Write To

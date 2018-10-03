@@ -318,7 +318,7 @@ func (d *DB) saveCollections() error {
 			colToSave := new(collectionExport)
 			colToSave.Name = col.name
 			colToSave.Prefix = col.prefix
-			colToSave.Indexes = col.indexes
+			// colToSave.Indexes = col.indexes
 			colToSave.BleveIndexes = col.bleveIndexes
 
 			dbToSave.Collections = append(dbToSave.Collections, colToSave)

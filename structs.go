@@ -22,7 +22,7 @@ type (
 		freeCollectionPrefixes []byte
 
 		writeTransactionChan chan *transactions.WriteTransaction
-		bleveIndexChan chan 
+		// bleveIndexChan chan
 		// writeBleveIndexChan  chan *blevestore.BleveStoreWriteRequest
 
 		ctx     context.Context
@@ -128,7 +128,7 @@ type (
 		Path        string
 		IndexDirZip []byte
 		IndexPrefix []byte
-		Selector    selector
+		Selector    Selector
 
 		kvConfig map[string]interface{}
 		writeTxn *badger.Txn
@@ -261,5 +261,5 @@ type (
 	// 	Type     IndexType
 	// }
 
-	selector []string
+	Selector []string
 )

@@ -47,7 +47,7 @@ func (r *Reader) get(key []byte) ([]byte, error) {
 
 	clear, err2 := cipher.Decrypt(r.store.config.key, storeKey, rv)
 	if err2 != nil {
-		fmt.Println("clear, err2", clear, err2, rv, key, len(rv))
+		fmt.Println("clear, err2", r.store.config.key, storeKey)
 	} else {
 		// fmt.Println("OK", key)
 	}
