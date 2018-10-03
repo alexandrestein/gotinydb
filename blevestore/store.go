@@ -125,14 +125,13 @@ func (bs *Store) buildID(key []byte) []byte {
 	return append(bs.config.prefix, key...)
 }
 
-func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB) (config *BleveStoreConfig, writeElementsChan chan *transactions.WriteTransaction) {
-	writeElementsChan = make(chan *transactions.WriteTransaction, 0)
+func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transactions.WriteTransaction) (config *BleveStoreConfig) {
 	return &BleveStoreConfig{
 		key:        key,
 		prefix:     prefix,
 		db:         db,
 		writesChan: writeElementsChan,
-	}, writeElementsChan
+	}
 }
 
 // func NewIndexRequest(ctx context.Context, id string, data interface{}) *IndexRequest {

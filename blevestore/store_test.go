@@ -16,6 +16,7 @@ package blevestore
 
 import (
 	"crypto/rand"
+	"fmt"
 	"os"
 	"testing"
 
@@ -30,7 +31,7 @@ import (
 var (
 	key        = [32]byte{}
 	db         *badger.DB
-	writesChan chan *transactions.WriteTransaction
+	writesChan = make(chan *transactions.WriteTransaction, 0)
 
 	prefix = []byte{1, 9}
 )
@@ -46,6 +47,12 @@ var (
 // 	}
 // )
 
+func init() {
+	rand.Read(key[:])
+
+	go goRoutineLoopForWrites()
+}
+
 func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 	opt := badger.DefaultOptions
 	opt.Dir = "test"
@@ -58,10 +65,8 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 		return nil
 	}
 
-	rand.Read(key[:])
-
 	var config *BleveStoreConfig
-	config, writesChan = NewBleveStoreConfig(key, prefix, db)
+	config = NewBleveStoreConfig(key, prefix, db, writesChan)
 
 	var rv store.KVStore
 	rv, err = New(mo, map[string]interface{}{
@@ -78,12 +83,10 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 		t.Error(err)
 	}
 
-	go goRoutineLoopForWrites(t)
-
 	return rv
 }
 
-func goRoutineLoopForWrites(t *testing.T) {
+func goRoutineLoopForWrites() {
 	for {
 		ops, ok := <-writesChan
 		if !ok {
@@ -99,7 +102,7 @@ func goRoutineLoopForWrites(t *testing.T) {
 					err = txn.Set(op.DBKey, cipher.Encrypt(key, op.DBKey, op.ContentAsBytes))
 				}
 				if err != nil {
-					t.Error(err)
+					fmt.Println(err)
 				}
 			}
 			return nil
@@ -107,14 +110,12 @@ func goRoutineLoopForWrites(t *testing.T) {
 		ops.ResponseChan <- err
 
 		if err != nil {
-			t.Error(err)
+			fmt.Println(err)
 		}
 	}
 }
 
 func cleanup(t *testing.T, s store.KVStore) {
-	close(writesChan)
-
 	err := s.Close()
 	if err != nil {
 		t.Error(err)
