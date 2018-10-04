@@ -335,7 +335,7 @@ func (c *Collection) GetIDs(startID string, limit int) ([]string, error) {
 
 // GetValues returns a list of IDs and values as bytes for the given collection and starting
 // at the given ID. The limit paramiter let caller ask for a portion of the collection.
-func (c *Collection) GetValues(startID string, limit int) ([]*ResponseElem, error) {
+func (c *Collection) GetValues(startID string, limit int) ([]*Response, error) {
 	return c.getStoredIDsAndValues(startID, limit, false)
 }
 

@@ -165,15 +165,15 @@ type (
 	// // FilterOperator defines the type of filter to perform
 	// filterOperator string
 
-	// Response holds the results of a query
-	Response struct {
-		list           []*ResponseElem
-		actualPosition int
-		// query          *Query
-	}
+	// // Response holds the results of a query
+	// Response struct {
+	// 	list           []*ResponseElem
+	// 	actualPosition int
+	// 	// query          *Query
+	// }
 
-	// ResponseElem defines the response as a pointer
-	ResponseElem struct {
+	// Response defines the response as a pointer
+	Response struct {
 		// _ID            *idType
 		ID             string
 		ContentAsBytes []byte

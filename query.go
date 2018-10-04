@@ -283,95 +283,95 @@ import (
 // 	return ret
 // }
 
-// newResponse build a new Response pointer with the given limit
-func newResponse(limit int) *Response {
-	r := new(Response)
-	r.list = make([]*ResponseElem, limit)
-	return r
-}
+// // newResponse build a new Response pointer with the given limit
+// func newResponse(limit int) *Response {
+// 	r := new(Response)
+// 	r.list = make([]*ResponseElem, limit)
+// 	return r
+// }
 
-// Len returns the length of the given response
-func (r *Response) Len() int {
-	return len(r.list)
-}
+// // Len returns the length of the given response
+// func (r *Response) Len() int {
+// 	return len(r.list)
+// }
 
-// First used with Next
-func (r *Response) First() (i int, id string, objAsByte []byte) {
-	r.actualPosition = 0
-	return 0, r.list[0].GetID(), r.list[0].ContentAsBytes
-}
+// // First used with Next
+// func (r *Response) First() (i int, id string, objAsByte []byte) {
+// 	r.actualPosition = 0
+// 	return 0, r.list[0].GetID(), r.list[0].ContentAsBytes
+// }
 
-// Next used with First
-func (r *Response) Next() (i int, id string, objAsByte []byte) {
-	r.actualPosition++
-	return r.next()
-}
+// // Next used with First
+// func (r *Response) Next() (i int, id string, objAsByte []byte) {
+// 	r.actualPosition++
+// 	return r.next()
+// }
 
-// Last used with Prev
-func (r *Response) Last() (i int, id string, objAsByte []byte) {
-	lastSlot := len(r.list) - 1
+// // Last used with Prev
+// func (r *Response) Last() (i int, id string, objAsByte []byte) {
+// 	lastSlot := len(r.list) - 1
 
-	r.actualPosition = lastSlot
-	return lastSlot, r.list[lastSlot].GetID(), r.list[lastSlot].ContentAsBytes
-}
+// 	r.actualPosition = lastSlot
+// 	return lastSlot, r.list[lastSlot].GetID(), r.list[lastSlot].ContentAsBytes
+// }
 
-// Prev used with Last
-func (r *Response) Prev() (i int, id string, objAsByte []byte) {
-	r.actualPosition--
-	return r.next()
-}
+// // Prev used with Last
+// func (r *Response) Prev() (i int, id string, objAsByte []byte) {
+// 	r.actualPosition--
+// 	return r.next()
+// }
 
-// Is called by r.Next r.Prev to get their next values
-func (r *Response) next() (i int, id string, objAsByte []byte) {
-	if r.actualPosition >= len(r.list) || r.actualPosition < 0 {
-		r.actualPosition = 0
-		return -1, "", nil
-	}
-	return r.actualPosition, r.list[r.actualPosition].GetID(), r.list[r.actualPosition].ContentAsBytes
-}
+// // Is called by r.Next r.Prev to get their next values
+// func (r *Response) next() (i int, id string, objAsByte []byte) {
+// 	if r.actualPosition >= len(r.list) || r.actualPosition < 0 {
+// 		r.actualPosition = 0
+// 		return -1, "", nil
+// 	}
+// 	return r.actualPosition, r.list[r.actualPosition].GetID(), r.list[r.actualPosition].ContentAsBytes
+// }
 
-// All takes a function as argument and permit to unmarshal or to manage recoredes inside the function
-func (r *Response) All(fn func(id string, objAsBytes []byte) error) (n int, err error) {
-	for _, elem := range r.list {
-		err = fn(elem.GetID(), elem.ContentAsBytes)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
+// // All takes a function as argument and permit to unmarshal or to manage recoredes inside the function
+// func (r *Response) All(fn func(id string, objAsBytes []byte) error) (n int, err error) {
+// 	for _, elem := range r.list {
+// 		err = fn(elem.GetID(), elem.ContentAsBytes)
+// 		if err != nil {
+// 			return
+// 		}
+// 	}
+// 	return
+// }
 
-// One retrieve one element at the time and put it into the destination pointer.
-// Use it to get the objects one after the other.
-func (r *Response) One(destination interface{}) (id string, err error) {
-	if r.actualPosition >= len(r.list) {
-		r.actualPosition = 0
-		return "", ErrResponseOver
-	}
+// // One retrieve one element at the time and put it into the destination pointer.
+// // Use it to get the objects one after the other.
+// func (r *Response) One(destination interface{}) (id string, err error) {
+// 	if r.actualPosition >= len(r.list) {
+// 		r.actualPosition = 0
+// 		return "", ErrResponseOver
+// 	}
 
-	id = r.list[r.actualPosition].GetID()
+// 	id = r.list[r.actualPosition].GetID()
 
-	decoder := json.NewDecoder(bytes.NewBuffer(r.list[r.actualPosition].ContentAsBytes))
-	decoder.UseNumber()
+// 	decoder := json.NewDecoder(bytes.NewBuffer(r.list[r.actualPosition].ContentAsBytes))
+// 	decoder.UseNumber()
 
-	err = decoder.Decode(destination)
-	r.actualPosition++
+// 	err = decoder.Decode(destination)
+// 	r.actualPosition++
 
-	return id, err
-}
+// 	return id, err
+// }
 
 // GetID returns the ID as string of the given element
-func (r *ResponseElem) GetID() string {
+func (r *Response) GetID() string {
 	return r.ID
 }
 
 // GetContent returns response content as a slice of bytes
-func (r *ResponseElem) GetContent() []byte {
+func (r *Response) GetContent() []byte {
 	return r.ContentAsBytes
 }
 
 // Unmarshal tries to unmarshal the content using the JSON package
-func (r *ResponseElem) Unmarshal(pointer interface{}) (err error) {
+func (r *Response) Unmarshal(pointer interface{}) (err error) {
 	decoder := json.NewDecoder(bytes.NewBuffer(r.ContentAsBytes))
 	decoder.UseNumber()
 

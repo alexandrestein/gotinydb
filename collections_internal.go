@@ -479,8 +479,8 @@ func (c *Collection) get(ctx context.Context, ids ...string) ([][]byte, error) {
 // getStoredIDs returns all ids if it does not exceed the limit.
 // This will not returned the ID used to set the value inside the collection
 // It returns the id used to set the value inside the store
-func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bool) ([]*ResponseElem, error) {
-	response := make([]*ResponseElem, limit)
+func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bool) ([]*Response, error) {
+	response := make([]*Response, limit)
 
 	return response, c.store.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -496,7 +496,7 @@ func (c *Collection) getStoredIDsAndValues(starter string, limit int, IDsOnly bo
 				return nil
 			}
 
-			responseItem := new(ResponseElem)
+			responseItem := new(Response)
 
 			item := iter.Item()
 
