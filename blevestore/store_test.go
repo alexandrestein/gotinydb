@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transactions"
@@ -66,7 +67,7 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 	}
 
 	var config *BleveStoreConfig
-	config = NewBleveStoreConfig(key, prefix, db, writesChan)
+	config = NewBleveStoreConfig(key, prefix, db, writesChan, time.Second*60)
 
 	var rv store.KVStore
 	rv, err = New(mo, map[string]interface{}{

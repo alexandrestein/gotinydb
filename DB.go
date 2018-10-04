@@ -80,7 +80,7 @@ func (d *DB) SetOptions(options *Options) error {
 }
 
 // PutFile let caller insert large element into the database via a reader interface
-func (d *DB) PutFile(id string, reader io.Reader) error {
+func (d *DB) PutFile(id string, reader io.Reader) (n int, err error) {
 	d.DeleteFile(id)
 
 	// Track the numbers of chunks
@@ -93,24 +93,26 @@ func (d *DB) PutFile(id string, reader io.Reader) error {
 
 		// Initialize the read buffer
 		buff := make([]byte, d.options.FileChunkSize)
-		nWritten, err := reader.Read(buff)
+		var nWritten int
+		nWritten, err = reader.Read(buff)
 		// The read is done and it returns
 		if nWritten == 0 || err == io.EOF && nWritten == 0 {
 			break
 		}
 		// Return error if any
 		if err != nil && err != io.EOF {
-			return err
+			return
 		}
 
 		// Clean the buffer
 		buff = buff[:nWritten]
 
+		n = n + nWritten
+
 		// Build the write element
 		tr := transactions.NewTransaction(ctx)
 		// trElem := newFileTransactionElement(id, nChunk, buff, true)
-		fmt.Println("id is not correct")
-		trElem := transactions.NewTransactionElement([]byte(id), buff)
+		trElem := transactions.NewTransactionElement(d.buildFilePrefix(id, nChunk), buff)
 		tr.AddTransaction(trElem)
 
 		// Run the insertion
@@ -118,14 +120,15 @@ func (d *DB) PutFile(id string, reader io.Reader) error {
 		// And wait for the end of the insertion
 		err = <-tr.ResponseChan
 		if err != nil {
-			return err
+			return
 		}
 
 		// Increment the chunk counter
 		nChunk++
 	}
 
-	return nil
+	err = nil
+	return
 }
 
 // ReadFile write file content into the given writer
@@ -166,7 +169,9 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 // DeleteFile deletes every chunks of the given file ID
 func (d *DB) DeleteFile(id string) error {
 	// The list of chunk to delete
-	idsToDelete := [][]byte{}
+	ctx, cancel := context.WithTimeout(context.Background(), d.options.TransactionTimeOut)
+	defer cancel()
+	idsToDelete := transactions.NewTransaction(ctx)
 
 	// Open a read transaction to get every IDs
 	err := d.badgerDB.View(func(txn *badger.Txn) error {
@@ -187,7 +192,9 @@ func (d *DB) DeleteFile(id string) error {
 			var key []byte
 			key = it.Item().KeyCopy(key)
 			// And add it to the list of store IDs to delete
-			idsToDelete = append(idsToDelete, key)
+			idsToDelete.AddTransaction(
+				transactions.NewTransactionElement(key, nil),
+			)
 		}
 
 		// Close the view transaction
@@ -198,21 +205,25 @@ func (d *DB) DeleteFile(id string) error {
 	}
 
 	// No need to open a new transaction if nothing needs to be removed
-	if len(idsToDelete) == 0 {
+	if len(idsToDelete.Transactions) == 0 {
 		return nil
 	}
 
-	// Start the write operation and returns the error if any
-	return d.badgerDB.Update(func(txn *badger.Txn) error {
-		// Loop for every IDs to remove and remove it
-		for _, id := range idsToDelete {
-			err := txn.Delete(id)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	d.writeTransactionChan <- idsToDelete
+
+	return <-idsToDelete.ResponseChan
+
+	// // Start the write operation and returns the error if any
+	// return d.badgerDB.Update(func(txn *badger.Txn) error {
+	// 	// Loop for every IDs to remove and remove it
+	// 	for _, id := range idsToDelete {
+	// 		err := txn.Delete(id)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// 	return nil
+	// })
 }
 
 // Close close the underneath collections and main store

@@ -61,13 +61,19 @@ func (c *Collection) Put(id string, content interface{}) error {
 		if apply {
 			wg.Add(1)
 			go func() {
+				if i.index == nil {
+					i, err = c.getBleveIndex(i.Name)
+					if err != nil {
+						fmt.Println("err", err)
+						return
+					}
+				}
 				i.index.Index(id, contentToIndex)
 				wg.Done()
 			}()
 			// i.index.Index(id, contentToIndex)
 		}
 	}
-
 	wg.Wait()
 
 	// And wait for the end of the insertion

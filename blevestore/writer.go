@@ -15,6 +15,7 @@
 package blevestore
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/alexandrestein/gotinydb/cipher"
@@ -53,7 +54,9 @@ func (w *Writer) NewBatch() store.KVBatch {
 // }
 
 func (w *Writer) write() error {
-	tx := transactions.NewTransaction(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), w.store.config.transactionsTimeOut)
+	defer cancel()
+	tx := transactions.NewTransaction(ctx)
 	tx.AddTransaction(w.operations...)
 
 	w.store.config.writesChan <- tx

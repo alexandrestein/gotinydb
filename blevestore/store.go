@@ -3,6 +3,7 @@ package blevestore
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/dgraph-io/badger"
 
@@ -24,10 +25,11 @@ type (
 	// }
 
 	BleveStoreConfig struct {
-		key        [32]byte
-		prefix     []byte
-		db         *badger.DB
-		writesChan chan *transactions.WriteTransaction
+		key                 [32]byte
+		prefix              []byte
+		db                  *badger.DB
+		writesChan          chan *transactions.WriteTransaction
+		transactionsTimeOut time.Duration
 	}
 
 	// BleveStoreWriteRequest struct {
@@ -125,12 +127,13 @@ func (bs *Store) buildID(key []byte) []byte {
 	return append(bs.config.prefix, key...)
 }
 
-func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transactions.WriteTransaction) (config *BleveStoreConfig) {
+func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transactions.WriteTransaction, transactionsTimeOut time.Duration) (config *BleveStoreConfig) {
 	return &BleveStoreConfig{
-		key:        key,
-		prefix:     prefix,
-		db:         db,
-		writesChan: writeElementsChan,
+		key:                 key,
+		prefix:              prefix,
+		db:                  db,
+		writesChan:          writeElementsChan,
+		transactionsTimeOut: transactionsTimeOut,
 	}
 }
 

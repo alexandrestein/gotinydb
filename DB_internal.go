@@ -161,6 +161,11 @@ commit:
 }
 
 func (d *DB) writeOneTransaction(ctx context.Context, txn *badger.Txn, wtElem *transactions.WriteElement) error {
+	// If the content is nil the value is deleted
+	if wtElem.ContentAsBytes == nil {
+		return txn.Delete(wtElem.DBKey)
+	}
+
 	e := new(badger.Entry)
 	e.Key = wtElem.DBKey
 	e.Value = cipher.Encrypt(d.options.privateCryptoKey, wtElem.DBKey, wtElem.ContentAsBytes)

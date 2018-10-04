@@ -69,6 +69,7 @@ func (c *Collection) buildKvConfig(path string, indexPrefix []byte) (config map[
 			indexPrefix,
 			c.store,
 			c.writeTransactionChan,
+			c.options.TransactionTimeOut,
 		),
 	}
 }

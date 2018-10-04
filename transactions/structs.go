@@ -32,6 +32,10 @@ func NewTransactionElement(dbKey, content []byte) *WriteElement {
 }
 
 func NewTransaction(ctx context.Context) *WriteTransaction {
+	if ctx == nil {
+		return nil
+	}
+
 	wt := new(WriteTransaction)
 	wt.Ctx = ctx
 	wt.ResponseChan = make(chan error, 0)

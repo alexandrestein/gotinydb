@@ -60,6 +60,8 @@ func NewDefaultOptions(path string) *Options {
 		InternalQueryLimit: DefaultQueryLimit,
 		PutBufferLimit:     DefaultPutBufferLimit,
 
+		FileChunkSize: 1000 * 1000 * 5, // 5MB
+
 		GCCycle: DefaultGCCycle,
 
 		BadgerOptions: DefaultBadgerOptions,
