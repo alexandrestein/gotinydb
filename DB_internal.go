@@ -301,6 +301,10 @@ func (d *DB) loadCollections() error {
 			// }
 
 			newCol.bleveIndexes = savedCol.BleveIndexes
+			// Load the indexes in RAM
+			for _, index := range newCol.bleveIndexes {
+				newCol.getBleveIndex(index.Name)
+			}
 
 			d.collections = append(d.collections, newCol)
 		}

@@ -28,16 +28,9 @@ func TestMain(t *testing.T) {
 	defer clean()
 	buildBaseDB(t)
 
-	err := col.Put(testUser.ID, testUser)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	query := bleve.NewQueryStringQuery("cindy")
+	query := bleve.NewFuzzyQuery("cindy")
 	searchRequest := bleve.NewSearchRequest(query)
-	var searchResult *SearchResult
-	searchResult, err = col.Search("email", searchRequest)
+	searchResult, err := col.Search("email", searchRequest)
 	if err != nil {
 		t.Error(err)
 		return
@@ -312,3 +305,108 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 	}
 }
 
+func TestCloseOpen(t *testing.T) {
+	defer clean()
+	buildBaseDB(t)
+
+	err := db.Close()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+	db, err = Open(ctx, NewDefaultOptions(testPath))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	col, err = db.Use(colName)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	query := bleve.NewFuzzyQuery("cindy")
+	searchRequest := bleve.NewSearchRequest(query)
+	var searchResult *SearchResult
+	searchResult, err = col.Search("email", searchRequest)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	retrievedUser := new(User)
+	_, err = searchResult.Next(retrievedUser)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if testing.Verbose() {
+		t.Log(retrievedUser)
+	}
+}
+
+func TestBackup(t *testing.T) {
+	defer clean()
+	buildBaseDB(t)
+
+	var backup bytes.Buffer
+
+	_, err := db.Backup(&backup, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	restoredDBPath := os.TempDir() + "/restoredDB"
+	defer os.RemoveAll(restoredDBPath)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	var restoredDB *DB
+	restoredDB, err = Open(ctx, NewDefaultOptions(restoredDBPath))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = restoredDB.Load(&backup)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	var col2 *Collection
+	col2, err = restoredDB.Use(colName)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	query := bleve.NewFuzzyQuery("cindy")
+	searchRequest := bleve.NewSearchRequest(query)
+	var searchResult *SearchResult
+	searchResult, err = col2.Search("email", searchRequest)
+	if err != nil {
+		t.Error(err)
+		searchResult, err = col.Search("email", searchRequest)
+		fmt.Println(searchResult)
+		return
+	}
+
+	retrievedUser := new(User)
+	_, err = searchResult.Next(retrievedUser)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if testing.Verbose() {
+		t.Log(retrievedUser)
+	}
+}

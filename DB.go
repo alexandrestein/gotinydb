@@ -233,6 +233,16 @@ func (d *DB) Close() error {
 	}
 	d.closing = true
 
+	for _, col := range d.collections {
+		for _, index := range col.bleveIndexes {
+			fmt.Println("close", index.Name)
+			err := index.index.Close()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	var err error
 	if d.badgerDB != nil {
 		err = d.badgerDB.Close()

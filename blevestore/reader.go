@@ -68,13 +68,12 @@ func (r *Reader) MultiGet(keys [][]byte) (rvs [][]byte, err error) {
 
 func (r *Reader) iterator() *Iterator {
 	iter := r.txn.NewIterator(badger.DefaultIteratorOptions)
+	r.iterators = append(r.iterators, iter)
 
 	rv := &Iterator{
 		store:    r.store,
 		iterator: iter,
 	}
-
-	r.iterators = append(r.iterators, iter)
 
 	return rv
 }

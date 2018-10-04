@@ -102,7 +102,9 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 	return &rv, nil
 }
 
-func (bs *Store) Close() error { return nil }
+func (bs *Store) Close() error {
+	return nil
+}
 
 // Reader open a new transaction but it needs to be closed
 func (bs *Store) Reader() (store.KVReader, error) {

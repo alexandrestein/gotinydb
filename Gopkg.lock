@@ -108,8 +108,7 @@
   revision = "01d5c56e609533acd717717c8acc0d2dea6bfb89"
 
 [[projects]]
-  branch = "master"
-  digest = "1:f34620ab8a0bd80f9bc2e229fe191ec21076104ddc6d9a7259c48ac6bd708ee3"
+  digest = "1:0140f4a4695e86316acb4683faa35d7ee45bf775f242cfc4a9b75f72cb4d573c"
   name = "github.com/dgraph-io/badger"
   packages = [
     ".",
@@ -120,7 +119,7 @@
     "y",
   ]
   pruneopts = "UT"
-  revision = "3d64f80da4e89f1cb277e3f495b17aeecdf8d97b"
+  revision = "41d9656c08175a3566576bde596e26c288bb64e2"
 
 [[projects]]
   branch = "master"
@@ -172,27 +171,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0bfbe13936953a98ae3cfe8ed6670d396ad81edf069a806d2f6515d7bb6950df"
-  name = "github.com/google/btree"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "4030bb1f1f0c35b30ca7009e9ebd06849dd45306"
-
-[[projects]]
-  branch = "master"
   digest = "1:c22fdadfe2de0e1df75987cac34f1c721157dc24f180c76b4ef66a3c9637a799"
   name = "github.com/mschoch/smat"
   packages = ["."]
   pruneopts = "UT"
   revision = "90eadee771aeab36e8bf796039b8c261bebebe4f"
-
-[[projects]]
-  branch = "master"
-  digest = "1:3bf17a6e6eaa6ad24152148a631d18662f7212e21637c2699bff3369b7f00fa2"
-  name = "github.com/petar/GoLLRB"
-  packages = ["llrb"]
-  pruneopts = "UT"
-  revision = "53be0d36a84c2a886ca057d34b6aa4468df9ccb4"
 
 [[projects]]
   digest = "1:5e73b34a27d827212102605789de00bd411b2e434812133c83935fe9897c75e1"
@@ -285,7 +268,6 @@
     "github.com/dgraph-io/badger",
     "github.com/dgraph-io/badger/options",
     "github.com/fatih/structs",
-    "github.com/google/btree",
     "golang.org/x/crypto/blake2b",
     "golang.org/x/crypto/chacha20poly1305",
   ]

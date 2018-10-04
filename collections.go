@@ -501,12 +501,16 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest) (*SearchResult, error) {
 	ret := new(SearchResult)
 
-	bleveIndex, err := c.GetBleveIndex(indexName)
+	index, err := c.getBleveIndex(indexName)
+	// bleveIndex, err := c.GetBleveIndex(indexName)
 	if err != nil {
 		return nil, err
 	}
 
-	ret.BleveSearchResult, err = bleveIndex.Search(searchRequest)
+	fmt.Println("index.Selector", index.Selector, index.IndexPrefix)
+	fmt.Println(index.index.DocCount())
+
+	ret.BleveSearchResult, err = index.index.Search(searchRequest)
 	if err != nil {
 		return nil, err
 	}

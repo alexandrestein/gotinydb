@@ -27,7 +27,8 @@
 [[constraint]]
   name = "github.com/dgraph-io/badger"
   #version = "1.5.5"
-  branch = "master"
+  #branch = "master"
+  revision = "41d9656c08175a3566576bde596e26c288bb64e2"
 
 [[constraint]]
   name = "github.com/fatih/structs"
