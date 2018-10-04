@@ -338,7 +338,6 @@ func (i *bleveIndex) indexAllValues(c *Collection) {
 			}
 
 			id := string(item.Key()[len(collectionPrefix):])
-			fmt.Println("contentToIndex", contentToIndex, id)
 			i.index.Index(id, contentToIndex)
 		}
 
@@ -349,7 +348,6 @@ func (i *bleveIndex) indexAllValues(c *Collection) {
 func (i *bleveIndex) fromValueBytesGetContentToIndex(input []byte) interface{} {
 	var elem interface{}
 	decoder := json.NewDecoder(bytes.NewBuffer(input))
-	decoder.UseNumber()
 
 	if jsonErr := decoder.Decode(&elem); jsonErr != nil {
 		fmt.Println("errjsonErr", jsonErr)

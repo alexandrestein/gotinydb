@@ -4,9 +4,14 @@ import (
 	"github.com/fatih/structs"
 )
 
-// apply take the full object to add in the collection and check if is must be
+// Apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
 func (s Selector) Apply(object interface{}) (contentToIndex interface{}, ok bool) {
+	// If the Selector is empty it means that all match
+	if len(s) == 0 || s[0] == "" {
+		return object, true
+	}
+
 	if structs.IsStruct(object) {
 		return s.applyToStruct(structs.New(object))
 	}

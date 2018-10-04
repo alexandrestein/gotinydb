@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/index/upsidedown"
@@ -54,13 +55,20 @@ func (c *Collection) Put(id string, content interface{}) error {
 	// Run the insertion
 	c.writeTransactionChan <- tr
 
+	var wg sync.WaitGroup
 	for _, i := range c.bleveIndexes {
 		contentToIndex, apply := i.Selector.Apply(content)
 		if apply {
-			i.index.Index(id, contentToIndex)
-			// go i.index.Index(id, contentToIndex)
+			wg.Add(1)
+			go func() {
+				i.index.Index(id, contentToIndex)
+				wg.Done()
+			}()
+			// i.index.Index(id, contentToIndex)
 		}
 	}
+
+	wg.Wait()
 
 	// And wait for the end of the insertion
 	return <-tr.ResponseChan
@@ -128,7 +136,6 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 	}
 
 	decoder := json.NewDecoder(bytes.NewBuffer(contentAsBytes))
-	decoder.UseNumber()
 
 	uMarshalErr := decoder.Decode(pointer)
 	if uMarshalErr != nil {
@@ -370,7 +377,6 @@ func (c *Collection) Rollback(id string, previousVersion uint) (timestamp uint64
 
 				// Build a custom decoder to use the number interface instead of float64
 				decoder := json.NewDecoder(bytes.NewBuffer(asBytes))
-				decoder.UseNumber()
 
 				decoder.Decode(&contentAsInterface)
 
@@ -498,6 +504,11 @@ func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest
 	if err != nil {
 		return nil, err
 	}
+
+	if ret.BleveSearchResult.Hits.Len() == 0 {
+		return nil, ErrNotFound
+	}
+
 	ret.c = c
 
 	return ret, nil

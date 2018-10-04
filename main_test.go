@@ -2,7 +2,6 @@ package gotinydb
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -39,14 +38,14 @@ func TestMain(t *testing.T) {
 
 	retrievedUser := new(User)
 	_, err = searchResult.Next(retrievedUser)
-	// var match *search.DocumentMatch
-	// match, err = searchResult.Next(retrievedUser)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	fmt.Println("retrievedUser", retrievedUser)
+	if testing.Verbose() {
+		t.Log(retrievedUser)
+	}
 }
 
 func buildBaseDB(t *testing.T) {
@@ -125,5 +124,34 @@ func TestSetIndexDataPresent(t *testing.T) {
 		return
 	}
 
-	fmt.Println("search", searchResult.BleveSearchResult)
+	if testing.Verbose() {
+		t.Log(searchResult)
+	}
 }
+
+func TestIndexAllObject(t *testing.T) {
+	defer clean()
+	buildBaseDB(t)
+
+	err := col.SetBleveIndex("all", bleve.NewIndexMapping(), "")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	valueToTest := 15.0
+	include := true
+	query := bleve.NewNumericRangeInclusiveQuery(&valueToTest, &valueToTest, &include, &include)
+	searchRequest := bleve.NewSearchRequest(query)
+	var searchResult *SearchResult
+	searchResult, err = col.Search("all", searchRequest)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if testing.Verbose() {
+		t.Log(searchResult)
+	}
+}
+
