@@ -135,3 +135,35 @@ func (c *Collection) Delete(id string) (err error) {
 func (c *Collection) buildDBKey(id string) []byte {
 	return append(c.Prefix, []byte(id)...)
 }
+
+func (c *Collection) GetBleveIndex(name string) (*BleveIndex, error) {
+	for _, bi := range c.BleveIndexes {
+		if bi.Name == name {
+			return bi, nil
+		}
+	}
+	return nil, ErrIndexNotFound
+}
+
+func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest) (*SearchResult, error) {
+	ret := new(SearchResult)
+
+	index, err := c.GetBleveIndex(indexName)
+	// bleveIndex, err := c.GetBleveIndex(indexName)
+	if err != nil {
+		return nil, err
+	}
+
+	ret.BleveSearchResult, err = index.BleveIndex.Search(searchRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	if ret.BleveSearchResult.Hits.Len() == 0 {
+		return nil, ErrNotFound
+	}
+
+	ret.c = c
+
+	return ret, nil
+}

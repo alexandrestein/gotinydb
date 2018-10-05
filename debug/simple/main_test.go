@@ -20,6 +20,9 @@ var (
 
 	testUserID = "test ID"
 	testUser   = &user{"toto", "toto@internet.org"}
+
+	indexName     = "email"
+	indexSelector = "Email"
 )
 
 type (
@@ -49,6 +52,16 @@ func TestMain(t *testing.T) {
 	}
 
 	fmt.Println(retrievedUser)
+
+	query := bleve.NewQueryStringQuery(testUser.Email)
+	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
+	searchResult, err1 := col.Search(indexName, searchRequest)
+	if err1 != nil {
+		t.Error(err1)
+		return
+	}
+
+	fmt.Println("searchResult", searchResult)
 }
 
 func open(t *testing.T) {
@@ -65,7 +78,7 @@ func open(t *testing.T) {
 		return
 	}
 
-	err = col.SetBleveIndex("test", bleve.NewIndexMapping(), "Email")
+	err = col.SetBleveIndex(indexName, bleve.NewIndexMapping(), indexSelector)
 	if err != nil {
 		t.Error(err)
 		return
