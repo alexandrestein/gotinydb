@@ -34,7 +34,7 @@ func Open(ctx context.Context, options *Options) (*DB, error) {
 		return nil, initBadgerErr
 	}
 
-	return d, d.loadCollections()
+	return d, d.loadConfig()
 }
 
 // Use build or get a Collection pointer
@@ -45,7 +45,16 @@ func (d *DB) Use(colName string) (*Collection, error) {
 		}
 	}
 
-	return d.initCollection(colName)
+	prefix := d.freeCollectionPrefixes[0]
+	// Remove the prefix from the list of free prefixes
+	d.freeCollectionPrefixes = append(d.freeCollectionPrefixes[:0], d.freeCollectionPrefixes[1:]...)
+
+	c, err := d.initCollection(colName, prefix)
+	if err != nil {
+		d.freeCollectionPrefixes = append(d.freeCollectionPrefixes, prefix)
+		return nil, err
+	}
+	return c, nil
 }
 
 // SetOptions update the database configurations.
@@ -235,12 +244,16 @@ func (d *DB) Close() error {
 
 	for _, col := range d.collections {
 		for _, index := range col.bleveIndexes {
-			fmt.Println("close", index.Name)
+			fmt.Println("close index", index.Name)
 			err := index.index.Close()
 			if err != nil {
-				return err
+				fmt.Println("err at close", err)
 			}
+			// index.index = nil
+			// index.KvConfig = nil
+			// index = nil
 		}
+		// col.bleveIndexes = nil
 	}
 
 	var err error
@@ -248,11 +261,11 @@ func (d *DB) Close() error {
 		err = d.badgerDB.Close()
 	}
 
-	d.options.Path = ""
-	d.badgerDB = nil
-	d.collections = nil
+	// d.options.Path = ""
+	// d.badgerDB = nil
+	// d.collections = nil
 
-	d = nil
+	// d = nil
 
 	return err
 }
@@ -339,7 +352,7 @@ func (d *DB) Load(r io.Reader) error {
 		return err
 	}
 
-	err = d.loadCollections()
+	err = d.loadConfig()
 	if err != nil {
 		d.collections = collection
 		return err

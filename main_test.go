@@ -21,6 +21,9 @@ var (
 	col     *Collection
 	colName = "first collection name"
 
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	testPath = os.TempDir() + "/testDB"
 )
 
@@ -48,17 +51,27 @@ func TestMain(t *testing.T) {
 	}
 }
 
-func buildBaseDB(t *testing.T) {
+func openDB() error {
+	ctx, cancel = context.WithTimeout(context.Background(), time.Minute*10)
+
 	var err error
 	opt := NewDefaultOptions(testPath)
 	opt.TransactionTimeOut = time.Minute * 10
-	db, err = Open(context.Background(), opt)
+	db, err = Open(ctx, opt)
 	if err != nil {
-		t.Error(err)
-		return
+		return err
 	}
 
 	col, err = db.Use(colName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func buildBaseDB(t *testing.T) {
+	err := openDB()
 	if err != nil {
 		t.Error(err)
 		return
@@ -100,8 +113,31 @@ func buildBaseDB(t *testing.T) {
 	wg.Wait()
 }
 
+func buildDebugDB(t *testing.T) {
+	err := openDB()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = col.SetBleveIndex("email", bleve.NewIndexMapping(), "email")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = col.Put(testUser.ID, testUser)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
 func clean() {
-	db.Close()
+	if db != nil {
+		cancel()
+		db.Close()
+	}
 	os.RemoveAll(testPath)
 }
 
@@ -306,14 +342,141 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 }
 
 func TestCloseOpen(t *testing.T) {
-	defer clean()
-	buildBaseDB(t)
+	// defer clean()
 
-	err := db.Close()
+	// ctx1, cancel1 := context.WithTimeout(context.Background(), time.Minute*10)
+	// defer cancel1()
+	// opt1 := NewDefaultOptions(testPath)
+	// opt1.TransactionTimeOut = time.Minute * 10
+	// db1, err := Open(ctx1, opt1)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+
+	// var col1 *Collection
+	// col1, err = db1.Use(colName)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+
+	// err = col1.SetBleveIndex("email", bleve.NewIndexMapping(), "email")
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+
+	// err = col1.Put(testUser.ID, testUser)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+
+	// query := bleve.NewFuzzyQuery("dijkstra")
+	// searchRequest := bleve.NewSearchRequest(query)
+	// searchResult, err := col1.Search("email", searchRequest)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+
+	// // retrievedUser := new(User)
+	// // _, err = searchResult.Next(retrievedUser)
+	// // if err != nil {
+	// // 	t.Error(err)
+	// // 	return
+	// // }
+
+	// if testing.Verbose() {
+	// 	t.Log(searchResult)
+	// }
+
+	// cancel1()
+	// err = db1.Close()
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+
+	// fmt.Println("start2")
+	// fmt.Println("")
+	// fmt.Println("")
+
+	// // err = openDB()
+	// // if err != nil {
+	// // 	t.Error(err)
+	// // 	return
+	// // }
+
+	// ctx2, cancel2 := context.WithTimeout(context.Background(), time.Minute*10)
+	// defer cancel2()
+	// opt2 := NewDefaultOptions(testPath)
+	// opt2.TransactionTimeOut = time.Minute * 10
+	// var db2 *DB
+	// db2, err = Open(ctx2, opt2)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+	// defer db2.Close()
+
+	// var col2 *Collection
+	// col2, err = db2.Use(colName)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+
+	// query2 := bleve.NewFuzzyQuery("dijkstra")
+	// searchRequest2 := bleve.NewSearchRequest(query2)
+	// searchResult, err = col2.Search("email", searchRequest2)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	count, err2 := col2.bleveIndexes[0].index.DocCount()
+	// 	fmt.Println("DocCount", count, err2)
+	// 	// query = bleve.NewFuzzyQuery("dijkstra")
+	// 	// searchRequest = bleve.NewSearchRequest(query)
+	// 	// searchResult, err = col.Search("email", searchRequest)
+	// 	// t.Error(err)
+
+	// 	return
+	// }
+
+	// // retrievedUser = new(User)
+	// // _, err = searchResult.Next(retrievedUser)
+	// // if err != nil {
+	// // 	t.Error(err)
+	// // 	return
+	// // }
+
+	// if testing.Verbose() {
+	// 	t.Log(searchResult)
+	// }
+
+	defer clean()
+	buildDebugDB(t)
+
+	query := bleve.NewQueryStringQuery(testUser.Email)
+	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
+	searchResult, err := col.Search("email", searchRequest)
 	if err != nil {
 		t.Error(err)
 		return
 	}
+	if testing.Verbose() {
+		t.Log(searchResult)
+	}
+
+	cancel()
+	err = db.Close()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// New run
+	fmt.Println("start 2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
@@ -329,9 +492,8 @@ func TestCloseOpen(t *testing.T) {
 		return
 	}
 
-	query := bleve.NewFuzzyQuery("cindy")
-	searchRequest := bleve.NewSearchRequest(query)
-	var searchResult *SearchResult
+	query = bleve.NewQueryStringQuery(testUser.Email)
+	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
 	searchResult, err = col.Search("email", searchRequest)
 	if err != nil {
 		t.Error(err)

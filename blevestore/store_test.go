@@ -97,7 +97,8 @@ func goRoutineLoopForWrites() {
 		err := db.Update(func(txn *badger.Txn) error {
 			for _, op := range ops.Transactions {
 				var err error
-				if op.ContentAsBytes == nil || len(op.ContentAsBytes) == 0 {
+				if op.ContentAsBytes == nil {
+					// if op.ContentAsBytes == nil || len(op.ContentAsBytes) == 0 {
 					err = txn.Delete(op.DBKey)
 				} else {
 					err = txn.Set(op.DBKey, cipher.Encrypt(key, op.DBKey, op.ContentAsBytes))

@@ -46,6 +46,10 @@ func (r *Reader) get(key []byte) ([]byte, error) {
 	var clear []byte
 	clear, err = cipher.Decrypt(r.store.config.key, storeKey, rv)
 
+	// fmt.Println("get key", key, string(key))
+	// fmt.Println("get val", clear, string(clear))
+	// fmt.Println()
+
 	return clear, err
 	// return r.store.decrypt(storeKey, rv)
 }
@@ -82,7 +86,7 @@ func (r *Reader) PrefixIterator(prefix []byte) store.KVIterator {
 	rv := r.iterator()
 	rv.prefix = prefix
 
-	rv.Seek(r.store.buildID(prefix))
+	rv.Seek(prefix)
 	return rv
 }
 
@@ -91,7 +95,7 @@ func (r *Reader) RangeIterator(start, end []byte) store.KVIterator {
 	rv.start = start
 	rv.end = end
 
-	rv.Seek(r.store.buildID(start))
+	rv.Seek(start)
 	return rv
 }
 

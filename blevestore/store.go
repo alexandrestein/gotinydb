@@ -10,7 +10,7 @@ import (
 	"github.com/blevesearch/bleve/index/store"
 	"github.com/blevesearch/bleve/registry"
 
-	"github.com/alexandrestein/gotinydb/transactions"
+	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
 )
 
 const (
@@ -18,24 +18,13 @@ const (
 )
 
 type (
-	// IndexRequest struct {
-	// 	ID               string
-	// 	Data             interface{}
-	// 	WriteOpperations chan []*transactions.WriteElement
-	// }
-
 	BleveStoreConfig struct {
 		key                 [32]byte
 		prefix              []byte
 		db                  *badger.DB
-		writesChan          chan *transactions.WriteTransaction
+		writesChan          chan *transaction.Transaction
 		transactionsTimeOut time.Duration
 	}
-
-	// BleveStoreWriteRequest struct {
-	// 	ID, Content  []byte
-	// 	ResponseChan chan error
-	// }
 
 	Store struct {
 		// name is defined by the path
@@ -108,10 +97,12 @@ func (bs *Store) Close() error {
 
 // Reader open a new transaction but it needs to be closed
 func (bs *Store) Reader() (store.KVReader, error) {
+	// iterators := []*badger.Iterator{}
 	return &Reader{
 		store:         bs,
 		txn:           bs.config.db.NewTransaction(false),
 		indexPrefixID: bs.config.prefix,
+		// iterators:     iterators,
 	}, nil
 }
 
@@ -129,13 +120,24 @@ func (bs *Store) buildID(key []byte) []byte {
 	return append(bs.config.prefix, key...)
 }
 
-func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transactions.WriteTransaction, transactionsTimeOut time.Duration) (config *BleveStoreConfig) {
+func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) (config *BleveStoreConfig) {
 	return &BleveStoreConfig{
-		key:                 key,
-		prefix:              prefix,
-		db:                  db,
-		writesChan:          writeElementsChan,
-		transactionsTimeOut: transactionsTimeOut,
+		key:        key,
+		prefix:     prefix,
+		db:         db,
+		writesChan: writeElementsChan,
+	}
+}
+
+func NewBleveStoreConfigMap(path string, key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) map[string]interface{} {
+	return map[string]interface{}{
+		"path": path,
+		"config": NewBleveStoreConfig(
+			key,
+			prefix,
+			db,
+			writeElementsChan,
+		),
 	}
 }
 

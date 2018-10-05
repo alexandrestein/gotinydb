@@ -5,7 +5,7 @@ import (
 )
 
 func init() {
-	json.Unmarshal([]byte(`{"ID":"1_16","email":"clement-38@thurmond.com","Balance":5111551512401754825,"Address":{"City":"Carmine","ZipCode":9},"Age":18446744073709551615,"LastLogin":"2018-05-06T18:48:47.405902584+02:00","related":[1,35]}`), testUser)
+	json.Unmarshal([]byte(`{"ID":"1_16","email":"dijkstra-17@artaxerxes.com","Balance":5111551512401754825,"Address":{"City":"Carmine","ZipCode":9},"Age":18446744073709551615,"LastLogin":"2018-05-06T18:48:47.405902584+02:00","related":[1,35]}`), testUser)
 }
 
 var (

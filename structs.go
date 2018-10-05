@@ -87,8 +87,7 @@ type (
 		IndexPrefix []byte
 		Selector    selector
 
-		kvConfig map[string]interface{}
-		writeTxn *badger.Txn
+		KvConfig map[string]interface{}
 
 		index bleve.Index
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger"
@@ -49,31 +50,29 @@ func (d *DB) initWriteChannels(ctx context.Context) {
 	limit := d.options.PutBufferLimit
 	// Build the queue with 2 times the limit to help writing on disc
 	// in the same order as the operation are called
-	d.writeTransactionChan = make(chan *transactions.WriteTransaction, limit*2)
+	d.writeTransactionChan = make(chan *transactions.WriteTransaction, limit)
 
 	// Start the infinite loop
 	go d.waittingWriteLoop(ctx, limit)
 }
 
-func (d *DB) initCollection(name string) (*Collection, error) {
+func (d *DB) initCollection(name string, prefix byte) (*Collection, error) {
 	c := new(Collection)
 	c.name = name
 
 	// Set the prefix
-	c.prefix = d.freeCollectionPrefixes[0]
-
-	// Remove the prefix from the list of free prefixes
-	d.freeCollectionPrefixes = append(d.freeCollectionPrefixes[:0], d.freeCollectionPrefixes[1:]...)
+	c.prefix = prefix
 
 	// Set the different values of the collection
 	c.store = d.badgerDB
 	c.writeTransactionChan = d.writeTransactionChan
 	c.ctx = d.ctx
 	c.options = d.options
+	c.saveCollections = d.saveCollections
+
+	c.bleveIndexes = []*bleveIndex{}
 
 	d.collections = append(d.collections, c)
-
-	c.saveCollections = d.saveCollections
 
 	return c, c.saveCollections()
 }
@@ -125,7 +124,10 @@ func (d *DB) waittingWriteLoop(ctx context.Context, limit int) {
 			// And spread the response to all callers in parallel
 			for _, waittingForResponse := range waittingForResponseList {
 				go func(waittingForResponse chan error, err error) {
-					waittingForResponse <- err
+					select {
+					case waittingForResponse <- err:
+					case <-ctx.Done():
+					}
 				}(waittingForResponse, err)
 			}
 		case <-ctx.Done():
@@ -239,7 +241,7 @@ func (d *DB) writeMultipleTransaction(ctx context.Context, txn *badger.Txn, wt *
 	return nil
 }
 
-func (d *DB) loadCollections() error {
+func (d *DB) loadConfig() error {
 	return d.badgerDB.View(func(txn *badger.Txn) error {
 		// Get the config
 		item, err := txn.Get(configID)
@@ -284,6 +286,8 @@ func (d *DB) loadCollections() error {
 			newCol.writeTransactionChan = d.writeTransactionChan
 			newCol.ctx = d.ctx
 			newCol.options = d.options
+			newCol.saveCollections = d.saveCollections
+
 			// for _, tmpIndex := range savedCol.Indexes {
 			// 	i := new(indexType)
 
@@ -303,6 +307,7 @@ func (d *DB) loadCollections() error {
 			newCol.bleveIndexes = savedCol.BleveIndexes
 			// Load the indexes in RAM
 			for _, index := range newCol.bleveIndexes {
+				fmt.Println("load index", index.Name)
 				newCol.getBleveIndex(index.Name)
 			}
 
@@ -327,7 +332,6 @@ func (d *DB) saveCollections() error {
 			colToSave := new(collectionExport)
 			colToSave.Name = col.name
 			colToSave.Prefix = col.prefix
-			// colToSave.Indexes = col.indexes
 			colToSave.BleveIndexes = col.bleveIndexes
 
 			dbToSave.Collections = append(dbToSave.Collections, colToSave)

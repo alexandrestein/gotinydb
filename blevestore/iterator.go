@@ -16,6 +16,7 @@ package blevestore
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/dgraph-io/badger"
@@ -30,6 +31,7 @@ type Iterator struct {
 }
 
 func (i *Iterator) Seek(k []byte) {
+
 	if i.start != nil && bytes.Compare(k, i.start) < 0 {
 		k = i.start
 	}
@@ -40,10 +42,15 @@ func (i *Iterator) Seek(k []byte) {
 	}
 
 	i.iterator.Seek(i.store.buildID(k))
+
+	// fmt.Println("iter seek", string(k), i.Valid())
+	// fmt.Println(k)
+	// fmt.Println(i.store.buildID(k))
 }
 
 func (i *Iterator) Next() {
 	i.iterator.Next()
+	// fmt.Println("iter next", i.Valid())
 }
 
 func (i *Iterator) Current() (key []byte, val []byte, valid bool) {
@@ -70,6 +77,7 @@ func (i *Iterator) Key() []byte {
 	if !i.Valid() {
 		return nil
 	}
+	// fmt.Println("iter key", i.key(), string(i.key()))
 	return i.key()
 }
 
@@ -84,10 +92,14 @@ func (i *Iterator) Value() []byte {
 	encryptVal, _ = item.ValueCopy(encryptVal)
 
 	val := []byte{}
-	val, _ = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
-	// var err error
-	// val, err = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
-	// fmt.Println("err", err, item.Key())
+	// val, _ = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
+	var err error
+	val, err = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
+	if err != nil {
+		fmt.Println("err decrypt iterator blevestore", err, item.Key())
+	}
+
+	// fmt.Println("iter val", val, string(val))
 
 	return val
 }

@@ -61,14 +61,16 @@ func (c *Collection) Put(id string, content interface{}) error {
 		if apply {
 			wg.Add(1)
 			go func() {
-				if i.index == nil {
-					i, err = c.getBleveIndex(i.Name)
-					if err != nil {
-						fmt.Println("err", err)
-						return
-					}
+				i, err = c.getBleveIndex(i.Name)
+				if err != nil {
+					fmt.Println("err indexing 1", err)
+					return
 				}
-				i.index.Index(id, contentToIndex)
+
+				err = i.index.Index(id, contentToIndex)
+				if err != nil {
+					fmt.Println("err indexing 2", err, contentToIndex)
+				}
 				wg.Done()
 			}()
 			// i.index.Index(id, contentToIndex)
@@ -172,69 +174,6 @@ func (c *Collection) Delete(id string) error {
 	return <-tr.ResponseChan
 }
 
-// // SetIndex enable the collection to index field or sub field
-// func (c *Collection) SetIndex(name string, t IndexType, selector ...string) error {
-// 	for _, index := range c.indexes {
-// 		if index.Name == name {
-// 			return ErrIndexNameAllreadyExists
-// 		}
-// 	}
-
-// 	i := newIndex(name, t, selector...)
-// 	i.options = c.options
-// 	i.getTx = c.store.NewTransaction
-// 	i.getIDBuilder = func(id []byte) []byte {
-// 		return c.buildIDWhitPrefixIndex([]byte(i.Name), id)
-// 	}
-
-// 	c.indexes = append(c.indexes, i)
-
-// 	err := c.indexAllValues()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return c.saveCollections()
-// }
-
-// // DeleteIndex remove the index from the collection
-// func (c *Collection) DeleteIndex(name string) error {
-// 	var index *indexType
-
-// 	// Find the correct index from the list
-// 	for _, activeIndex := range c.indexes {
-// 		if activeIndex.Name == name {
-// 			index = activeIndex
-// 		}
-// 	}
-
-// 	if index == nil {
-// 		return ErrNotFound
-// 	}
-
-// 	indexPrefix := c.buildIDWhitPrefixIndex([]byte(name), nil)
-// 	for {
-// 		done, err := deleteLoop(c.store, indexPrefix)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		if done {
-// 			break
-// 		}
-// 	}
-
-// 	for i, activeIndex := range c.indexes {
-// 		if activeIndex.Name == name {
-// 			// Clean the collection list from the index pointer
-// 			copy(c.indexes[i:], c.indexes[i+1:])
-// 			c.indexes[len(c.indexes)-1] = nil
-// 			c.indexes = c.indexes[:len(c.indexes)-1]
-// 		}
-// 	}
-
-// 	return c.saveCollections()
-// }
-
 // DeleteBleveIndex remove the bleve index from the collection
 func (c *Collection) DeleteBleveIndex(name string) error {
 	var index *bleveIndex
@@ -272,51 +211,6 @@ func (c *Collection) DeleteBleveIndex(name string) error {
 
 	return c.saveCollections()
 }
-
-// // Query run the given query to all the collection indexes
-// func (c *Collection) Query(q *Query) (response *Response, _ error) {
-// 	if q == nil {
-// 		return
-// 	}
-
-// 	// If no filter the query stops
-// 	if len(q.filters) <= 0 {
-// 		return nil, fmt.Errorf("query has no filter")
-// 	}
-
-// 	// If no index stop the query
-// 	if len(c.indexes) <= 0 {
-// 		return nil, fmt.Errorf("no index in the collection")
-// 	}
-
-// 	if q.internalLimit > c.options.InternalQueryLimit {
-// 		q.internalLimit = c.options.InternalQueryLimit
-// 	}
-// 	if q.timeout > c.options.QueryTimeOut {
-// 		q.timeout = c.options.QueryTimeOut
-// 	}
-
-// 	// Set a timout
-// 	ctx, cancel := context.WithTimeout(context.Background(), q.timeout)
-// 	defer cancel()
-
-// 	tree, err := c.queryGetIDs(ctx, q)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return c.queryCleanAndOrder(ctx, q, tree)
-// }
-
-// // NewQuery build a new query object.
-// // It also set the default limit.
-// func (c *Collection) NewQuery() *Query {
-// 	return &Query{
-// 		limit:         c.options.InternalQueryLimit,
-// 		internalLimit: c.options.InternalQueryLimit * 10,
-// 		timeout:       c.options.QueryTimeOut,
-// 	}
-// }
 
 // GetIDs returns a list of IDs for the given collection and starting
 // at the given ID. The limit paramiter let caller ask for a portion of the collection.
@@ -433,30 +327,10 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	i.IndexPrefix = c.buildIDWhitPrefixBleveIndex([]byte(name), nil)
 
 	// Path of the configuration
-	// colHash := blake2b.Sum256([]byte(c.name))
-	// nameHash := blake2b.Sum256([]byte(c.name))
 	i.Path = c.buildIndexPath(name)
-	// i.Path = c.options.Path + "/" + c.name + "/" + name
 
-	// go func() {
-	// 	for {
-	// 		request, ok := <-c.writeBleveIndexChan
-	// 		if !ok {
-	// 			break
-	// 		}
-	// 		c.store.Update(func(txn *badger.Txn) error {
-	// 			err := txn.Set(request.ID, cipher.Encrypt(c.options.privateCryptoKey, request.ID, request.Content))
-	// 			// err := txn.Set(request.ID, request.Content)
-
-	// 			request.ResponseChan <- err
-
-	// 			return err
-	// 		})
-	// 	}
-	// }()
-
-	i.kvConfig = c.buildKvConfig(i.Path, i.IndexPrefix)
-	bleveIndex, err := bleve.NewUsing(i.Path, bleveMapping, upsidedown.Name, blevestore.Name, i.kvConfig)
+	i.KvConfig = c.buildKvConfig(i.Path, i.IndexPrefix)
+	bleveIndex, err := bleve.NewUsing(i.Path, bleveMapping, upsidedown.Name, blevestore.Name, i.KvConfig)
 	if err != nil {
 		return err
 	}
@@ -480,21 +354,6 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	return nil
 }
 
-// // GetIndexesInfo retruns a slice with indexes settings
-// func (c *Collection) GetIndexesInfo() []*IndexInfo {
-// 	indexesInfo := make([]*IndexInfo, len(c.indexes))
-// 	for i := 0; i < len(c.indexes); i++ {
-// 		indexInfo := &IndexInfo{
-// 			Name:     c.indexes[i].Name,
-// 			Selector: c.indexes[i].Selector,
-// 			Type:     c.indexes[i].Type,
-// 		}
-// 		indexesInfo[i] = indexInfo
-// 	}
-
-// 	return indexesInfo
-// }
-
 // Search is used to query a bleve index.
 // Give the index name the corresponding request.
 // It returns a SearchResult pointer.
@@ -502,14 +361,11 @@ func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest
 	ret := new(SearchResult)
 
 	index, err := c.getBleveIndex(indexName)
-	// bleveIndex, err := c.GetBleveIndex(indexName)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("index.Selector", index.Selector, index.IndexPrefix)
-	fmt.Println(index.index.DocCount())
-
+	fmt.Println("search")
 	ret.BleveSearchResult, err = index.index.Search(searchRequest)
 	if err != nil {
 		return nil, err
@@ -524,8 +380,8 @@ func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest
 	return ret, nil
 }
 
-// Next takes a destination pointer as agument and try to get the next value from the request to fillup the destination.
-// You can call this function directly after the query and entil the end when it returns an error.
+// Next takes a destination pointer as argument and try to get the next value from the request to fill-up the destination.
+// You can call this function directly after the query and until the end when it returns an error.
 func (s *SearchResult) Next(dest interface{}) (*search.DocumentMatch, error) {
 	if s.BleveSearchResult.Hits.Len()-1 < int(s.position) {
 		return nil, ErrSearchOver

@@ -15,19 +15,17 @@
 package blevestore
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/alexandrestein/gotinydb/cipher"
+	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
 	"github.com/blevesearch/bleve/index/store"
 	"github.com/dgraph-io/badger"
-
-	"github.com/alexandrestein/gotinydb/transactions"
 )
 
 type Writer struct {
 	store      *Store
-	operations []*transactions.WriteElement
+	operations []*transaction.Transaction
 }
 
 func (w *Writer) NewBatch() store.KVBatch {
@@ -54,14 +52,15 @@ func (w *Writer) NewBatch() store.KVBatch {
 // }
 
 func (w *Writer) write() error {
-	ctx, cancel := context.WithTimeout(context.Background(), w.store.config.transactionsTimeOut)
-	defer cancel()
-	tx := transactions.NewTransaction(ctx)
-	tx.AddTransaction(w.operations...)
+	for _, ope := range w.operations {
+		w.store.config.writesChan <- ope
+		err := <-ope.ResponseChan
+		if err != nil {
+			return err
+		}
+	}
 
-	w.store.config.writesChan <- tx
-
-	return <-tx.ResponseChan
+	return nil
 }
 
 func (w *Writer) NewBatchEx(options store.KVBatchOptions) ([]byte, store.KVBatch, error) {
@@ -78,8 +77,70 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 	// localTxn := false
 	// txn := w.store.config.writeTxn
 	// if txn == nil {
-	txn := w.store.config.db.NewTransaction(false)
-	defer txn.Discard()
+
+	err = w.store.config.db.View(func(txn *badger.Txn) (err error) {
+		for k, mergeOps := range emulatedBatch.Merger.Merges {
+			kb := []byte(k)
+
+			storeID := w.store.buildID(kb)
+
+			var item *badger.Item
+			existingVal := []byte{}
+			item, err = txn.Get(storeID)
+			// If the KV pair exists the existing value is saved
+			if err == nil {
+				var encryptedValue []byte
+				encryptedValue, err = item.ValueCopy(existingVal)
+				if err != nil {
+					return
+				}
+
+				existingVal, err = cipher.Decrypt(w.store.config.key, storeID, encryptedValue)
+				if err != nil {
+					return
+				}
+			}
+
+			mergedVal, fullMergeOk := w.store.mo.FullMerge(kb, existingVal, mergeOps)
+			if !fullMergeOk {
+				err = fmt.Errorf("merge operator returned failure")
+				return
+			}
+
+			// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, mergedVal))
+			// w.writeTransaction.AddTransaction(
+			// 	transactions.NewTransactionElement(storeID, mergedVal),
+			// )
+			w.operations = append(w.operations,
+				transaction.NewTransaction(storeID, mergedVal, false),
+			)
+		}
+
+		for _, op := range emulatedBatch.Ops {
+			storeID := w.store.buildID(op.K)
+
+			if op.V != nil {
+				// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, op.V))
+				// w.writeTransaction.AddTransaction(
+				// 	transactions.NewTransactionElement(storeID, op.V),
+				// )
+				w.operations = append(w.operations,
+					transaction.NewTransaction(storeID, op.V, false),
+				)
+			} else {
+				// w.writeTransaction.AddTransaction(
+				// 	transactions.NewTransactionElement(storeID, nil),
+				// )
+				w.operations = append(w.operations,
+					transaction.NewTransaction(storeID, nil, true),
+				)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 	// 	localTxn = true
 	// }
 
@@ -94,61 +155,6 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 	// 		}
 	// 	}()
 	// }
-
-	for k, mergeOps := range emulatedBatch.Merger.Merges {
-		kb := []byte(k)
-
-		storeID := w.store.buildID(kb)
-
-		var item *badger.Item
-		existingVal := []byte{}
-		item, err = txn.Get(storeID)
-		// If the KV pair exists the existing value is saved
-		if err == nil {
-			var encryptedValue []byte
-			encryptedValue, err = item.ValueCopy(existingVal)
-			if err != nil {
-				return
-			}
-
-			existingVal, err = cipher.Decrypt(w.store.config.key, storeID, encryptedValue)
-			if err != nil {
-				return
-			}
-		}
-
-		mergedVal, fullMergeOk := w.store.mo.FullMerge(kb, existingVal, mergeOps)
-		if !fullMergeOk {
-			err = fmt.Errorf("merge operator returned failure")
-			return
-		}
-
-		// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, mergedVal))
-		// w.writeTransaction.AddTransaction(
-		// 	transactions.NewTransactionElement(storeID, mergedVal),
-		// )
-		elem := transactions.NewTransactionElement(storeID, mergedVal)
-		w.operations = append(w.operations, elem)
-	}
-
-	for _, op := range emulatedBatch.Ops {
-		storeID := w.store.buildID(op.K)
-
-		if op.V != nil {
-			// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, op.V))
-			// w.writeTransaction.AddTransaction(
-			// 	transactions.NewTransactionElement(storeID, op.V),
-			// )
-			elem := transactions.NewTransactionElement(storeID, op.V)
-			w.operations = append(w.operations, elem)
-		} else {
-			// w.writeTransaction.AddTransaction(
-			// 	transactions.NewTransactionElement(storeID, nil),
-			// )
-			elem := transactions.NewTransactionElement(storeID, nil)
-			w.operations = append(w.operations, elem)
-		}
-	}
 
 	return w.write()
 }
