@@ -1,7 +1,9 @@
 package simple
 
 import (
+	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/blevesearch/bleve"
@@ -26,10 +28,27 @@ type (
 	}
 )
 
+func init() {
+	os.RemoveAll(path)
+}
+
 func TestMain(t *testing.T) {
 	defer clean()
 	open(t)
 
+	retrievedUser := new(user)
+	_, err := col.Get(testUserID, retrievedUser)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if !reflect.DeepEqual(retrievedUser, testUser) {
+		t.Errorf("the users are not equal. Put %v and get %v", testUser, retrievedUser)
+		return
+	}
+
+	fmt.Println(retrievedUser)
 }
 
 func open(t *testing.T) {
@@ -57,7 +76,6 @@ func open(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
 }
 
 func clean() {

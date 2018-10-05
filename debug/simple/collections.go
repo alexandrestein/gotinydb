@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/index/upsidedown"
 	"github.com/blevesearch/bleve/mapping"
+	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -34,11 +36,8 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	index := NewIndex(name)
 	index.Name = name
 	indexHash := blake2b.Sum256([]byte(name))
-	index.Prefix = append(c.Prefix, indexHash[:]...)
+	index.Prefix = append(c.Prefix, indexHash[:2]...)
 	index.Selector = selector
-	fmt.Println(c.db.Path)
-	fmt.Println(c.Prefix)
-	fmt.Println(index.Prefix)
 	index.Path = fmt.Sprintf("%s/%x/%x", c.db.Path, c.Prefix, index.Prefix)
 
 	config := blevestore.NewBleveStoreConfigMap(index.Path, c.db.PrivateKey, c.Prefix, c.db.Badger, c.db.writeChan)
@@ -55,14 +54,14 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 func (c *Collection) Put(id string, content interface{}) (err error) {
 	var tr *transaction.Transaction
 	if bytes, ok := content.([]byte); ok {
-		tr = transaction.NewTransaction(append(c.Prefix, []byte(id)...), bytes, false)
+		tr = transaction.NewTransaction(c.buildDBKey(id), bytes, false)
 	} else {
 		jsonBytes, marshalErr := json.Marshal(content)
 		if marshalErr != nil {
 			return marshalErr
 		}
 
-		tr = transaction.NewTransaction(append(c.Prefix[:], []byte(id)...), jsonBytes, false)
+		tr = transaction.NewTransaction(c.buildDBKey(id), jsonBytes, false)
 	}
 
 	c.db.writeChan <- tr
@@ -84,10 +83,55 @@ func (c *Collection) Put(id string, content interface{}) (err error) {
 	return
 }
 
+func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte, err error) {
+	if id == "" {
+		return nil, ErrEmptyID
+	}
+
+	bdKey := c.buildDBKey(id)
+
+	c.db.Badger.View(func(txn *badger.Txn) (err error) {
+		var item *badger.Item
+		item, err = txn.Get(bdKey)
+		if err != nil {
+			return err
+		}
+		contentAsBytes, err = item.ValueCopy(contentAsBytes)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	contentAsBytes, err = c.db.decryptData(bdKey, contentAsBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	if pointer == nil {
+		return contentAsBytes, nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewBuffer(contentAsBytes))
+	decoder.UseNumber()
+
+	uMarshalErr := decoder.Decode(pointer)
+	if uMarshalErr != nil {
+		return nil, uMarshalErr
+	}
+
+	return contentAsBytes, nil
+}
+
 func (c *Collection) Delete(id string) (err error) {
-	tr := transaction.NewTransaction(append(c.Prefix[:], []byte(id)...), nil, true)
+	tr := transaction.NewTransaction(c.buildDBKey(id), nil, true)
 	fmt.Println("need to rm INDEX")
 
 	c.db.writeChan <- tr
 	return <-tr.ResponseChan
+}
+
+func (c *Collection) buildDBKey(id string) []byte {
+	return append(c.Prefix, []byte(id)...)
 }

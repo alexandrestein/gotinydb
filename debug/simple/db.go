@@ -1,6 +1,8 @@
 package simple
 
 import (
+	"reflect"
+
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
 	"github.com/dgraph-io/badger"
@@ -39,12 +41,14 @@ func New(path string, configKey [32]byte) (db *DB, err error) {
 		return nil, err
 	}
 
+	db.writeChan = make(chan *transaction.Transaction, 1000)
 	go db.goRoutineLoopForWrites()
 
 	return db, nil
 }
 
 func (d *DB) Use(colName string) (col *Collection, err error) {
+	tmpHash := blake2b.Sum256([]byte(colName))
 	for _, col = range d.Collections {
 		if col.Name == colName {
 			if col.db == nil {
@@ -52,11 +56,13 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 			}
 			return
 		}
+		if reflect.DeepEqual(col.Prefix, tmpHash[:2]) {
+			return nil, ErrHashCollision
+		}
 	}
 
 	col = NewCollection(colName)
-	tmpHash := blake2b.Sum256([]byte(colName))
-	col.Prefix = tmpHash[:]
+	col.Prefix = tmpHash[:2]
 	col.db = d
 
 	return
@@ -119,4 +125,8 @@ func (d *DB) nonBlockingResponseChan(ch chan error, err error) {
 	case ch <- err:
 	default:
 	}
+}
+
+func (d *DB) decryptData(dbKey, encryptedData []byte) (clear []byte, err error) {
+	return cipher.Decrypt(d.PrivateKey, dbKey, encryptedData)
 }

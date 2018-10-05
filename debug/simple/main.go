@@ -16,5 +16,7 @@ const (
 )
 
 var (
-	ErrNotFound = fmt.Errorf("value not found")
+	ErrNotFound      = fmt.Errorf("value not found")
+	ErrHashCollision = fmt.Errorf("the name is in collision with an other element")
+	ErrEmptyID       = fmt.Errorf("ID must be provided")
 )
