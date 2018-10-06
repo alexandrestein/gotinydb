@@ -22,3 +22,7 @@ var (
 	ErrIndexNotFound           = fmt.Errorf("index not found")
 	ErrIndexNameAllreadyExists = fmt.Errorf("index with the same name allready exixts")
 )
+
+var (
+	FileChuckSize = 5 *1000*1000 // 5MB
+)

@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"reflect"
 
@@ -53,6 +54,8 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 		if err != badger.ErrKeyNotFound {
 			return nil, err
 		}
+		// It's thefirst start of the database
+		rand.Read(db.PrivateKey[:])
 	} else {
 		for _, col := range db.Collections {
 			for _, index := range col.BleveIndexes {

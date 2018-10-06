@@ -131,3 +131,12 @@ func clean() {
 	db.Close()
 	os.RemoveAll(path)
 }
+
+func TestFile(t *testing.T) {
+	defer clean()
+	err := open(t)
+	if err != nil {
+		return
+	}
+
+}
