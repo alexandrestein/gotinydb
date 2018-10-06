@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
@@ -16,7 +17,7 @@ import (
 
 type (
 	Collection struct {
-		*dbElement
+		dbElement
 
 		db *DB
 
@@ -26,17 +27,28 @@ type (
 
 func NewCollection(name string) *Collection {
 	return &Collection{
-		dbElement: &dbElement{
+		dbElement: dbElement{
 			Name: name,
 		},
 	}
 }
 
 func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping, selector ...string) (err error) {
+	indexHash := blake2b.Sum256([]byte(name))
+	prefix := append(c.Prefix, indexHash[:2]...)
+
+	for _, i := range c.BleveIndexes {
+		if i.Name == name {
+			return ErrIndexNameAllreadyExists
+		}
+		if reflect.DeepEqual(i.Prefix, prefix) {
+			return ErrHashCollision
+		}
+	}
+
 	index := NewIndex(name)
 	index.Name = name
-	indexHash := blake2b.Sum256([]byte(name))
-	index.Prefix = append(c.Prefix, indexHash[:2]...)
+	index.Prefix = prefix
 	index.Selector = selector
 	index.Path = fmt.Sprintf("%s/%x/%x", c.db.Path, c.Prefix, index.Prefix)
 
@@ -48,7 +60,7 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 
 	c.BleveIndexes = append(c.BleveIndexes, index)
 
-	return
+	return c.db.saveConfig()
 }
 
 func (c *Collection) Put(id string, content interface{}) (err error) {

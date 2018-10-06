@@ -4,11 +4,11 @@ import "github.com/blevesearch/bleve"
 
 type (
 	BleveIndex struct {
-		*dbElement
+		dbElement
 
 		collection *Collection
 
-		BleveIndex bleve.Index
+		BleveIndex bleve.Index `json:"-"`
 		Selector   selector
 		Path       string
 	}
@@ -16,8 +16,12 @@ type (
 
 func NewIndex(name string) *BleveIndex {
 	return &BleveIndex{
-		dbElement: &dbElement{
+		dbElement: dbElement{
 			Name: name,
 		},
 	}
+}
+
+func (i *BleveIndex) Close() error {
+	return i.BleveIndex.Close()
 }

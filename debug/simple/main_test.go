@@ -37,10 +37,13 @@ func init() {
 
 func TestMain(t *testing.T) {
 	defer clean()
-	open(t)
+	err := open(t)
+	if err != nil {
+		return
+	}
 
 	retrievedUser := new(user)
-	_, err := col.Get(testUserID, retrievedUser)
+	_, err = col.Get(testUserID, retrievedUser)
 	if err != nil {
 		t.Error(err)
 		return
@@ -55,18 +58,25 @@ func TestMain(t *testing.T) {
 
 	query := bleve.NewQueryStringQuery(testUser.Email)
 	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
-	searchResult, err1 := col.Search(indexName, searchRequest)
-	if err1 != nil {
-		t.Error(err1)
+	var searchResult *SearchResult
+	searchResult, err = col.Search(indexName, searchRequest)
+	if err != nil {
+		t.Error(err)
 		return
 	}
 
 	fmt.Println("searchResult", searchResult)
-}
 
-func open(t *testing.T) {
-	var err error
-	db, err = New(path, configKey)
+	err = db.Close()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	db = nil
+	col = nil
+
+	db, err = Open(path, configKey)
 	if err != nil {
 		t.Error(err)
 		return
@@ -78,17 +88,43 @@ func open(t *testing.T) {
 		return
 	}
 
-	err = col.SetBleveIndex(indexName, bleve.NewIndexMapping(), indexSelector)
+	query = bleve.NewQueryStringQuery(testUser.Email)
+	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
+	searchResult, err = col.Search(indexName, searchRequest)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
+	fmt.Println("searchResult", searchResult)
+}
+
+func open(t *testing.T) (err error) {
+	db, err = Open(path, configKey)
+	if err != nil {
+		t.Error(err)
+		return err
+	}
+
+	col, err = db.Use(colName)
+	if err != nil {
+		t.Error(err)
+		return err
+	}
+
+	err = col.SetBleveIndex(indexName, bleve.NewIndexMapping(), indexSelector)
+	if err != nil {
+		t.Error(err)
+		return err
+	}
+
 	err = col.Put(testUserID, testUser)
 	if err != nil {
 		t.Error(err)
-		return
+		return err
 	}
+
+	return
 }
 
 func clean() {
