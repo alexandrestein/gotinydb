@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
-	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
+	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/blevesearch/bleve/index/store"
 	"github.com/dgraph-io/badger"
 )

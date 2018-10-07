@@ -1,4 +1,4 @@
-package simple
+package gotinydb
 
 import "github.com/blevesearch/bleve"
 

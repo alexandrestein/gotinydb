@@ -10,7 +10,7 @@ import (
 	"github.com/blevesearch/bleve/index/store"
 	"github.com/blevesearch/bleve/registry"
 
-	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
+	"github.com/alexandrestein/gotinydb/transaction"
 )
 
 const (

@@ -1,4 +1,4 @@
-package simple
+package gotinydb
 
 import "fmt"
 
@@ -24,5 +24,5 @@ var (
 )
 
 var (
-	FileChuckSize = 5 *1000*1000 // 5MB
+	FileChuckSize = 5 * 1000 * 1000 // 5MB
 )

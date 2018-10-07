@@ -1,4 +1,4 @@
-package simple
+package gotinydb
 
 import (
 	"testing"
@@ -8,26 +8,26 @@ import (
 
 func TestIndexExistingValue(t *testing.T) {
 	defer clean()
-	open(t )
- 
+	open(t)
+
 	complexObjectID := "complex object ID"
- 	complexObject := &struct{
+	complexObject := &struct {
 		Name string
-		Car struct{
-			Brand string
-			Value int
-			Options []string 
+		Car  struct {
+			Brand   string
+			Value   int
+			Options []string
 		}
-	} {
+	}{
 		"Ugo",
-		struct{
-			Brand string
-			Value int
-			Options []string 
+		struct {
+			Brand   string
+			Value   int
+			Options []string
 		}{
 			"BMW",
 			10000,
-			[]string{"cruse","esp"},
+			[]string{"cruse", "esp"},
 		},
 	}
 
@@ -40,12 +40,12 @@ func TestIndexExistingValue(t *testing.T) {
 	err = col.SetBleveIndex("car brand", bleve.NewIndexMapping(), "Car", "Brand")
 	if err != nil {
 		t.Error(err)
-		return 
+		return
 	}
 	err = col.SetBleveIndex("car brand", bleve.NewIndexMapping(), "Car", "Brand")
 	if err == nil {
 		t.Error("setting index with same name must returns an error")
-		return 
+		return
 	}
 
 	query := bleve.NewQueryStringQuery("BMW")

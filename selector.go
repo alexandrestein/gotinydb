@@ -4,6 +4,10 @@ import (
 	"github.com/fatih/structs"
 )
 
+type (
+	selector []string
+)
+
 // Apply take the full object to add in the collection and check if is must be
 // indexed or not. If the object needs to be indexed the value to index is returned as a byte slice.
 func (s selector) Apply(object interface{}) (contentToIndex interface{}, ok bool) {

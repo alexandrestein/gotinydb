@@ -1,15 +1,15 @@
-package simple
+package gotinydb
 
 import (
 	"crypto/rand"
 	"encoding/json"
 	"io"
-	"time"
 	"reflect"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
-	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
+	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/blevesearch/bleve"
 	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
@@ -153,9 +153,9 @@ func (d *DB) Load(r io.Reader) error {
 
 func (d *DB) goRoutineLoopForWrites() {
 	limitNumbersOfWriteOperation := 10000
-	limitSizeOfWriteOperation := 100 * 1000 *1000 // 100MB
+	limitSizeOfWriteOperation := 100 * 1000 * 1000 // 100MB
 	limitWaitBeforeWriteStart := time.Millisecond * 50
-	
+
 	for {
 		writeSizeCounter := 0
 
@@ -165,10 +165,10 @@ func (d *DB) goRoutineLoopForWrites() {
 		}
 
 		// Save the size of the write
-writeSizeCounter+= len(op.Value)
-firstArrivedAt  := time.Now() 
+		writeSizeCounter += len(op.Value)
+		firstArrivedAt := time.Now()
 
-// Add to the list of operation to be done
+		// Add to the list of operation to be done
 		waitingWrites := []*transaction.Transaction{op}
 
 		// Try to empty the queue if any
@@ -181,8 +181,8 @@ firstArrivedAt  := time.Now()
 
 			// Check if the limit is not reach
 			if len(waitingWrites) < limitNumbersOfWriteOperation &&
-			writeSizeCounter < limitSizeOfWriteOperation &&
-			time.Since(firstArrivedAt) < limitWaitBeforeWriteStart {
+				writeSizeCounter < limitSizeOfWriteOperation &&
+				time.Since(firstArrivedAt) < limitWaitBeforeWriteStart {
 				// If not lets try to empty the queue a bit more
 				goto tryToGetAnOtherRequest
 			}

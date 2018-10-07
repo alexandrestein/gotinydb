@@ -1,11 +1,11 @@
-package simple
+package gotinydb
 
 import (
 	"context"
 	"io"
 
 	"github.com/alexandrestein/gotinydb/cipher"
-	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
+	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
