@@ -13,7 +13,7 @@ var (
 	db  *DB
 	col *Collection
 
-	path      = "testDB"
+	path      = os.TempDir() + "/testDB"
 	configKey = [32]byte{}
 
 	colName = "collection name"
@@ -130,13 +130,4 @@ func open(t *testing.T) (err error) {
 func clean() {
 	db.Close()
 	os.RemoveAll(path)
-}
-
-func TestFile(t *testing.T) {
-	defer clean()
-	err := open(t)
-	if err != nil {
-		return
-	}
-
 }

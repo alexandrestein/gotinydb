@@ -1,7 +1,11 @@
 package transaction
 
+import "context"
+
 type (
 	Transaction struct {
+		Ctx context.Context
+
 		DBKey, Value []byte
 		Delete       bool
 
@@ -9,9 +13,10 @@ type (
 	}
 )
 
-func NewTransaction(key, val []byte, del bool) *Transaction {
+func NewTransaction(ctx context.Context, key, val []byte, del bool) *Transaction {
 	responseChan := make(chan error, 0)
 	return &Transaction{
+		ctx,
 		key, val,
 		del,
 		responseChan,

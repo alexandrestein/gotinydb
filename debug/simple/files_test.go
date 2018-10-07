@@ -78,11 +78,14 @@ func TestFiles(t *testing.T) {
 		return
 	}
 
+	fmt.Println("del")
+
 	err = db.DeleteFile(fileID)
 	if err != nil {
 		t.Error(err)
 		return
 	}
+	fmt.Println("done")
 
 	err = db.Badger.View(func(txn *badger.Txn) error {
 		storeID := db.buildFilePrefix(fileID, -1)

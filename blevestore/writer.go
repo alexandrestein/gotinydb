@@ -15,7 +15,9 @@
 package blevestore
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
@@ -78,6 +80,9 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 	// txn := w.store.config.writeTxn
 	// if txn == nil {
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	err = w.store.config.db.View(func(txn *badger.Txn) (err error) {
 		for k, mergeOps := range emulatedBatch.Merger.Merges {
 			kb := []byte(k)
@@ -112,7 +117,7 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 			// 	transactions.NewTransactionElement(storeID, mergedVal),
 			// )
 			w.operations = append(w.operations,
-				transaction.NewTransaction(storeID, mergedVal, false),
+				transaction.NewTransaction(ctx, storeID, mergedVal, false),
 			)
 		}
 
@@ -125,14 +130,14 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 				// 	transactions.NewTransactionElement(storeID, op.V),
 				// )
 				w.operations = append(w.operations,
-					transaction.NewTransaction(storeID, op.V, false),
+					transaction.NewTransaction(ctx, storeID, op.V, false),
 				)
 			} else {
 				// w.writeTransaction.AddTransaction(
 				// 	transactions.NewTransactionElement(storeID, nil),
 				// )
 				w.operations = append(w.operations,
-					transaction.NewTransaction(storeID, nil, true),
+					transaction.NewTransaction(ctx, storeID, nil, true),
 				)
 			}
 		}

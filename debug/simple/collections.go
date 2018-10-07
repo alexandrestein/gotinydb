@@ -2,9 +2,11 @@ package simple
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
@@ -64,20 +66,27 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 }
 
 func (c *Collection) Put(id string, content interface{}) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	var tr *transaction.Transaction
 	if bytes, ok := content.([]byte); ok {
-		tr = transaction.NewTransaction(c.buildDBKey(id), bytes, false)
+		tr = transaction.NewTransaction(ctx, c.buildDBKey(id), bytes, false)
 	} else {
 		jsonBytes, marshalErr := json.Marshal(content)
 		if marshalErr != nil {
 			return marshalErr
 		}
 
-		tr = transaction.NewTransaction(c.buildDBKey(id), jsonBytes, false)
+		tr = transaction.NewTransaction(ctx, c.buildDBKey(id), jsonBytes, false)
 	}
 
 	c.db.writeChan <- tr
-	err = <-tr.ResponseChan
+	select {
+	case err = <-tr.ResponseChan:
+	case <-tr.Ctx.Done():
+		err = tr.Ctx.Err()
+	}
 	if err != nil {
 		return
 	}
@@ -137,11 +146,19 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 }
 
 func (c *Collection) Delete(id string) (err error) {
-	tr := transaction.NewTransaction(c.buildDBKey(id), nil, true)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	tr := transaction.NewTransaction(ctx, c.buildDBKey(id), nil, true)
 	fmt.Println("need to rm INDEX")
 
 	c.db.writeChan <- tr
-	return <-tr.ResponseChan
+	select {
+	case err = <-tr.ResponseChan:
+	case <-tr.Ctx.Done():
+		err = tr.Ctx.Err()
+	}
+	return
 }
 
 func (c *Collection) buildDBKey(id string) []byte {

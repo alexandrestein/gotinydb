@@ -1,7 +1,9 @@
 package simple
 
 import (
+	"context"
 	"io"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
@@ -35,7 +37,11 @@ func (d *DB) PutFile(id string, reader io.Reader) (n int, err error) {
 
 		n = n + nWritten
 
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		tx := transaction.NewTransaction(
+			ctx,
 			d.buildFilePrefix(id, nChunk),
 			buff,
 			false,
@@ -43,7 +49,11 @@ func (d *DB) PutFile(id string, reader io.Reader) (n int, err error) {
 		// Run the insertion
 		d.writeChan <- tx
 		// And wait for the end of the insertion
-		err = <-tx.ResponseChan
+		select {
+		case err = <-tx.ResponseChan:
+		case <-tx.Ctx.Done():
+			err = tx.Ctx.Err()
+		}
 		if err != nil {
 			return
 		}
@@ -92,7 +102,7 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 }
 
 // DeleteFile deletes every chunks of the given file ID
-func (d *DB) DeleteFile(id string) error {
+func (d *DB) DeleteFile(id string) (err error) {
 	listOfTx := []*transaction.Transaction{}
 
 	// Open a read transaction to get every IDs
@@ -108,22 +118,28 @@ func (d *DB) DeleteFile(id string) error {
 		it := txn.NewIterator(opt)
 		defer it.Close()
 
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
 		// Go the the first file chunk
 		for it.Seek(storeID); it.ValidForPrefix(storeID); it.Next() {
 			// Copy the store key
 			var key []byte
 			key = it.Item().KeyCopy(key)
 			// And add it to the list of store IDs to delete
-			tx := transaction.NewTransaction(key, nil, true)
+			tx := transaction.NewTransaction(ctx, key, nil, true)
 			listOfTx = append(listOfTx, tx)
 			d.writeChan <- tx
 		}
 
 		for _, tx := range listOfTx {
 			select {
-			case err := <-tx.ResponseChan:
+			case err = <-tx.ResponseChan:
+			case <-tx.Ctx.Done():
+				err = tx.Ctx.Err()
+			}
+			if err != nil {
 				return err
-			default:
 			}
 		}
 

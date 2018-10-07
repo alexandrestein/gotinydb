@@ -24,6 +24,8 @@ type (
 		Collections []*Collection
 
 		writeChan chan *transaction.Transaction
+
+		closed bool
 	}
 
 	dbElement struct {
@@ -105,6 +107,7 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 }
 
 func (d *DB) Close() (err error) {
+	d.closed = true
 	// In case of any error
 	defer func() {
 		if err != nil {
@@ -154,10 +157,10 @@ func (d *DB) goRoutineLoopForWrites() {
 			for _, op := range waitingWrites {
 				var err error
 				if op.Delete {
-					// fmt.Println("delete", op.DBKey, string(op.DBKey))
+					fmt.Println("delete", op.DBKey)
 					err = txn.Delete(op.DBKey)
 				} else {
-					// fmt.Println("write", op.DBKey, string(op.DBKey))
+					fmt.Println("write", op.DBKey)
 					err = txn.Set(op.DBKey, cipher.Encrypt(db.PrivateKey, op.DBKey, op.Value))
 				}
 				if err != nil {
