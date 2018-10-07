@@ -43,6 +43,9 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 			return ErrIndexNameAllreadyExists
 		}
 		if reflect.DeepEqual(i.Prefix, prefix) {
+			fmt.Println("indexHash", indexHash)
+			fmt.Println("name", i.Name, name)
+			fmt.Println("prefix", i.Prefix, prefix)
 			return ErrHashCollision
 		}
 	}
