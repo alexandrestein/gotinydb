@@ -3,7 +3,8 @@ package simple
 import (
 	"crypto/rand"
 	"encoding/json"
-	"fmt"
+	"io"
+	"time"
 	"reflect"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
@@ -24,8 +25,6 @@ type (
 		Collections []*Collection
 
 		writeChan chan *transaction.Transaction
-
-		closed bool
 	}
 
 	dbElement struct {
@@ -60,14 +59,9 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 		// It's the first start of the database
 		rand.Read(db.PrivateKey[:])
 	} else {
-		for _, col := range db.Collections {
-			for _, index := range col.BleveIndexes {
-				config := blevestore.NewBleveStoreConfigMap(index.Path, db.PrivateKey, col.Prefix, db.Badger, db.writeChan)
-				index.BleveIndex, err = bleve.OpenUsing(index.Path, config)
-				if err != nil {
-					return
-				}
-			}
+		err = db.loadCollections()
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -107,7 +101,6 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 }
 
 func (d *DB) Close() (err error) {
-	d.closed = true
 	// In case of any error
 	defer func() {
 		if err != nil {
@@ -127,14 +120,56 @@ func (d *DB) Close() (err error) {
 	return d.Badger.Close()
 }
 
+func (d *DB) Backup(w io.Writer) error {
+	_, err := d.Badger.Backup(w, 0)
+	return err
+}
+func (d *DB) Load(r io.Reader) error {
+	err := d.Badger.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte{prefixConfig})
+	})
+	if err != nil {
+		return err
+	}
+
+	err = d.Badger.Load(r)
+	if err != nil {
+		return err
+	}
+
+	err = d.loadConfig()
+	if err != nil {
+		return err
+	}
+
+	for _, col := range d.Collections {
+		for _, index := range col.BleveIndexes {
+			index.indexUnzipper()
+		}
+	}
+
+	return d.loadCollections()
+}
+
 func (d *DB) goRoutineLoopForWrites() {
+	limitNumbersOfWriteOperation := 10000
+	limitSizeOfWriteOperation := 100 * 1000 *1000 // 100MB
+	limitWaitBeforeWriteStart := time.Millisecond * 50
+	
 	for {
-		ops, ok := <-d.writeChan
+		writeSizeCounter := 0
+
+		op, ok := <-d.writeChan
 		if !ok {
 			return
 		}
 
-		waitingWrites := []*transaction.Transaction{ops}
+		// Save the size of the write
+writeSizeCounter+= len(op.Value)
+firstArrivedAt  := time.Now() 
+
+// Add to the list of operation to be done
+		waitingWrites := []*transaction.Transaction{op}
 
 		// Try to empty the queue if any
 	tryToGetAnOtherRequest:
@@ -145,7 +180,9 @@ func (d *DB) goRoutineLoopForWrites() {
 			waitingWrites = append(waitingWrites, nextWrite)
 
 			// Check if the limit is not reach
-			if len(waitingWrites) < 10000 {
+			if len(waitingWrites) < limitNumbersOfWriteOperation &&
+			writeSizeCounter < limitSizeOfWriteOperation &&
+			time.Since(firstArrivedAt) < limitWaitBeforeWriteStart {
 				// If not lets try to empty the queue a bit more
 				goto tryToGetAnOtherRequest
 			}
@@ -157,30 +194,31 @@ func (d *DB) goRoutineLoopForWrites() {
 			for _, op := range waitingWrites {
 				var err error
 				if op.Delete {
-					fmt.Println("delete", op.DBKey)
+					// fmt.Println("delete", op.DBKey)
 					err = txn.Delete(op.DBKey)
 				} else {
-					fmt.Println("write", op.DBKey)
+					// fmt.Println("write", op.DBKey)
 					err = txn.Set(op.DBKey, cipher.Encrypt(db.PrivateKey, op.DBKey, op.Value))
 				}
+				// Returns the write error to the caller
 				if err != nil {
-					go d.nonBlockingResponseChan(op.ResponseChan, err)
+					go d.nonBlockingResponseChan(op, err)
 				}
 			}
 			return nil
 		})
 
-		// Dispatch the commit response
+		// Dispatch the commit response to all callers
 		for _, op := range waitingWrites {
-			go d.nonBlockingResponseChan(op.ResponseChan, err)
+			go d.nonBlockingResponseChan(op, err)
 		}
 	}
 }
 
-func (d *DB) nonBlockingResponseChan(ch chan error, err error) {
+func (d *DB) nonBlockingResponseChan(tx *transaction.Transaction, err error) {
 	select {
-	case ch <- err:
-	default:
+	case tx.ResponseChan <- err:
+	case <-tx.Ctx.Done():
 	}
 }
 
@@ -230,3 +268,15 @@ func (d *DB) loadConfig() (err error) {
 	})
 }
 
+func (d *DB) loadCollections() (err error) {
+	for _, col := range d.Collections {
+		for _, index := range col.BleveIndexes {
+			config := blevestore.NewBleveStoreConfigMap(index.Path, d.PrivateKey, col.Prefix, d.Badger, d.writeChan)
+			index.BleveIndex, err = bleve.OpenUsing(index.Path, config)
+			if err != nil {
+				return
+			}
+		}
+	}
+	return
+}

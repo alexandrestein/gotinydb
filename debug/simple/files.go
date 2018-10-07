@@ -3,7 +3,6 @@ package simple
 import (
 	"context"
 	"io"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
@@ -118,7 +117,8 @@ func (d *DB) DeleteFile(id string) (err error) {
 		it := txn.NewIterator(opt)
 		defer it.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		// Go the the first file chunk

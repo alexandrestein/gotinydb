@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/debug/simple/transaction"
@@ -60,13 +59,18 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 		return
 	}
 
+	index.BleveIndexAsBytes, err = index.indexZipper()
+	if err != nil {
+		return err
+	}
+
 	c.BleveIndexes = append(c.BleveIndexes, index)
 
 	return c.db.saveConfig()
 }
 
 func (c *Collection) Put(id string, content interface{}) (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	var tr *transaction.Transaction
@@ -146,18 +150,25 @@ func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte,
 }
 
 func (c *Collection) Delete(id string) (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	tr := transaction.NewTransaction(ctx, c.buildDBKey(id), nil, true)
-	fmt.Println("need to rm INDEX")
-
 	c.db.writeChan <- tr
 	select {
 	case err = <-tr.ResponseChan:
 	case <-tr.Ctx.Done():
 		err = tr.Ctx.Err()
 	}
+
+	// Deletes from index
+	for _, index := range c.BleveIndexes {
+		err = index.BleveIndex.Delete(id)
+		if err != nil {
+			return err
+		}
+	}
+
 	return
 }
 
