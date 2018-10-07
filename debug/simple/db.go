@@ -3,6 +3,7 @@ package simple
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
@@ -54,7 +55,7 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 		if err != badger.ErrKeyNotFound {
 			return nil, err
 		}
-		// It's thefirst start of the database
+		// It's the first start of the database
 		rand.Read(db.PrivateKey[:])
 	} else {
 		for _, col := range db.Collections {
@@ -74,16 +75,19 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 func (d *DB) Use(colName string) (col *Collection, err error) {
 	tmpHash := blake2b.Sum256([]byte(colName))
 	prefix := append([]byte{prefixCollections}, tmpHash[:2]...)
-	for _, col = range d.Collections {
-		if col.Name == colName {
-			if col.db == nil {
-				col.db = d
+	for _, savedCol := range d.Collections {
+		if savedCol.Name == colName {
+			if savedCol.db == nil {
+				savedCol.db = d
 			}
-			return
-		}
-		if reflect.DeepEqual(col.Prefix, prefix) {
+			col = savedCol
+		} else if reflect.DeepEqual(col.Prefix, prefix) {
 			return nil, ErrHashCollision
 		}
+	}
+
+	if col != nil {
+		return col, nil
 	}
 
 	col = NewCollection(colName)
