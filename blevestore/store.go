@@ -99,9 +99,9 @@ func (bs *Store) Close() error {
 func (bs *Store) Reader() (store.KVReader, error) {
 	// iterators := []*badger.Iterator{}
 	return &Reader{
-		store:         bs,
-		txn:           bs.config.db.NewTransaction(false),
-		indexPrefixID: bs.config.prefix,
+		store: bs,
+		txn:   bs.config.db.NewTransaction(false),
+		// indexPrefixID: bs.config.prefix,
 		// iterators:     iterators,
 	}, nil
 }
@@ -117,7 +117,10 @@ func init() {
 }
 
 func (bs *Store) buildID(key []byte) []byte {
-	return append(bs.config.prefix, key...)
+	prefix := make([]byte, len(bs.config.prefix))
+	copy(prefix, bs.config.prefix)
+	dbKey := append(prefix, key...)
+	return dbKey
 }
 
 func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) (config *BleveStoreConfig) {

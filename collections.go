@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
+	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/index/upsidedown"
@@ -34,10 +35,16 @@ func NewCollection(name string) *Collection {
 	}
 }
 
-func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping, selector ...string) (err error) {
-	indexHash := blake2b.Sum256([]byte(name))
+func (c *Collection) buildIndexPrefix() []byte {
 	prefix := make([]byte, len(c.Prefix))
 	copy(prefix, c.Prefix)
+	prefix = append(prefix, prefixCollectionsBleveIndex)
+	return prefix
+}
+
+func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping, selector ...string) (err error) {
+	prefix := c.buildIndexPrefix()
+	indexHash := blake2b.Sum256([]byte(name))
 	prefix = append(prefix, indexHash[:2]...)
 
 	for _, i := range c.BleveIndexes {
@@ -53,9 +60,9 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	index.Name = name
 	index.Prefix = prefix
 	index.Selector = selector
-	index.Path = fmt.Sprintf("%s/%x/%x", c.db.Path, c.Prefix, index.Prefix)
+	index.Path = fmt.Sprintf("%s/%x/%x", c.db.Path, blake2b.Sum256([]byte(c.Name)), indexHash)
 
-	config := blevestore.NewBleveStoreConfigMap(index.Path, c.db.PrivateKey, c.Prefix, c.db.Badger, c.db.writeChan)
+	config := blevestore.NewBleveStoreConfigMap(index.Path, c.db.PrivateKey, prefix, c.db.Badger, c.db.writeChan)
 	index.BleveIndex, err = bleve.NewUsing(index.Path, bleve.NewIndexMapping(), upsidedown.Name, blevestore.Name, config)
 	if err != nil {
 		return
@@ -67,6 +74,43 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	}
 
 	c.BleveIndexes = append(c.BleveIndexes, index)
+
+	// Index all existing values
+	err = c.db.Badger.View(func(txn *badger.Txn) error {
+		iter := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer iter.Close()
+
+		colPrefix := c.buildDBKey("")
+		for iter.Seek(colPrefix); iter.ValidForPrefix(colPrefix); iter.Next() {
+			item := iter.Item()
+
+			var err error
+			var itemAsEncryptedBytes []byte
+			itemAsEncryptedBytes, err = item.ValueCopy(itemAsEncryptedBytes)
+			if err != nil {
+				continue
+			}
+
+			var clearBytes []byte
+			clearBytes, err = cipher.Decrypt(c.db.PrivateKey, item.Key(), itemAsEncryptedBytes)
+
+			id := string(item.Key()[len(colPrefix):])
+
+			content := c.fromValueBytesGetContentToIndex(clearBytes)
+			contentToIndex, apply := index.Selector.Apply(content)
+			if apply {
+				err = index.BleveIndex.Index(id, contentToIndex)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
 	return c.db.saveConfig()
 }
@@ -108,6 +152,22 @@ func (c *Collection) Put(id string, content interface{}) (err error) {
 	}
 
 	return
+}
+
+func (c *Collection) fromValueBytesGetContentToIndex(input []byte) interface{} {
+	var elem interface{}
+	decoder := json.NewDecoder(bytes.NewBuffer(input))
+
+	if jsonErr := decoder.Decode(&elem); jsonErr != nil {
+		fmt.Println("errjsonErr", jsonErr)
+		return nil
+	}
+
+	var ret interface{}
+	typed := elem.(map[string]interface{})
+	ret = typed
+
+	return ret
 }
 
 func (c *Collection) Get(id string, pointer interface{}) (contentAsBytes []byte, err error) {
@@ -175,7 +235,8 @@ func (c *Collection) Delete(id string) (err error) {
 }
 
 func (c *Collection) buildDBKey(id string) []byte {
-	return append(c.Prefix, []byte(id)...)
+	key := append(c.Prefix, prefixCollectionsData)
+	return append(key, []byte(id)...)
 }
 
 func (c *Collection) GetBleveIndex(name string) (*BleveIndex, error) {

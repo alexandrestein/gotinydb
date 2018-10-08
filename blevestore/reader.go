@@ -21,10 +21,10 @@ import (
 )
 
 type Reader struct {
-	store         *Store
-	txn           *badger.Txn
-	indexPrefixID []byte
-	iterators     []*badger.Iterator
+	store *Store
+	txn   *badger.Txn
+	// indexPrefixID []byte
+	iterators []*badger.Iterator
 }
 
 func (r *Reader) get(key []byte) ([]byte, error) {

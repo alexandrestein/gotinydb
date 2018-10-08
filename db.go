@@ -194,10 +194,10 @@ func (d *DB) goRoutineLoopForWrites() {
 			for _, op := range waitingWrites {
 				var err error
 				if op.Delete {
-					// fmt.Println("delete", op.DBKey)
+					// fmt.Println("delete", op.DBKey, string(op.DBKey))
 					err = txn.Delete(op.DBKey)
 				} else {
-					// fmt.Println("write", op.DBKey)
+					// fmt.Println("write", op.DBKey, string(op.DBKey))
 					err = txn.Set(op.DBKey, cipher.Encrypt(db.PrivateKey, op.DBKey, op.Value))
 				}
 				// Returns the write error to the caller
@@ -270,8 +270,9 @@ func (d *DB) loadConfig() (err error) {
 
 func (d *DB) loadCollections() (err error) {
 	for _, col := range d.Collections {
+		colPrefix := col.buildIndexPrefix()
 		for _, index := range col.BleveIndexes {
-			config := blevestore.NewBleveStoreConfigMap(index.Path, d.PrivateKey, col.Prefix, d.Badger, d.writeChan)
+			config := blevestore.NewBleveStoreConfigMap(index.Path, d.PrivateKey, colPrefix, d.Badger, d.writeChan)
 			index.BleveIndex, err = bleve.OpenUsing(index.Path, config)
 			if err != nil {
 				return

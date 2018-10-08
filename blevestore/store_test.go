@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
-	"github.com/alexandrestein/gotinydb/transactions"
 	"github.com/dgraph-io/badger"
 
 	"github.com/blevesearch/bleve/index/store"
