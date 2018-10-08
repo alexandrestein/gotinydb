@@ -18,12 +18,18 @@ func TestFiles(t *testing.T) {
 		return
 	}
 
-	// 300MB
-	randBuff := make([]byte, 300*1000*1000)
+	// Change the file size from 5MB to 100KB
+	defaultFileChuckSize := FileChuckSize
+	FileChuckSize = 100 * 1000
+	defer func(defaultFileChuckSize int) {
+		FileChuckSize = defaultFileChuckSize
+	}(defaultFileChuckSize)
+
+	// 100MB
+	randBuff := make([]byte, 100*1000*1000)
 	rand.Read(randBuff)
 
 	fileID := "test file ID"
-
 	n, err := testDB.PutFile(fileID, bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
@@ -111,8 +117,8 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 		return
 	}
 
-	// 20MB
-	randBuff := make([]byte, 15*1000*1000)
+	// ≊ 15MB
+	randBuff := make([]byte, 15*999*1000)
 	rand.Read(randBuff)
 
 	fileID := "test file ID"
@@ -127,8 +133,8 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 		return
 	}
 
-	// New smaller file 5MB
-	randBuff = make([]byte, 5*1000*1000)
+	// New smaller file of ≊ 5MB
+	randBuff = make([]byte, 5*999*1000)
 	rand.Read(randBuff)
 
 	n, err = testDB.PutFile(fileID, bytes.NewBuffer(randBuff))

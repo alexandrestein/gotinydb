@@ -211,10 +211,10 @@ func (d *DB) goRoutineLoopForWrites() {
 			for _, op := range waitingWrites {
 				var err error
 				if op.Delete {
-					// fmt.Println("delete", op.DBKey, string(op.DBKey))
+					// fmt.Println("delete", op.DBKey)
 					err = txn.Delete(op.DBKey)
 				} else {
-					// fmt.Println("write", op.DBKey, string(op.DBKey))
+					// fmt.Println("write", op.DBKey)
 					err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
 				}
 				// Returns the write error to the caller
