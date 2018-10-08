@@ -17,7 +17,6 @@ package blevestore
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transaction"
@@ -55,10 +54,23 @@ func (w *Writer) NewBatch() store.KVBatch {
 
 func (w *Writer) write() error {
 	for _, ope := range w.operations {
-		w.store.config.writesChan <- ope
-		err := <-ope.ResponseChan
-		if err != nil {
-			return err
+		// Sand to the write routine
+		select {
+		case w.store.config.writesChan <- ope:
+		case <-w.store.config.ctx.Done():
+			return w.store.config.ctx.Err()
+		}
+
+		// Wait for the response
+		select {
+		case err := <-ope.ResponseChan:
+			if err != nil {
+				return err
+			}
+		case <-ope.Ctx.Done():
+			return ope.Ctx.Err()
+		case <-w.store.config.ctx.Done():
+			return w.store.config.ctx.Err()
 		}
 	}
 
@@ -75,12 +87,7 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 		return fmt.Errorf("wrong type of batch")
 	}
 
-	// txn := w.store.db.NewTransaction(true)
-	// localTxn := false
-	// txn := w.store.config.writeTxn
-	// if txn == nil {
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	err = w.store.config.db.View(func(txn *badger.Txn) (err error) {
@@ -146,20 +153,6 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 	if err != nil {
 		return err
 	}
-	// 	localTxn = true
-	// }
-
-	// if localTxn {
-	// 	// defer function to ensure that once started,
-	// 	// we either Commit tx or Rollback
-	// 	defer func() {
-	// 		// if nothing went wrong, commit
-	// 		if err == nil {
-	// 			// careful to catch error here too
-	// 			err = txn.Commit(nil)
-	// 		}
-	// 	}()
-	// }
 
 	return w.write()
 }

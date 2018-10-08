@@ -39,11 +39,6 @@ func (i *BleveIndex) Close() error {
 func (i *BleveIndex) indexZipper() ([]byte, error) {
 	// Get a Buffer to Write To
 	buff := bytes.NewBuffer(nil)
-	// outFile, err := os.Create(`/Users/tom/Desktop/zip.zip`)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// defer outFile.Close()
 
 	// Create a new zip archive.
 	w := zip.NewWriter(buff)

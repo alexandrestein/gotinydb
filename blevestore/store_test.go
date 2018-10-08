@@ -15,13 +15,14 @@
 package blevestore
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
+	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/dgraph-io/badger"
 
 	"github.com/blevesearch/bleve/index/store"
@@ -31,9 +32,12 @@ import (
 var (
 	key        = [32]byte{}
 	db         *badger.DB
-	writesChan = make(chan *transactions.WriteTransaction, 0)
+	writesChan = make(chan *transaction.Transaction, 0)
 
 	prefix = []byte{1, 9}
+
+	ctx    context.Context
+	cancel context.CancelFunc
 )
 
 // var (
@@ -54,6 +58,8 @@ func init() {
 }
 
 func open(t *testing.T, mo store.MergeOperator) store.KVStore {
+	ctx, cancel = context.WithCancel(context.Background())
+
 	opt := badger.DefaultOptions
 	opt.Dir = "test"
 	opt.ValueDir = "test"
@@ -66,7 +72,7 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 	}
 
 	var config *BleveStoreConfig
-	config = NewBleveStoreConfig(key, prefix, db, writesChan, time.Second*60)
+	config = NewBleveStoreConfig(ctx, key, prefix, db, writesChan)
 
 	var rv store.KVStore
 	rv, err = New(mo, map[string]interface{}{
@@ -88,19 +94,23 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 
 func goRoutineLoopForWrites() {
 	for {
-		ops, ok := <-writesChan
-		if !ok {
-			return
+		var ops []*transaction.Transaction
+		select {
+		case op, ok := <-writesChan:
+			if !ok {
+				return
+			}
+			ops = append(ops, op)
 		}
 
 		err := db.Update(func(txn *badger.Txn) error {
-			for _, op := range ops.Transactions {
+			for _, op := range ops {
 				var err error
-				if op.ContentAsBytes == nil {
+				if op.Value == nil {
 					// if op.ContentAsBytes == nil || len(op.ContentAsBytes) == 0 {
 					err = txn.Delete(op.DBKey)
 				} else {
-					err = txn.Set(op.DBKey, cipher.Encrypt(key, op.DBKey, op.ContentAsBytes))
+					err = txn.Set(op.DBKey, cipher.Encrypt(key, op.DBKey, op.Value))
 				}
 				if err != nil {
 					fmt.Println(err)
@@ -108,7 +118,10 @@ func goRoutineLoopForWrites() {
 			}
 			return nil
 		})
-		ops.ResponseChan <- err
+
+		for _, op := range ops {
+			op.ResponseChan <- err
+		}
 
 		if err != nil {
 			fmt.Println(err)

@@ -60,9 +60,11 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	index.Name = name
 	index.Prefix = prefix
 	index.Selector = selector
-	index.Path = fmt.Sprintf("%s/%x/%x", c.db.Path, blake2b.Sum256([]byte(c.Name)), indexHash)
 
-	config := blevestore.NewBleveStoreConfigMap(index.Path, c.db.PrivateKey, prefix, c.db.Badger, c.db.writeChan)
+	colHash := blake2b.Sum256([]byte(c.Name))
+	index.Path = fmt.Sprintf("%s/%x/%x", c.db.Path, colHash[:2], indexHash[:2])
+
+	config := blevestore.NewBleveStoreConfigMap(c.db.ctx, index.Path, c.db.PrivateKey, prefix, c.db.Badger, c.db.writeChan)
 	index.BleveIndex, err = bleve.NewUsing(index.Path, bleve.NewIndexMapping(), upsidedown.Name, blevestore.Name, config)
 	if err != nil {
 		return
@@ -131,7 +133,11 @@ func (c *Collection) Put(id string, content interface{}) (err error) {
 		tr = transaction.NewTransaction(ctx, c.buildDBKey(id), jsonBytes, false)
 	}
 
-	c.db.writeChan <- tr
+	select {
+	case c.db.writeChan <- tr:
+	case <-c.db.ctx.Done():
+		return c.db.ctx.Err()
+	}
 	select {
 	case err = <-tr.ResponseChan:
 	case <-tr.Ctx.Done():
@@ -216,7 +222,15 @@ func (c *Collection) Delete(id string) (err error) {
 	defer cancel()
 
 	tr := transaction.NewTransaction(ctx, c.buildDBKey(id), nil, true)
-	c.db.writeChan <- tr
+
+	// Send to the write channel
+	select {
+	case c.db.writeChan <- tr:
+	case <-c.db.ctx.Done():
+		return c.db.ctx.Err()
+	}
+
+	// Wait for response from the write routine
 	select {
 	case err = <-tr.ResponseChan:
 	case <-tr.Ctx.Done():

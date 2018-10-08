@@ -2,7 +2,6 @@ package gotinydb
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -11,19 +10,19 @@ import (
 )
 
 var (
-	db  *DB
-	col *Collection
+	testDB  *DB
+	testCol *Collection
 
-	path      = os.TempDir() + "/testDB"
-	configKey = [32]byte{}
+	testPath      = os.TempDir() + "/testDB"
+	testConfigKey = [32]byte{}
 
-	colName = "collection name"
+	testColName = "collection name"
 
 	testUserID = "test ID"
 	testUser   = &user{"toto", "toto@internet.org"}
 
-	indexName     = "email"
-	indexSelector = "Email"
+	testIndexName     = "email"
+	testIndexSelector = "Email"
 )
 
 type (
@@ -33,7 +32,7 @@ type (
 )
 
 func init() {
-	os.RemoveAll(path)
+	os.RemoveAll(testPath)
 }
 
 func TestMain(t *testing.T) {
@@ -44,7 +43,7 @@ func TestMain(t *testing.T) {
 	}
 
 	retrievedUser := new(user)
-	_, err = col.Get(testUserID, retrievedUser)
+	_, err = testCol.Get(testUserID, retrievedUser)
 	if err != nil {
 		t.Error(err)
 		return
@@ -55,49 +54,35 @@ func TestMain(t *testing.T) {
 		return
 	}
 
-	fmt.Println(retrievedUser)
-
 	query := bleve.NewQueryStringQuery(testUser.Email)
 	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
 	var searchResult *SearchResult
-	searchResult, err = col.Search(indexName, searchRequest)
+	searchResult, err = testCol.Search(testIndexName, searchRequest)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	fmt.Println("searchResult", searchResult)
+	if testing.Verbose() {
+		t.Log("searchResult", searchResult)
+	}
 
-	err = db.Close()
+	err = testDB.Close()
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	db = nil
-	col = nil
+	testDB = nil
+	testCol = nil
 
-	db, err = Open(path, configKey)
+	testDB, err = Open(testPath, testConfigKey)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	col, err = db.Use(colName)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	query = bleve.NewQueryStringQuery(testUser.Email)
-	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
-	searchResult, err = col.Search(indexName, searchRequest)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	err = col.Delete(testUserID)
+	testCol, err = testDB.Use(testColName)
 	if err != nil {
 		t.Error(err)
 		return
@@ -105,7 +90,25 @@ func TestMain(t *testing.T) {
 
 	query = bleve.NewQueryStringQuery(testUser.Email)
 	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
-	searchResult, err = col.Search(indexName, searchRequest)
+	searchResult, err = testCol.Search(testIndexName, searchRequest)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if testing.Verbose() {
+		t.Log("searchResult", searchResult)
+	}
+
+	err = testCol.Delete(testUserID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	query = bleve.NewQueryStringQuery(testUser.Email)
+	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
+	searchResult, err = testCol.Search(testIndexName, searchRequest)
 	if err == nil {
 		t.Errorf("the index should returns no result but had %s", searchResult.BleveSearchResult.String())
 		return
@@ -113,25 +116,25 @@ func TestMain(t *testing.T) {
 }
 
 func open(t *testing.T) (err error) {
-	db, err = Open(path, configKey)
+	testDB, err = Open(testPath, testConfigKey)
 	if err != nil {
 		t.Error(err)
 		return err
 	}
 
-	col, err = db.Use(colName)
+	testCol, err = testDB.Use(testColName)
 	if err != nil {
 		t.Error(err)
 		return err
 	}
 
-	err = col.SetBleveIndex(indexName, bleve.NewIndexMapping(), indexSelector)
+	err = testCol.SetBleveIndex(testIndexName, bleve.NewIndexMapping(), testIndexSelector)
 	if err != nil {
 		t.Error(err)
 		return err
 	}
 
-	err = col.Put(testUserID, testUser)
+	err = testCol.Put(testUserID, testUser)
 	if err != nil {
 		t.Error(err)
 		return err
@@ -141,8 +144,8 @@ func open(t *testing.T) (err error) {
 }
 
 func clean() {
-	db.Close()
-	os.RemoveAll(path)
+	testDB.Close()
+	os.RemoveAll(testPath)
 }
 
 func TestBackup(t *testing.T) {
@@ -154,7 +157,7 @@ func TestBackup(t *testing.T) {
 
 	var backup bytes.Buffer
 
-	err = db.Backup(&backup)
+	err = testDB.Backup(&backup)
 	if err != nil {
 		t.Error(err)
 		return
@@ -164,7 +167,7 @@ func TestBackup(t *testing.T) {
 	defer os.RemoveAll(restoredDBPath)
 
 	var restoredDB *DB
-	restoredDB, err = Open(restoredDBPath, configKey)
+	restoredDB, err = Open(restoredDBPath, testConfigKey)
 	if err != nil {
 		t.Error(err)
 		return
@@ -177,7 +180,7 @@ func TestBackup(t *testing.T) {
 	}
 
 	var col2 *Collection
-	col2, err = restoredDB.Use(colName)
+	col2, err = restoredDB.Use(testColName)
 	if err != nil {
 		t.Error(err)
 		return
@@ -186,11 +189,13 @@ func TestBackup(t *testing.T) {
 	query := bleve.NewQueryStringQuery(testUser.Email)
 	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
 	var searchResult *SearchResult
-	searchResult, err = col2.Search(indexName, searchRequest)
+	searchResult, err = col2.Search(testIndexName, searchRequest)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	fmt.Println("searchResult", searchResult)
+	if testing.Verbose() {
+		t.Log("searchResult", searchResult)
+	}
 }

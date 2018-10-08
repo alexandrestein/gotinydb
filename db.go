@@ -1,6 +1,7 @@
 package gotinydb
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"io"
@@ -17,6 +18,9 @@ import (
 
 type (
 	DB struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+
 		ConfigKey  [32]byte `json:"-"`
 		PrivateKey [32]byte
 
@@ -38,6 +42,7 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 	db = new(DB)
 	db.Path = path
 	db.ConfigKey = configKey
+	db.ctx, db.cancel = context.WithCancel(context.Background())
 
 	options := badger.DefaultOptions
 	options.Dir = path
@@ -101,6 +106,9 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 }
 
 func (d *DB) Close() (err error) {
+	d.cancel()
+	time.Sleep(time.Millisecond * 100)
+
 	// In case of any error
 	defer func() {
 		if err != nil {
@@ -159,8 +167,14 @@ func (d *DB) goRoutineLoopForWrites() {
 	for {
 		writeSizeCounter := 0
 
-		op, ok := <-d.writeChan
-		if !ok {
+		var op *transaction.Transaction
+		var ok bool
+		select {
+		case op, ok = <-d.writeChan:
+			if !ok {
+				return
+			}
+		case <-d.ctx.Done():
 			return
 		}
 
@@ -187,10 +201,13 @@ func (d *DB) goRoutineLoopForWrites() {
 				goto tryToGetAnOtherRequest
 			}
 			// This continue if there is no more request in the queue
+		case <-d.ctx.Done():
+			return
+			// Stop waiting and do present operations
 		default:
 		}
 
-		err := db.Badger.Update(func(txn *badger.Txn) error {
+		err := d.Badger.Update(func(txn *badger.Txn) error {
 			for _, op := range waitingWrites {
 				var err error
 				if op.Delete {
@@ -198,7 +215,7 @@ func (d *DB) goRoutineLoopForWrites() {
 					err = txn.Delete(op.DBKey)
 				} else {
 					// fmt.Println("write", op.DBKey, string(op.DBKey))
-					err = txn.Set(op.DBKey, cipher.Encrypt(db.PrivateKey, op.DBKey, op.Value))
+					err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
 				}
 				// Returns the write error to the caller
 				if err != nil {
@@ -218,6 +235,7 @@ func (d *DB) goRoutineLoopForWrites() {
 func (d *DB) nonBlockingResponseChan(tx *transaction.Transaction, err error) {
 	select {
 	case tx.ResponseChan <- err:
+	case <-d.ctx.Done():
 	case <-tx.Ctx.Done():
 	}
 }
@@ -270,9 +288,10 @@ func (d *DB) loadConfig() (err error) {
 
 func (d *DB) loadCollections() (err error) {
 	for _, col := range d.Collections {
-		colPrefix := col.buildIndexPrefix()
 		for _, index := range col.BleveIndexes {
-			config := blevestore.NewBleveStoreConfigMap(index.Path, d.PrivateKey, colPrefix, d.Badger, d.writeChan)
+			indexPrefix := make([]byte, len(index.Prefix))
+			copy(indexPrefix, index.Prefix)
+			config := blevestore.NewBleveStoreConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.Badger, d.writeChan)
 			index.BleveIndex, err = bleve.OpenUsing(index.Path, config)
 			if err != nil {
 				return

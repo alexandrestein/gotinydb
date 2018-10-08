@@ -24,7 +24,7 @@ func TestFiles(t *testing.T) {
 
 	fileID := "test file ID"
 
-	n, err := db.PutFile(fileID, bytes.NewBuffer(randBuff))
+	n, err := testDB.PutFile(fileID, bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -38,7 +38,7 @@ func TestFiles(t *testing.T) {
 	randHash := blake2b.Sum256(randBuff)
 
 	readBuff := bytes.NewBuffer(nil)
-	err = db.ReadFile(fileID, readBuff)
+	err = testDB.ReadFile(fileID, readBuff)
 	if err != nil {
 		t.Error(err)
 		return
@@ -52,8 +52,8 @@ func TestFiles(t *testing.T) {
 	}
 
 	// Check the ids with chunk number are well generated
-	err = db.Badger.View(func(txn *badger.Txn) error {
-		storeID := db.buildFilePrefix(fileID, -1)
+	err = testDB.Badger.View(func(txn *badger.Txn) error {
+		storeID := testDB.buildFilePrefix(fileID, -1)
 
 		opt := badger.DefaultIteratorOptions
 		opt.PrefetchValues = false
@@ -78,14 +78,14 @@ func TestFiles(t *testing.T) {
 		return
 	}
 
-	err = db.DeleteFile(fileID)
+	err = testDB.DeleteFile(fileID)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	err = db.Badger.View(func(txn *badger.Txn) error {
-		storeID := db.buildFilePrefix(fileID, -1)
+	err = testDB.Badger.View(func(txn *badger.Txn) error {
+		storeID := testDB.buildFilePrefix(fileID, -1)
 
 		opt := badger.DefaultIteratorOptions
 		opt.PrefetchValues = false
@@ -117,7 +117,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 
 	fileID := "test file ID"
 
-	n, err := db.PutFile(fileID, bytes.NewBuffer(randBuff))
+	n, err := testDB.PutFile(fileID, bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -131,7 +131,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 	randBuff = make([]byte, 5*1000*1000)
 	rand.Read(randBuff)
 
-	n, err = db.PutFile(fileID, bytes.NewBuffer(randBuff))
+	n, err = testDB.PutFile(fileID, bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -142,7 +142,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 	}
 
 	readBuff := bytes.NewBuffer(nil)
-	err = db.ReadFile(fileID, readBuff)
+	err = testDB.ReadFile(fileID, readBuff)
 	if err != nil {
 		t.Error(err)
 		return

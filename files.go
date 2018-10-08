@@ -46,7 +46,12 @@ func (d *DB) PutFile(id string, reader io.Reader) (n int, err error) {
 			false,
 		)
 		// Run the insertion
-		d.writeChan <- tx
+		select {
+		case d.writeChan <- tx:
+		case <-d.ctx.Done():
+			return n, d.ctx.Err()
+		}
+
 		// And wait for the end of the insertion
 		select {
 		case err = <-tx.ResponseChan:

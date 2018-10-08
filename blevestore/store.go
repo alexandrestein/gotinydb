@@ -1,6 +1,7 @@
 package blevestore
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -19,6 +20,7 @@ const (
 
 type (
 	BleveStoreConfig struct {
+		ctx                 context.Context
 		key                 [32]byte
 		prefix              []byte
 		db                  *badger.DB
@@ -123,8 +125,9 @@ func (bs *Store) buildID(key []byte) []byte {
 	return dbKey
 }
 
-func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) (config *BleveStoreConfig) {
+func NewBleveStoreConfig(ctx context.Context, key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) (config *BleveStoreConfig) {
 	return &BleveStoreConfig{
+		ctx:        ctx,
 		key:        key,
 		prefix:     prefix,
 		db:         db,
@@ -132,10 +135,11 @@ func NewBleveStoreConfig(key [32]byte, prefix []byte, db *badger.DB, writeElemen
 	}
 }
 
-func NewBleveStoreConfigMap(path string, key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) map[string]interface{} {
+func NewBleveStoreConfigMap(ctx context.Context, path string, key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) map[string]interface{} {
 	return map[string]interface{}{
 		"path": path,
 		"config": NewBleveStoreConfig(
+			ctx,
 			key,
 			prefix,
 			db,

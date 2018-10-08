@@ -31,18 +31,18 @@ func TestIndexExistingValue(t *testing.T) {
 		},
 	}
 
-	err := col.Put(complexObjectID, complexObject)
+	err := testCol.Put(complexObjectID, complexObject)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	err = col.SetBleveIndex("car brand", bleve.NewIndexMapping(), "Car", "Brand")
+	err = testCol.SetBleveIndex("car brand", bleve.NewIndexMapping(), "Car", "Brand")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	err = col.SetBleveIndex("car brand", bleve.NewIndexMapping(), "Car", "Brand")
+	err = testCol.SetBleveIndex("car brand", bleve.NewIndexMapping(), "Car", "Brand")
 	if err == nil {
 		t.Error("setting index with same name must returns an error")
 		return
@@ -51,7 +51,7 @@ func TestIndexExistingValue(t *testing.T) {
 	query := bleve.NewQueryStringQuery("BMW")
 	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
 	var searchResult *SearchResult
-	searchResult, err = col.Search("car brand", searchRequest)
+	searchResult, err = testCol.Search("car brand", searchRequest)
 	if err != nil {
 		t.Error(err)
 		return
