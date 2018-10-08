@@ -42,7 +42,7 @@ func (c *Collection) buildIndexPrefix() []byte {
 	return prefix
 }
 
-func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping, selector ...string) (err error) {
+func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping) (err error) {
 	prefix := c.buildIndexPrefix()
 	indexHash := blake2b.Sum256([]byte(name))
 	prefix = append(prefix, indexHash[:2]...)
@@ -59,13 +59,12 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	index := NewIndex(name)
 	index.Name = name
 	index.Prefix = prefix
-	index.Selector = selector
 
 	colHash := blake2b.Sum256([]byte(c.Name))
 	index.Path = fmt.Sprintf("%s/%x/%x", c.db.Path, colHash[:2], indexHash[:2])
 
 	config := blevestore.NewBleveStoreConfigMap(c.db.ctx, index.Path, c.db.PrivateKey, prefix, c.db.Badger, c.db.writeChan)
-	index.BleveIndex, err = bleve.NewUsing(index.Path, bleve.NewIndexMapping(), upsidedown.Name, blevestore.Name, config)
+	index.BleveIndex, err = bleve.NewUsing(index.Path, bleveMapping, upsidedown.Name, blevestore.Name, config)
 	if err != nil {
 		return
 	}
@@ -99,12 +98,9 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 			id := string(item.Key()[len(colPrefix):])
 
 			content := c.fromValueBytesGetContentToIndex(clearBytes)
-			contentToIndex, apply := index.Selector.Apply(content)
-			if apply {
-				err = index.BleveIndex.Index(id, contentToIndex)
-				if err != nil {
-					return err
-				}
+			err = index.BleveIndex.Index(id, content)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -148,12 +144,9 @@ func (c *Collection) Put(id string, content interface{}) (err error) {
 	}
 
 	for _, index := range c.BleveIndexes {
-		contentToIndex, apply := index.Selector.Apply(content)
-		if apply {
-			err = index.BleveIndex.Index(id, contentToIndex)
-			if err != nil {
-				return err
-			}
+		err = index.BleveIndex.Index(id, content)
+		if err != nil {
+			return err
 		}
 	}
 

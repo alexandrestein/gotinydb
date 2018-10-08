@@ -17,7 +17,6 @@ type (
 		collection *Collection
 
 		BleveIndex bleve.Index `json:"-"`
-		Selector   selector
 		Path       string
 
 		BleveIndexAsBytes []byte

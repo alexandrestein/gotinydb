@@ -37,12 +37,12 @@ func TestIndexExistingValue(t *testing.T) {
 		return
 	}
 
-	err = testCol.SetBleveIndex("car brand", bleve.NewIndexMapping(), "Car", "Brand")
+	err = testCol.SetBleveIndex("car brand", bleve.NewIndexMapping())
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	err = testCol.SetBleveIndex("car brand", bleve.NewIndexMapping(), "Car", "Brand")
+	err = testCol.SetBleveIndex("car brand", bleve.NewIndexMapping())
 	if err == nil {
 		t.Error("setting index with same name must returns an error")
 		return

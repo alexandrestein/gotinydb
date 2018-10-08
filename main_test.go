@@ -19,17 +19,32 @@ var (
 	testColName = "collection name"
 
 	testUserID = "test ID"
-	testUser   = &user{"toto", "toto@internet.org"}
+	testUser   = &testUserStruct{
+		"toto",
+		"userName@internet.org",
+		&Account{"Github", "https://www.github.com"},
+	}
 
-	testIndexName     = "email"
-	testIndexSelector = "Email"
+	testIndexName = "email"
+	// testIndexSelector         = "Email"
+	testIndexNameAccounts = "accounts"
+	// testIndexSelectorAccounts = []string{"accounts", "Name"}
 )
 
 type (
-	user struct {
-		Name, Email string
+	testUserStruct struct {
+		Name  string   `json:"name"`
+		Email string   `json:"email"`
+		Oauth *Account `json:"oauth"`
+	}
+	Account struct {
+		Name, URL string
 	}
 )
+
+func (t *testUserStruct) Type() string {
+	return "local.testUserStruct"
+}
 
 func init() {
 	os.RemoveAll(testPath)
@@ -42,7 +57,7 @@ func TestMain(t *testing.T) {
 		return
 	}
 
-	retrievedUser := new(user)
+	retrievedUser := new(testUserStruct)
 	_, err = testCol.Get(testUserID, retrievedUser)
 	if err != nil {
 		t.Error(err)
@@ -60,6 +75,18 @@ func TestMain(t *testing.T) {
 	searchResult, err = testCol.Search(testIndexName, searchRequest)
 	if err != nil {
 		t.Error(err)
+		return
+	}
+
+	if testing.Verbose() {
+		t.Log("searchResult", searchResult)
+	}
+
+	query = bleve.NewQueryStringQuery(testUser.Name)
+	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
+	searchResult, err = testCol.Search(testIndexName, searchRequest)
+	if err == nil {
+		t.Errorf("the index must return no result but had %s", searchResult.BleveSearchResult.String())
 		return
 	}
 
@@ -128,11 +155,39 @@ func open(t *testing.T) (err error) {
 		return err
 	}
 
-	err = testCol.SetBleveIndex(testIndexName, bleve.NewIndexMapping(), testIndexSelector)
+	userDocumentMapping := bleve.NewDocumentStaticMapping()
+
+	emailFieldMapping := bleve.NewTextFieldMapping()
+	userDocumentMapping.AddFieldMappingsAt("email", emailFieldMapping)
+
+
+	indexMapping := bleve.NewIndexMapping()
+	indexMapping.AddDocumentMapping("local.testUserStruct", userDocumentMapping)
+
+	err = testCol.SetBleveIndex(testIndexName, indexMapping)
 	if err != nil {
 		t.Error(err)
 		return err
 	}
+
+	// userMapping := bleve.NewDocumentMapping()
+
+	// nameFieldMapping := bleve.NewTextFieldMapping()
+	// nameFieldMapping.Analyzer = "en"
+	// userMapping.AddFieldMappingsAt("Name", nameFieldMapping)
+	// userMapping.AddFieldMappingsAt("Email", nameFieldMapping)
+
+	// accountMapping := bleve.NewDocumentMapping()
+
+	// indexMapping := bleve.NewIndexMapping()
+	// indexMapping.AddDocumentMapping("testUserStruct", userMapping)
+	// indexMapping.AddDocumentMapping("Account", accountMapping)
+
+	// err = testCol.SetBleveIndex(testIndexNameAccounts, indexMapping)
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return err
+	// }
 
 	err = testCol.Put(testUserID, testUser)
 	if err != nil {
