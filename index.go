@@ -6,6 +6,7 @@ import (
 	"compress/flate"
 	"io"
 	"io/ioutil"
+	"os"
 
 	"github.com/blevesearch/bleve"
 )
@@ -35,6 +36,10 @@ func newIndex(name string) *BleveIndex {
 
 func (i *BleveIndex) close() error {
 	return i.bleveIndex.Close()
+}
+
+func (i *BleveIndex) delete() {
+	os.RemoveAll(i.Path)
 }
 
 func (i *BleveIndex) indexZipper() ([]byte, error) {

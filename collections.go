@@ -385,3 +385,23 @@ func (c *Collection) History(id string, limit int) (valuesAsBytes [][]byte, err 
 	})
 }
 
+// DeleteIndex delete the index and all references
+func (c *Collection) DeleteIndex(name string) {
+	var index *BleveIndex
+	for i, tmpIndex := range c.BleveIndexes {
+		if tmpIndex.Name == name {
+			index = tmpIndex
+
+			copy(c.BleveIndexes[i:], c.BleveIndexes[i+1:])
+			c.BleveIndexes[len(c.BleveIndexes)-1] = nil // or the zero value of T
+			c.BleveIndexes = c.BleveIndexes[:len(c.BleveIndexes)-1]
+
+			break
+		}
+	}
+
+	index.close()
+	index.delete()
+
+	c.db.deletePrefix(index.Prefix)
+}

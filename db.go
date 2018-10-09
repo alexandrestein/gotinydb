@@ -322,3 +322,74 @@ func (d *DB) loadCollections() (err error) {
 	}
 	return
 }
+
+// DeleteCollection removes every document and indexes and the collection itself
+func (d *DB) DeleteCollection(colName string) {
+	var col *Collection
+	for i, tmpCol := range d.Collections {
+		if tmpCol.Name == colName {
+			col = tmpCol
+
+			copy(d.Collections[i:], d.Collections[i+1:])
+			d.Collections[len(d.Collections)-1] = nil // or the zero value of T
+			d.Collections = d.Collections[:len(d.Collections)-1]
+
+			break
+		}
+	}
+
+	for _, index := range col.BleveIndexes {
+		index.close()
+		index.delete()
+	}
+
+	d.deletePrefix(col.Prefix)
+}
+
+func (d *DB) deletePrefix(prefix []byte) {
+	// Wait for write to be done in case any
+	time.Sleep(time.Millisecond * 500)
+
+	finished := false
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+newLoop:
+	idToDelete := []*transaction.Transaction{}
+
+	d.badger.View(func(txn *badger.Txn) error {
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchValues = false
+		iter := txn.NewIterator(opt)
+		defer iter.Close()
+
+		for iter.Seek(prefix); iter.ValidForPrefix(prefix); iter.Next() {
+			item := iter.Item()
+			var key []byte
+			key = item.KeyCopy(key)
+
+			tx := transaction.NewTransaction(ctx, key, nil, true)
+			idToDelete = append(idToDelete, tx)
+
+			if len(idToDelete) > 10000 {
+				return nil
+			}
+		}
+
+		finished = true
+
+		return nil
+	})
+
+	for _, tx := range idToDelete {
+		d.writeChan <- tx
+		close(tx.ResponseChan)
+	}
+
+	if !finished {
+		time.Sleep(time.Millisecond * 500)
+		goto newLoop
+	}
+}
+
