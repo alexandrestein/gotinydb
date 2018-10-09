@@ -162,32 +162,13 @@ func open(t *testing.T) (err error) {
 	userDocumentMapping.AddFieldMappingsAt("email", emailFieldMapping)
 
 	indexMapping := bleve.NewIndexMapping()
-	indexMapping.AddDocumentMapping("local.testUserStruct", userDocumentMapping)
+	indexMapping.AddDocumentMapping(testUser.Type(), userDocumentMapping)
 
 	err = testCol.SetBleveIndex(testIndexName, indexMapping)
 	if err != nil {
 		t.Error(err)
 		return err
 	}
-
-	// userMapping := bleve.NewDocumentMapping()
-
-	// nameFieldMapping := bleve.NewTextFieldMapping()
-	// nameFieldMapping.Analyzer = "en"
-	// userMapping.AddFieldMappingsAt("Name", nameFieldMapping)
-	// userMapping.AddFieldMappingsAt("Email", nameFieldMapping)
-
-	// accountMapping := bleve.NewDocumentMapping()
-
-	// indexMapping := bleve.NewIndexMapping()
-	// indexMapping.AddDocumentMapping("testUserStruct", userMapping)
-	// indexMapping.AddDocumentMapping("Account", accountMapping)
-
-	// err = testCol.SetBleveIndex(testIndexNameAccounts, indexMapping)
-	// if err != nil {
-	// 	t.Error(err)
-	// 	return err
-	// }
 
 	err = testCol.Put(testUserID, testUser)
 	if err != nil {

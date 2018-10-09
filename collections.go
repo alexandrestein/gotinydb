@@ -49,7 +49,7 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 
 	for _, i := range c.BleveIndexes {
 		if i.Name == name {
-			return ErrIndexNameAllreadyExists
+			return ErrNameAllreadyExists
 		}
 		if reflect.DeepEqual(i.Prefix, prefix) {
 			return ErrHashCollision
