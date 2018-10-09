@@ -13,6 +13,7 @@ import (
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/index/upsidedown"
 	"github.com/blevesearch/bleve/mapping"
+	"github.com/blevesearch/bleve/search/query"
 	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
@@ -261,7 +262,13 @@ func (c *Collection) GetBleveIndex(name string) (*BleveIndex, error) {
 	return nil, ErrIndexNotFound
 }
 
-func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest) (*SearchResult, error) {
+func (c *Collection) Search(indexName string, query query.Query) (*SearchResult, error) {
+	searchRequest := bleve.NewSearchRequest(query)
+
+	return c.SearchWithOptions(indexName, searchRequest)
+}
+
+func (c *Collection) SearchWithOptions(indexName string, searchRequest *bleve.SearchRequest) (*SearchResult, error) {
 	ret := new(SearchResult)
 
 	index, err := c.GetBleveIndex(indexName)

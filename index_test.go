@@ -52,7 +52,7 @@ func TestIndexExistingValue(t *testing.T) {
 	query := bleve.NewQueryStringQuery("BMW")
 	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
 	var searchResult *SearchResult
-	searchResult, err = testCol.Search("car brand", searchRequest)
+	searchResult, err = testCol.SearchWithOptions("car brand", searchRequest)
 	if err != nil {
 		t.Error(err)
 		return
@@ -104,7 +104,7 @@ func TestIndexResultNext(t *testing.T) {
 	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
 	searchRequest.SortBy([]string{"_id"})
 	var searchResult *SearchResult
-	searchResult, err = testCol.Search("test index name", searchRequest)
+	searchResult, err = testCol.SearchWithOptions("test index name", searchRequest)
 	if err != nil {
 		t.Error(err)
 		return
@@ -136,8 +136,7 @@ func TestIndexResultNext(t *testing.T) {
 	}
 
 	query = bleve.NewWildcardQuery("*github*")
-	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
-	searchResult, err = testCol.Search("test index name", searchRequest)
+	searchResult, err = testCol.Search("test index name", query)
 	if err != nil {
 		t.Error(err)
 		return
@@ -159,15 +158,14 @@ func TestIndexResultNext(t *testing.T) {
 	}
 
 	query2 := bleve.NewMatchQuery("GitHub")
-	searchRequest = bleve.NewSearchRequestOptions(query2, 10, 0, true)
-	searchResult, err = testCol.Search("test index name", searchRequest)
+	searchResult, err = testCol.Search("test index name", query2)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
 	retrievedUser = new(testUserStruct)
-	_, err = searchResult.Next(retrievedUser)
+	_, err = searchResult.NextResponse(retrievedUser)
 	if err != nil {
 		t.Error(err)
 		return

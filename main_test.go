@@ -71,9 +71,8 @@ func TestMain(t *testing.T) {
 	}
 
 	query := bleve.NewQueryStringQuery(testUser.Email)
-	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
 	var searchResult *SearchResult
-	searchResult, err = testCol.Search(testIndexName, searchRequest)
+	searchResult, err = testCol.Search(testIndexName, query)
 	if err != nil {
 		t.Error(err)
 		return
@@ -84,8 +83,7 @@ func TestMain(t *testing.T) {
 	}
 
 	query = bleve.NewQueryStringQuery(testUser.Name)
-	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
-	searchResult, err = testCol.Search(testIndexName, searchRequest)
+	searchResult, err = testCol.Search(testIndexName, query)
 	if err == nil {
 		t.Errorf("the index must return no result but had %s", searchResult.BleveSearchResult.String())
 		return
@@ -117,8 +115,7 @@ func TestMain(t *testing.T) {
 	}
 
 	query = bleve.NewQueryStringQuery(testUser.Email)
-	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
-	searchResult, err = testCol.Search(testIndexName, searchRequest)
+	searchResult, err = testCol.Search(testIndexName, query)
 	if err != nil {
 		t.Error(err)
 		return
@@ -135,8 +132,7 @@ func TestMain(t *testing.T) {
 	}
 
 	query = bleve.NewQueryStringQuery(testUser.Email)
-	searchRequest = bleve.NewSearchRequestOptions(query, 10, 0, true)
-	searchResult, err = testCol.Search(testIndexName, searchRequest)
+	searchResult, err = testCol.Search(testIndexName, query)
 	if err == nil {
 		t.Errorf("the index should returns no result but had %s", searchResult.BleveSearchResult.String())
 		return
@@ -223,9 +219,8 @@ func TestBackup(t *testing.T) {
 	}
 
 	query := bleve.NewQueryStringQuery(testUser.Email)
-	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
 	var searchResult *SearchResult
-	searchResult, err = col2.Search(testIndexName, searchRequest)
+	searchResult, err = col2.Search(testIndexName, query)
 	if err != nil {
 		t.Error(err)
 		return
