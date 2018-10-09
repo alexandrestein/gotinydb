@@ -72,7 +72,7 @@ func (d *DB) PutFile(id string, reader io.Reader) (n int, err error) {
 
 // ReadFile write file content into the given writer
 func (d *DB) ReadFile(id string, writer io.Writer) error {
-	return d.Badger.View(func(txn *badger.Txn) error {
+	return d.badger.View(func(txn *badger.Txn) error {
 		storeID := d.buildFilePrefix(id, -1)
 
 		opt := badger.DefaultIteratorOptions
@@ -110,7 +110,7 @@ func (d *DB) DeleteFile(id string) (err error) {
 	listOfTx := []*transaction.Transaction{}
 
 	// Open a read transaction to get every IDs
-	return d.Badger.View(func(txn *badger.Txn) error {
+	return d.badger.View(func(txn *badger.Txn) error {
 		// Build the file prefix
 		storeID := d.buildFilePrefix(id, -1)
 
@@ -151,18 +151,6 @@ func (d *DB) DeleteFile(id string) (err error) {
 		// Close the view transaction
 		return nil
 	})
-
-	// // Start the write operation and returns the error if any
-	// return d.badgerDB.Update(func(txn *badger.Txn) error {
-	// 	// Loop for every IDs to remove and remove it
-	// 	for _, id := range idsToDelete {
-	// 		err := txn.Delete(id)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// 	return nil
-	// })
 }
 
 func (d *DB) buildFilePrefix(id string, chunkN int) []byte {

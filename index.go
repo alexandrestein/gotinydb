@@ -11,19 +11,21 @@ import (
 )
 
 type (
+	// BleveIndex defines for now the only supported index (no plan for other unless it's needed).
+	// It
 	BleveIndex struct {
 		dbElement
 
 		collection *Collection
 
-		BleveIndex bleve.Index `json:"-"`
+		bleveIndex bleve.Index
 		Path       string
 
 		BleveIndexAsBytes []byte
 	}
 )
 
-func NewIndex(name string) *BleveIndex {
+func newIndex(name string) *BleveIndex {
 	return &BleveIndex{
 		dbElement: dbElement{
 			Name: name,
@@ -31,8 +33,8 @@ func NewIndex(name string) *BleveIndex {
 	}
 }
 
-func (i *BleveIndex) Close() error {
-	return i.BleveIndex.Close()
+func (i *BleveIndex) close() error {
+	return i.bleveIndex.Close()
 }
 
 func (i *BleveIndex) indexZipper() ([]byte, error) {

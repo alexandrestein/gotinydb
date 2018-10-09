@@ -18,15 +18,22 @@ import (
 )
 
 type (
+	// DB is the base struct of the package.
+	// It provides the collection and manage all writes to the database.
 	DB struct {
 		ctx    context.Context
 		cancel context.CancelFunc
 
-		ConfigKey  [32]byte `json:"-"`
+		// Only used to save database settup
+		configKey [32]byte
+		// PrivateKey is public for marshaling reason and should never by used or changes.
+		// This is the primary key used to derive every records.
 		PrivateKey [32]byte
 
-		Path        string     `json:"-"`
-		Badger      *badger.DB `json:"-"`
+		path   string
+		badger *badger.DB
+		// Collection is public for marshaling reason and should never be used.
+		// It contains the collections pointers used to manage the documents.
 		Collections []*Collection
 
 		writeChan chan *transaction.Transaction
@@ -39,10 +46,13 @@ type (
 	}
 )
 
+// Open initialize a new database or open an existing one.
+// The path defines the place the data will be saved and the configuration key
+// permit to decrypt existing configuration and to encrypt new one.
 func Open(path string, configKey [32]byte) (db *DB, err error) {
 	db = new(DB)
-	db.Path = path
-	db.ConfigKey = configKey
+	db.path = path
+	db.configKey = configKey
 	db.ctx, db.cancel = context.WithCancel(context.Background())
 
 	options := badger.DefaultOptions
@@ -54,7 +64,7 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 	db.writeChan = make(chan *transaction.Transaction, 1000)
 	go db.goRoutineLoopForWrites()
 
-	db.Badger, err = badger.Open(options)
+	db.badger, err = badger.Open(options)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +86,7 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 	return db, nil
 }
 
+// Use build a new collection or open an existing one.
 func (d *DB) Use(colName string) (col *Collection, err error) {
 	tmpHash := blake2b.Sum256([]byte(colName))
 	prefix := append([]byte{prefixCollections}, tmpHash[:2]...)
@@ -94,7 +105,7 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 		return col, nil
 	}
 
-	col = NewCollection(colName)
+	col = newCollection(colName)
 	col.Prefix = prefix
 	col.db = d
 
@@ -108,41 +119,46 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 	return
 }
 
+// Close close the database and all subcomposants. It returns the error if any
 func (d *DB) Close() (err error) {
 	d.cancel()
 
 	// In case of any error
 	defer func() {
 		if err != nil {
-			d.Badger.Close()
+			d.badger.Close()
 		}
 	}()
 
 	for _, col := range d.Collections {
 		for _, i := range col.BleveIndexes {
-			err = i.Close()
+			err = i.close()
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	return d.Badger.Close()
+	return d.badger.Close()
 }
 
+// Backup perform a full backup of the database.
+// It fills up the io.Writer with all data indexes and configurations.
 func (d *DB) Backup(w io.Writer) error {
-	_, err := d.Badger.Backup(w, 0)
+	_, err := d.badger.Backup(w, 0)
 	return err
 }
+
+// Load recover an existing database from a backup generated with *DB.Backup
 func (d *DB) Load(r io.Reader) error {
-	err := d.Badger.Update(func(txn *badger.Txn) error {
+	err := d.badger.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte{prefixConfig})
 	})
 	if err != nil {
 		return err
 	}
 
-	err = d.Badger.Load(r)
+	err = d.badger.Load(r)
 	if err != nil {
 		return err
 	}
@@ -161,6 +177,7 @@ func (d *DB) Load(r io.Reader) error {
 	return d.loadCollections()
 }
 
+// This is where all writes are made
 func (d *DB) goRoutineLoopForWrites() {
 	limitNumbersOfWriteOperation := 10000
 	limitSizeOfWriteOperation := 100 * 1000 * 1000 // 100MB
@@ -209,7 +226,7 @@ func (d *DB) goRoutineLoopForWrites() {
 		default:
 		}
 
-		err := d.Badger.Update(func(txn *badger.Txn) error {
+		err := d.badger.Update(func(txn *badger.Txn) error {
 			for _, op := range waitingWrites {
 				var err error
 				if op.Delete {
@@ -248,8 +265,9 @@ func (d *DB) decryptData(dbKey, encryptedData []byte) (clear []byte, err error) 
 	return cipher.Decrypt(d.PrivateKey, dbKey, encryptedData)
 }
 
+// saveConfig save the database configuration with collections and indexes
 func (d *DB) saveConfig() (err error) {
-	return d.Badger.Update(func(txn *badger.Txn) error {
+	return d.badger.Update(func(txn *badger.Txn) error {
 		// Convert to JSON
 		dbToSaveAsBytes, err := json.Marshal(d)
 		if err != nil {
@@ -259,7 +277,7 @@ func (d *DB) saveConfig() (err error) {
 		dbKey := []byte{prefixConfig}
 		e := &badger.Entry{
 			Key:   dbKey,
-			Value: cipher.Encrypt(d.ConfigKey, dbKey, dbToSaveAsBytes),
+			Value: cipher.Encrypt(d.configKey, dbKey, dbToSaveAsBytes),
 		}
 
 		return txn.SetEntry(e)
@@ -267,7 +285,7 @@ func (d *DB) saveConfig() (err error) {
 }
 
 func (d *DB) loadConfig() (err error) {
-	return d.Badger.View(func(txn *badger.Txn) error {
+	return d.badger.View(func(txn *badger.Txn) error {
 		dbKey := []byte{prefixConfig}
 
 		item, err := txn.Get(dbKey)
@@ -281,7 +299,7 @@ func (d *DB) loadConfig() (err error) {
 			return err
 		}
 
-		dbAsBytes, err = cipher.Decrypt(d.ConfigKey, dbKey, dbAsBytes)
+		dbAsBytes, err = cipher.Decrypt(d.configKey, dbKey, dbAsBytes)
 		if err != nil {
 			return err
 		}
@@ -295,8 +313,8 @@ func (d *DB) loadCollections() (err error) {
 		for _, index := range col.BleveIndexes {
 			indexPrefix := make([]byte, len(index.Prefix))
 			copy(indexPrefix, index.Prefix)
-			config := blevestore.NewBleveStoreConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.Badger, d.writeChan)
-			index.BleveIndex, err = bleve.OpenUsing(index.Path, config)
+			config := blevestore.NewBleveStoreConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.badger, d.writeChan)
+			index.bleveIndex, err = bleve.OpenUsing(index.Path, config)
 			if err != nil {
 				return
 			}

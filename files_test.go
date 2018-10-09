@@ -58,7 +58,7 @@ func TestFiles(t *testing.T) {
 	}
 
 	// Check the ids with chunk number are well generated
-	err = testDB.Badger.View(func(txn *badger.Txn) error {
+	err = testDB.badger.View(func(txn *badger.Txn) error {
 		storeID := testDB.buildFilePrefix(fileID, -1)
 
 		opt := badger.DefaultIteratorOptions
@@ -90,7 +90,7 @@ func TestFiles(t *testing.T) {
 		return
 	}
 
-	err = testDB.Badger.View(func(txn *badger.Txn) error {
+	err = testDB.badger.View(func(txn *badger.Txn) error {
 		storeID := testDB.buildFilePrefix(fileID, -1)
 
 		opt := badger.DefaultIteratorOptions
