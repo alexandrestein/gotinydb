@@ -6,8 +6,8 @@ type (
 	Transaction struct {
 		Ctx context.Context
 
-		DBKey, Value []byte
-		Delete       bool
+		DBKey, Value         []byte
+		Delete, CleanHistory bool
 
 		ResponseChan chan error
 	}
@@ -16,9 +16,9 @@ type (
 func NewTransaction(ctx context.Context, key, val []byte, del bool) *Transaction {
 	responseChan := make(chan error, 0)
 	return &Transaction{
-		ctx,
-		key, val,
-		del,
-		responseChan,
+		Ctx:   ctx,
+		DBKey: key, Value: val,
+		Delete: del, CleanHistory: false,
+		ResponseChan: responseChan,
 	}
 }

@@ -108,7 +108,7 @@
   revision = "01d5c56e609533acd717717c8acc0d2dea6bfb89"
 
 [[projects]]
-  digest = "1:0140f4a4695e86316acb4683faa35d7ee45bf775f242cfc4a9b75f72cb4d573c"
+  digest = "1:8d5f5dfd092f6f10a71a64a4db21e6541ac1fcb62f729cfa3ea1f2a67665efaa"
   name = "github.com/dgraph-io/badger"
   packages = [
     ".",
@@ -119,7 +119,8 @@
     "y",
   ]
   pruneopts = "UT"
-  revision = "41d9656c08175a3566576bde596e26c288bb64e2"
+  revision = "439fd464b155d419201a5c195c70d40618376776"
+  version = "v2.0-rc1"
 
 [[projects]]
   branch = "master"
@@ -136,14 +137,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
-
-[[projects]]
-  digest = "1:ca82a3b99694824c627573c2a76d0e49719b4a9c02d1d85a2ac91f1c1f52ab9b"
-  name = "github.com/fatih/structs"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "a720dfa8df582c51dee1b36feabb906bde1588bd"
-  version = "v1.0"
 
 [[projects]]
   branch = "master"
@@ -264,10 +257,7 @@
     "github.com/blevesearch/bleve/index/upsidedown",
     "github.com/blevesearch/bleve/mapping",
     "github.com/blevesearch/bleve/registry",
-    "github.com/blevesearch/bleve/search",
     "github.com/dgraph-io/badger",
-    "github.com/dgraph-io/badger/options",
-    "github.com/fatih/structs",
     "golang.org/x/crypto/blake2b",
     "golang.org/x/crypto/chacha20poly1305",
   ]

@@ -113,36 +113,38 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	return c.db.saveConfig()
 }
 
-func (c *Collection) Put(id string, content interface{}) (err error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var tr *transaction.Transaction
+func (c *Collection) putIntoTransaction(ctx context.Context, id string, content interface{}) (tr *transaction.Transaction, err error) {
 	if bytes, ok := content.([]byte); ok {
 		tr = transaction.NewTransaction(ctx, c.buildDBKey(id), bytes, false)
 	} else {
 		jsonBytes, marshalErr := json.Marshal(content)
 		if marshalErr != nil {
-			return marshalErr
+			return nil, marshalErr
 		}
 
 		tr = transaction.NewTransaction(ctx, c.buildDBKey(id), jsonBytes, false)
 	}
 
+	return tr, nil
+}
+
+func (c *Collection) putSendToWriteAndWaitForResponse(tr *transaction.Transaction) (err error) {
 	select {
 	case c.db.writeChan <- tr:
 	case <-c.db.ctx.Done():
 		return c.db.ctx.Err()
 	}
+
 	select {
 	case err = <-tr.ResponseChan:
 	case <-tr.Ctx.Done():
 		err = tr.Ctx.Err()
 	}
-	if err != nil {
-		return
-	}
 
+	return err
+}
+
+func (c *Collection) putLoopForIndexes(id string, content interface{}) (err error) {
 	for _, index := range c.BleveIndexes {
 		err = index.BleveIndex.Index(id, content)
 		if err != nil {
@@ -150,7 +152,11 @@ func (c *Collection) Put(id string, content interface{}) (err error) {
 		}
 	}
 
-	return
+	return nil
+}
+
+func (c *Collection) Put(id string, content interface{}) error {
+	return c.put(id, content, false)
 }
 
 func (c *Collection) fromValueBytesGetContentToIndex(input []byte) interface{} {
@@ -277,3 +283,74 @@ func (c *Collection) Search(indexName string, searchRequest *bleve.SearchRequest
 
 	return ret, nil
 }
+
+// History returns the previous versions of the given id.
+// The first value is the actual value and more you travel inside the list more the
+// record is old.
+func (c *Collection) History(id string, limit int) (valuesAsBytes [][]byte, err error) {
+	valuesAsBytes = make([][]byte, limit)
+	count := 0
+
+	return valuesAsBytes, c.db.Badger.View(func(txn *badger.Txn) error {
+		opt := badger.DefaultIteratorOptions
+		opt.AllVersions = true
+		iter := txn.NewIterator(opt)
+		defer iter.Close()
+
+		dbKey := c.buildDBKey(id)
+		breakAtNext := false
+		for iter.Seek(dbKey); iter.ValidForPrefix(dbKey); iter.Next() {
+			if count >= limit || breakAtNext {
+				break
+			}
+
+			item := iter.Item()
+			if item.DiscardEarlierVersions() {
+				breakAtNext = true
+			}
+
+			var content []byte
+			content, err = item.ValueCopy(content)
+			if err != nil {
+				return err
+			}
+
+			content, err = c.db.decryptData(item.Key(), content)
+			if err != nil {
+				return err
+			}
+
+			valuesAsBytes[count] = content
+
+			count++
+		}
+
+		// Clean the end of the slice to gives only the existing values
+		valuesAsBytes = valuesAsBytes[:count]
+
+		return nil
+	})
+}
+
+func (c *Collection) put(id string, content interface{}, clean bool) (err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	tr, err := c.putIntoTransaction(ctx, id, content)
+	if err != nil {
+		return err
+	}
+	tr.CleanHistory = true
+
+	err = c.putSendToWriteAndWaitForResponse(tr)
+	if err != nil {
+		return err
+	}
+
+	return c.putLoopForIndexes(id, content)
+}
+
+func (c *Collection) PutWithCleanHistory(id string, content interface{}) (err error) {
+	return c.put(id, content, true)
+}
+

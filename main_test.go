@@ -2,6 +2,7 @@ package gotinydb
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -160,7 +161,6 @@ func open(t *testing.T) (err error) {
 	emailFieldMapping := bleve.NewTextFieldMapping()
 	userDocumentMapping.AddFieldMappingsAt("email", emailFieldMapping)
 
-
 	indexMapping := bleve.NewIndexMapping()
 	indexMapping.AddDocumentMapping("local.testUserStruct", userDocumentMapping)
 
@@ -254,3 +254,70 @@ func TestBackup(t *testing.T) {
 		t.Log("searchResult", searchResult)
 	}
 }
+
+func TestHistory(t *testing.T) {
+	defer clean()
+	open(t)
+
+	testID := "the history test ID"
+	testCol.Put(testID, []byte("value 10"))
+	testCol.Put(testID, []byte("value 9"))
+	testCol.Put(testID, []byte("value 8"))
+	testCol.Put(testID, []byte("value 7"))
+	testCol.Put(testID, []byte("value 6"))
+	testCol.Put(testID, []byte("value 5"))
+	testCol.Put(testID, []byte("value 4"))
+	testCol.Put(testID, []byte("value 3"))
+	testCol.Put(testID, []byte("value 2"))
+	testCol.Put(testID, []byte("value 1"))
+	testCol.Put(testID, []byte("value 0"))
+
+	// Load part of the history
+	valuesAsBytes, err := testCol.History(testID, 5)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for i, val := range valuesAsBytes {
+		if fmt.Sprintf("value %d", i) != string(val) {
+			t.Errorf("the history is not what is expected")
+			return
+		}
+	}
+
+	// Load more than the existing history
+	valuesAsBytes, err = testCol.History(testID, 15)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for i, val := range valuesAsBytes {
+		if fmt.Sprintf("value %d", i) != string(val) {
+			t.Errorf("the history is not what is expected")
+			return
+		}
+	}
+
+	// Update the value with a fresh history
+	freshHistoryValue := []byte("brand new element")
+	err = testCol.PutWithCleanHistory(testID, freshHistoryValue)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	valuesAsBytes, err = testCol.History(testID, 5)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if l := len(valuesAsBytes); l > 1 {
+		t.Errorf("history returned more than 1 value %d", l)
+		return
+	}
+	if string(valuesAsBytes[0]) != string(freshHistoryValue) {
+		t.Errorf("the returned content from history is not correct")
+	}
+}
+

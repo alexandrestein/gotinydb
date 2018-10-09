@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"io"
+	"math"
 	"reflect"
 	"time"
 
@@ -47,6 +48,8 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 	options := badger.DefaultOptions
 	options.Dir = path
 	options.ValueDir = path
+	// Keep as much version as possible
+	options.NumVersionsToKeep = math.MaxInt32
 
 	db.writeChan = make(chan *transaction.Transaction, 1000)
 	go db.goRoutineLoopForWrites()
@@ -107,7 +110,6 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 
 func (d *DB) Close() (err error) {
 	d.cancel()
-	time.Sleep(time.Millisecond * 100)
 
 	// In case of any error
 	defer func() {
@@ -213,6 +215,8 @@ func (d *DB) goRoutineLoopForWrites() {
 				if op.Delete {
 					// fmt.Println("delete", op.DBKey)
 					err = txn.Delete(op.DBKey)
+				} else if op.CleanHistory {
+					err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), 0)
 				} else {
 					// fmt.Println("write", op.DBKey)
 					err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
