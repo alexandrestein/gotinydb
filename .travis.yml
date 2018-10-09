@@ -5,14 +5,13 @@ go_import_path: github.com/alexandrestein/gotinydb
 sudo: required 
 
 go:
-  - "1.10.x"
   - "1.11.x"
   - master
   - tip
 
 before_install:
-  - go get -t ./...
+  - go get ./...
 
 script:
-  - go test
+  - go test -v -cover -race
 
