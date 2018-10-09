@@ -94,34 +94,34 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 
 func goRoutineLoopForWrites() {
 	for {
-		var ops []*transaction.Transaction
+		var ops *transaction.Transaction
+		// select {
+		// case op, ok := <-writesChan:
+		// 	if !ok {
+		// 		return
+		// 	}
+		// 	ops = append(ops, op)
+		// }
 		select {
-		case op, ok := <-writesChan:
-			if !ok {
-				return
-			}
-			ops = append(ops, op)
+		// There is an other request in the queue
+		case ops = <-writesChan:
+		default:
 		}
 
 		err := db.Update(func(txn *badger.Txn) error {
-			for _, op := range ops {
-				var err error
-				if op.Value == nil {
-					// if op.ContentAsBytes == nil || len(op.ContentAsBytes) == 0 {
-					err = txn.Delete(op.DBKey)
-				} else {
-					err = txn.Set(op.DBKey, cipher.Encrypt(key, op.DBKey, op.Value))
-				}
-				if err != nil {
-					fmt.Println(err)
-				}
+			var err error
+			if ops.Delete {
+				err = txn.Delete(ops.DBKey)
+			} else {
+				err = txn.Set(ops.DBKey, cipher.Encrypt(key, ops.DBKey, ops.Value))
+			}
+			if err != nil {
+				fmt.Println(err)
 			}
 			return nil
 		})
 
-		for _, op := range ops {
-			op.ResponseChan <- err
-		}
+		ops.ResponseChan <- err
 
 		if err != nil {
 			fmt.Println(err)
