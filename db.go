@@ -254,6 +254,9 @@ func (d *DB) goRoutineLoopForWrites() {
 }
 
 func (d *DB) nonBlockingResponseChan(tx *transaction.Transaction, err error) {
+	// if tx.ResponseChan {
+
+	// }
 	select {
 	case tx.ResponseChan <- err:
 	case <-d.ctx.Done():
@@ -385,6 +388,7 @@ newLoop:
 	for _, tx := range idToDelete {
 		d.writeChan <- tx
 		close(tx.ResponseChan)
+		tx.ResponseChan = nil
 	}
 
 	if !finished {

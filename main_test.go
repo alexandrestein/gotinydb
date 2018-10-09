@@ -6,8 +6,10 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/blevesearch/bleve"
+	"github.com/dgraph-io/badger"
 )
 
 var (
@@ -295,5 +297,52 @@ func TestHistory(t *testing.T) {
 	if string(valuesAsBytes[0]) != string(freshHistoryValue) {
 		t.Errorf("the returned content from history is not correct")
 	}
+}
+
+func TestDeleteParts(t *testing.T) {
+	defer clean()
+	open(t)
+
+	bleveIndex, _ := testCol.GetBleveIndex(testIndexName)
+	prefix := bleveIndex.Prefix
+	testCol.DeleteIndex(testIndexName)
+
+	time.Sleep(time.Second)
+
+	testDB.badger.View(func(txn *badger.Txn) error {
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchValues = false
+		iter := txn.NewIterator(opt)
+		defer iter.Close()
+
+		for iter.Seek(prefix); iter.ValidForPrefix(prefix); iter.Next() {
+			t.Errorf("this id must be deleted %v", iter.Item().Key())
+		}
+
+		return nil
+	})
+	_, err := testCol.GetBleveIndex(testIndexName)
+	if err == nil {
+		t.Errorf("the index is deleted")
+		return
+	}
+
+	prefix = testCol.Prefix
+	testDB.DeleteCollection(testColName)
+
+	time.Sleep(time.Second)
+
+	testDB.badger.View(func(txn *badger.Txn) error {
+		opt := badger.DefaultIteratorOptions
+		opt.PrefetchValues = false
+		iter := txn.NewIterator(opt)
+		defer iter.Close()
+
+		for iter.Seek(prefix); iter.ValidForPrefix(prefix); iter.Next() {
+			t.Errorf("this id must be deleted %v", iter.Item().Key())
+		}
+
+		return nil
+	})
 }
 
