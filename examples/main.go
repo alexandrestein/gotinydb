@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/alexandrestein/gotinydb"
@@ -30,7 +31,7 @@ func (u *user) Type() string {
 // And query the database to get this element.
 func Basic() error {
 	// getTestPathChan is an test channel to get test path to TMP directory
-	dbTestPath := "basicExample"
+	dbTestPath := os.TempDir() + "/basicExample"
 
 	db, err := gotinydb.Open(dbTestPath, [32]byte{})
 	if err != nil {
