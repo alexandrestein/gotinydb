@@ -1,11 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"github.com/alexandrestein/gotinydb"
+	"github.com/blevesearch/bleve"
 )
 
 type (
@@ -13,15 +13,16 @@ type (
 		ID        string
 		Email     string
 		Balance   int
-		Address   *address
 		Age       uint
 		LastLogin time.Time
 	}
-	address struct {
-		City    string
-		ZipCode uint
-	}
 )
+
+// Type implements the github.com/blevesearch/bleve/mapping/#Classifier interface to have a easy
+// way to check types in case you put multiple types in the same collection.
+func (u *user) Type() string {
+	return "exampleUser"
+}
 
 // Basic open a new or existing database.
 // Build one string index.
@@ -31,29 +32,36 @@ func Basic() error {
 	// getTestPathChan is an test channel to get test path to TMP directory
 	dbTestPath := "basicExample"
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	db, openDBErr := gotinydb.Open(ctx,
-		gotinydb.NewDefaultOptions(dbTestPath),
-	)
-
-	if openDBErr != nil {
-		return openDBErr
+	db, err := gotinydb.Open(dbTestPath, [32]byte{})
+	if err != nil {
+		return err
 	}
 	defer db.Close()
 
 	// Open a collection
-	c, useDBErr := db.Use("users")
-	if useDBErr != nil {
-		return useDBErr
+	var c *gotinydb.Collection
+	c, err = db.Use("users")
+	if err != nil {
+		return err
 	}
 
+	// Build the index mapping
+	//
+	// Build a static mapping document to index only specified fields
+	userDocumentMapping := bleve.NewDocumentStaticMapping()
+	// Build the field checker
+	emailFieldMapping := bleve.NewTextFieldMapping()
+	// Add a text filed to Email property
+	userDocumentMapping.AddFieldMappingsAt("Email", emailFieldMapping)
+	// Build the index mapping it self
+	indexMapping := bleve.NewIndexMapping()
+	indexMapping.AddDocumentMapping("exampleUser", userDocumentMapping)
+
 	// Setup indexexes
-	indexErr := c.SetIndex("email", gotinydb.StringIndex, "Email")
-	if indexErr != nil {
-		if indexErr.Error() != "bucket already exists" {
-			return indexErr
+	err = c.SetBleveIndex("email", indexMapping)
+	if err != nil {
+		if err != gotinydb.ErrNameAllreadyExists {
+			return err
 		}
 	}
 
@@ -73,29 +81,18 @@ func Basic() error {
 		return err
 	}
 
-	// Initialize a query pointer
-	queryPointer := c.NewQuery()
-
-	// Build the filter
-	queryFilter := gotinydb.NewEqualFilter("jonas-90@tlaloc.com", "Email")
-
-	// Add the filter to the query pointer
-	queryPointer.SetFilter(queryFilter)
-
-	// Or this could be:
-	queryPointer = c.NewQuery().SetFilter(
-		gotinydb.NewEqualFilter("jonas-90@tlaloc.com", "Email"),
-	)
-
-	// Query the collection to get the struct based on the Email field
-	response, queryErr := c.Query(queryPointer)
-	if queryErr != nil {
-		return queryErr
+	// Build the query
+	query := bleve.NewQueryStringQuery(record.Email)
+	// Add the query to the search
+	var searchResult *gotinydb.SearchResult
+	searchResult, err = c.Search("email", query)
+	if err != nil {
+		return err
 	}
 
 	// Convert the reccored into a struct using JSON internally
 	retrievedRecord := new(user)
-	id, respErr := response.One(retrievedRecord)
+	id, respErr := searchResult.Next(retrievedRecord)
 	if respErr != nil {
 		return respErr
 	}

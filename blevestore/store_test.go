@@ -17,7 +17,6 @@ package blevestore
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"os"
 	"testing"
 
@@ -30,14 +29,13 @@ import (
 )
 
 var (
-	key        = [32]byte{}
-	db         *badger.DB
-	writesChan = make(chan *transaction.Transaction, 0)
+	testKey        = [32]byte{}
+	testDB         *badger.DB
+	testWritesChan = make(chan *transaction.Transaction, 0)
 
-	prefix = []byte{1, 9}
+	testPrefix = []byte{1, 9}
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	testPath = os.TempDir() + "/blevestoreTest"
 )
 
 // var (
@@ -52,27 +50,25 @@ var (
 // )
 
 func init() {
-	rand.Read(key[:])
-
-	go goRoutineLoopForWrites()
+	rand.Read(testKey[:])
 }
 
-func open(t *testing.T, mo store.MergeOperator) store.KVStore {
-	ctx, cancel = context.WithCancel(context.Background())
-
+func open(t *testing.T, testCtx context.Context, mo store.MergeOperator) store.KVStore {
 	opt := badger.DefaultOptions
-	opt.Dir = "test"
-	opt.ValueDir = "test"
+	opt.Dir = testPath
+	opt.ValueDir = testPath
 
 	var err error
-	db, err = badger.Open(opt)
+	testDB, err = badger.Open(opt)
 	if err != nil {
 		t.Error(err)
 		return nil
 	}
 
+	go goRoutineLoopForWrites(testCtx)
+
 	var config *BleveStoreConfig
-	config = NewBleveStoreConfig(ctx, key, prefix, db, writesChan)
+	config = NewBleveStoreConfig(testCtx, testKey, testPrefix, testDB, testWritesChan)
 
 	var rv store.KVStore
 	rv, err = New(mo, map[string]interface{}{
@@ -92,40 +88,108 @@ func open(t *testing.T, mo store.MergeOperator) store.KVStore {
 	return rv
 }
 
-func goRoutineLoopForWrites() {
+func goRoutineLoopForWrites(testCtx context.Context) {
+	// for {
+	// 	var ops *transaction.Transaction
+	// 	// select {
+	// 	// case op, ok := <-writesChan:
+	// 	// 	if !ok {
+	// 	// 		return
+	// 	// 	}
+	// 	// 	ops = append(ops, op)
+	// 	// }
+	// 	select {
+	// 	// There is an other request in the queue
+	// 	case ops = <-testWritesChan:
+	// 	case <-testCtx.Done():
+	// 		return
+	// 	}
+
+	// 	err := testDB.Update(func(txn *badger.Txn) error {
+	// 		var err error
+	// 		if ops.Delete {
+	// 			err = txn.Delete(ops.DBKey)
+	// 		} else {
+	// 			err = txn.Set(ops.DBKey, cipher.Encrypt(testKey, ops.DBKey, ops.Value))
+	// 		}
+	// 		if err != nil {
+	// 			fmt.Println(err)
+	// 		}
+	// 		return nil
+	// 	})
+
+	// 	ops.ResponseChan <- err
+
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// }
+
 	for {
-		var ops *transaction.Transaction
-		// select {
-		// case op, ok := <-writesChan:
-		// 	if !ok {
-		// 		return
-		// 	}
-		// 	ops = append(ops, op)
-		// }
+		var op *transaction.Transaction
+		var ok bool
+		select {
+		case op, ok = <-testWritesChan:
+			if !ok {
+				return
+			}
+		case <-testCtx.Done():
+			return
+		}
+
+		// Add to the list of operation to be done
+		waitingWrites := []*transaction.Transaction{op}
+
+		// Try to empty the queue if any
+	tryToGetAnOtherRequest:
 		select {
 		// There is an other request in the queue
-		case ops = <-writesChan:
+		case nextWrite := <-testWritesChan:
+			// And save the response channel
+			waitingWrites = append(waitingWrites, nextWrite)
+
+			goto tryToGetAnOtherRequest
+		case <-testCtx.Done():
+			return
+			// Stop waiting and do present operations
 		default:
 		}
 
-		err := db.Update(func(txn *badger.Txn) error {
-			var err error
-			if ops.Delete {
-				err = txn.Delete(ops.DBKey)
-			} else {
-				err = txn.Set(ops.DBKey, cipher.Encrypt(key, ops.DBKey, ops.Value))
-			}
-			if err != nil {
-				fmt.Println(err)
+		err := testDB.Update(func(txn *badger.Txn) error {
+			for _, op := range waitingWrites {
+				var err error
+				if op.Delete {
+					// fmt.Println("delete", op.DBKey)
+					err = txn.Delete(op.DBKey)
+				} else if op.CleanHistory {
+					err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value), 0)
+				} else {
+					// fmt.Println("write", op.DBKey)
+					err = txn.Set(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value))
+				}
+				// Returns the write error to the caller
+				if err != nil {
+					go nonBlockingResponseChan(testCtx,op, err)
+				}
 			}
 			return nil
 		})
 
-		ops.ResponseChan <- err
-
-		if err != nil {
-			fmt.Println(err)
+		// Dispatch the commit response to all callers
+		for _, op := range waitingWrites {
+			go nonBlockingResponseChan(testCtx,op, err)
 		}
+	}
+}
+
+func  nonBlockingResponseChan(testCtx context.Context, tx *transaction.Transaction, err error) {
+	if tx.ResponseChan == nil {
+		return
+	}
+	select {
+	case tx.ResponseChan <- err:
+	case <-testCtx.Done():
+	case <-tx.Ctx.Done():
 	}
 }
 
@@ -135,7 +199,14 @@ func cleanup(t *testing.T, s store.KVStore) {
 		t.Error(err)
 		return
 	}
-	err = os.RemoveAll("test")
+
+	err = testDB.Close()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = os.RemoveAll(testPath)
 	if err != nil {
 		t.Error(err)
 		return
@@ -143,55 +214,82 @@ func cleanup(t *testing.T, s store.KVStore) {
 }
 
 func TestBadgerDBKVCrud(t *testing.T) {
-	s := open(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, nil)
 	defer cleanup(t, s)
 	test.CommonTestKVCrud(t, s)
 }
 
 func TestBadgerDBReaderIsolation(t *testing.T) {
-	s := open(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, nil)
 	defer cleanup(t, s)
 	test.CommonTestReaderIsolation(t, s)
 }
 
 func TestBadgerDBReaderOwnsGetBytes(t *testing.T) {
-	s := open(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, nil)
 	defer cleanup(t, s)
 	test.CommonTestReaderOwnsGetBytes(t, s)
 }
 
 func TestBadgerDBWriterOwnsBytes(t *testing.T) {
-	s := open(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, nil)
 	defer cleanup(t, s)
 	test.CommonTestWriterOwnsBytes(t, s)
 }
 
 func TestBadgerDBPrefixIterator(t *testing.T) {
-	s := open(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, nil)
 	defer cleanup(t, s)
 	test.CommonTestPrefixIterator(t, s)
 }
 
 func TestBadgerDBPrefixIteratorSeek(t *testing.T) {
-	s := open(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, nil)
 	defer cleanup(t, s)
 	test.CommonTestPrefixIteratorSeek(t, s)
 }
 
 func TestBadgerDBRangeIterator(t *testing.T) {
-	s := open(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, nil)
 	defer cleanup(t, s)
 	test.CommonTestRangeIterator(t, s)
 }
 
 func TestBadgerDBRangeIteratorSeek(t *testing.T) {
-	s := open(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, nil)
 	defer cleanup(t, s)
 	test.CommonTestRangeIteratorSeek(t, s)
 }
 
 func TestBadgerDBMerge(t *testing.T) {
-	s := open(t, &test.TestMergeCounter{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s := open(t, ctx, &test.TestMergeCounter{})
 	defer cleanup(t, s)
 	test.CommonTestMerge(t, s)
 }

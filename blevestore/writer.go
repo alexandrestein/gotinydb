@@ -54,7 +54,7 @@ func (w *Writer) NewBatch() store.KVBatch {
 
 func (w *Writer) write() error {
 	for _, ope := range w.operations {
-		// Sand to the write routine
+		// Send to the write routine
 		select {
 		case w.store.config.writesChan <- ope:
 		case <-w.store.config.ctx.Done():
@@ -68,7 +68,6 @@ func (w *Writer) write() error {
 				return err
 			}
 		case <-ope.Ctx.Done():
-			return ope.Ctx.Err()
 		case <-w.store.config.ctx.Done():
 			return w.store.config.ctx.Err()
 		}

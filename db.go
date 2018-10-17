@@ -254,9 +254,9 @@ func (d *DB) goRoutineLoopForWrites() {
 }
 
 func (d *DB) nonBlockingResponseChan(tx *transaction.Transaction, err error) {
-	// if tx.ResponseChan {
-
-	// }
+	if tx.ResponseChan == nil {
+		return
+	}
 	select {
 	case tx.ResponseChan <- err:
 	case <-d.ctx.Done():
