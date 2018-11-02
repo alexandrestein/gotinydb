@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Add
 
-- Support for partial file read.
+- Support for partial file reads and writes [fixes #17](https://github.com/alexandrestein/gotinydb/issues/17).
 
 ## [[0.3.0]](https://github.com/alexandrestein/gotinydb/compare/v0.2.2...v0.3.0) - 2018-10-09
 
