@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"reflect"
 	"testing"
 
@@ -19,10 +20,10 @@ func TestFiles(t *testing.T) {
 	}
 
 	// Change the file size from 5MB to 100KB
-	defaultFileChuckSize := FileChuckSize
-	FileChuckSize = 100 * 1000
+	defaultFileChuckSize := fileChuckSize
+	fileChuckSize = 100 * 1000
 	defer func(defaultFileChuckSize int) {
-		FileChuckSize = defaultFileChuckSize
+		fileChuckSize = defaultFileChuckSize
 	}(defaultFileChuckSize)
 
 	// 100MB
@@ -30,7 +31,7 @@ func TestFiles(t *testing.T) {
 	rand.Read(randBuff)
 
 	fileID := "test file ID"
-	n, err := testDB.PutFile(fileID, bytes.NewBuffer(randBuff))
+	n, err := testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -123,7 +124,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 
 	fileID := "test file ID"
 
-	n, err := testDB.PutFile(fileID, bytes.NewBuffer(randBuff))
+	n, err := testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -137,7 +138,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 	randBuff = make([]byte, 5*999*1000)
 	rand.Read(randBuff)
 
-	n, err = testDB.PutFile(fileID, bytes.NewBuffer(randBuff))
+	n, err = testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -160,5 +161,90 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 	if !reflect.DeepEqual(randHash, readHash) {
 		t.Error("the saved file and the rand file are not equal")
 		return
+	}
+}
+
+func TestFilesReaderInterface(t *testing.T) {
+	defer clean()
+	err := open(t)
+	if err != nil {
+		return
+	}
+
+	// ≊ 15MB
+	randBuff := make([]byte, 15*999*1000)
+	rand.Read(randBuff)
+
+	fileID := "test file ID"
+
+	n, err := testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if n != len(randBuff) {
+		t.Errorf("expected write size %d but had %d", len(randBuff), n)
+		return
+	}
+
+	// Read into the middle
+	interfaceReadAtTest(t, fileID, randBuff, 8484246, 500, 500)
+
+	// Read to the end
+	interfaceReadAtTest(t, fileID, randBuff, len(randBuff)-200, 500, 200)
+
+	// Test seek
+	reader, err := testDB.GetFileReader(fileID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	reader.Seek(50, io.SeekStart)
+	interfaceReadTestAfterSeek(t, reader, randBuff, 50, 100)
+	reader.Seek(50, io.SeekCurrent)
+	interfaceReadTestAfterSeek(t, reader, randBuff, 200, 100)
+	reader.Seek(50, io.SeekEnd)
+	interfaceReadTestAfterSeek(t, reader, randBuff, len(randBuff)-50, 50)
+}
+
+func interfaceReadAtTest(t *testing.T, fileID string, randBuff []byte, readStart, readLength, wantedN int) {
+	reader, err := testDB.GetFileReader(fileID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	p := make([]byte, readLength)
+	var n int
+	n, err = reader.ReadAt(p, int64(readStart))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != wantedN {
+		t.Fatalf("the number of reader bytes must be %d but had %d", wantedN, n)
+	}
+
+	randChunk := randBuff[readStart : readStart+wantedN]
+	if !reflect.DeepEqual(randChunk, p[:wantedN]) {
+		t.Fatal("the saved and retrived buffer must be equal but not")
+	}
+}
+
+func interfaceReadTestAfterSeek(t *testing.T, reader *Reader, randBuff []byte, readStart, wantedN int) {
+	p := make([]byte, 100)
+	n, err := reader.Read(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != wantedN {
+		t.Fatalf("the number of reader bytes must be %d but had %d", wantedN, n)
+	}
+
+	randChunk := randBuff[readStart : readStart+wantedN]
+	if !reflect.DeepEqual(randChunk, p[:wantedN]) {
+		fmt.Println(randChunk, p)
+		fmt.Println(readStart)
+		t.Fatal("the saved and retrived buffer must be equal but not")
 	}
 }

@@ -2,7 +2,9 @@ package gotinydb
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
 	"reflect"
 	"testing"
@@ -50,6 +52,13 @@ func (t *testUserStruct) Type() string {
 }
 
 func init() {
+	tmpKey, err := base64.RawStdEncoding.DecodeString("/HpNPL+GzfLDsA642L7jdKcLuaGV8ijv9f9prSGRGIg")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	copy(testConfigKey[:], tmpKey[:])
+
 	os.RemoveAll(testPath)
 }
 
@@ -163,6 +172,12 @@ func open(t *testing.T) (err error) {
 	indexMapping.AddDocumentMapping(testUser.Type(), userDocumentMapping)
 
 	err = testCol.SetBleveIndex(testIndexName, indexMapping)
+	if err != nil {
+		t.Error(err)
+		return err
+	}
+
+	err = testCol.SetBleveIndex("all", bleve.NewIndexMapping())
 	if err != nil {
 		t.Error(err)
 		return err
@@ -346,3 +361,40 @@ func TestDeleteParts(t *testing.T) {
 	})
 }
 
+func TestChainOpen(t *testing.T) {
+	db, err := Open("db", testConfigKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	var userCollection *Collection
+	userCollection, err = db.Use("users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = userCollection.SetBleveIndex("all", bleve.NewIndexMapping())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestChainReOpen(t *testing.T) {
+	defer os.RemoveAll("db")
+	db, err := Open("db", testConfigKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	var userCollection *Collection
+	userCollection, err = db.Use("users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = userCollection.SetBleveIndex("all", bleve.NewIndexMapping())
+	if err == nil {
+		t.Fatal("the index exist")
+	}
+}
