@@ -1,8 +1,12 @@
 package gotinydb
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transaction"
@@ -10,16 +14,49 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+type (
+	// FileMeta defines some file metadata informations
+	FileMeta struct {
+		ID           string
+		Name         string
+		Size         int64
+		LastModified time.Time
+		ChuckSize    int
+	}
+
+	// Reader define a simple object to read part of the file
+	Reader struct {
+		Meta *FileMeta
+
+		db              *DB
+		currentPosition int64
+		txn             *badger.Txn
+	}
+)
+
 // PutFile let caller insert large element into the database via a reader interface
-func (d *DB) PutFile(id string, reader io.Reader) (n int, err error) {
+func (d *DB) PutFile(id string, name string, reader io.Reader) (n int, err error) {
 	d.DeleteFile(id)
 
+	meta := new(FileMeta)
+	meta.ID = id
+	meta.Name = name
+	meta.Size = 0
+	meta.LastModified = time.Now()
+	meta.ChuckSize = fileChuckSize
+
+	// Set the meta
+	err = d.putFileMeta(id, meta)
+	if err != nil {
+		return
+	}
+
 	// Track the numbers of chunks
-	nChunk := 0
+	nChunk := 1
 	// Open a loop
 	for true {
 		// Initialize the read buffer
-		buff := make([]byte, FileChuckSize)
+		buff := make([]byte, fileChuckSize)
 		var nWritten int
 		nWritten, err = reader.Read(buff)
 		// The read is done and it returns
@@ -66,7 +103,78 @@ func (d *DB) PutFile(id string, reader io.Reader) (n int, err error) {
 		nChunk++
 	}
 
+	meta.Size = int64(n)
+	meta.LastModified = time.Now()
+	err = d.putFileMeta(id, meta)
+	if err != nil {
+		return
+	}
+
 	err = nil
+	return
+}
+
+func (d *DB) getFileMeta(id string) (meta *FileMeta, err error) {
+	meta = new(FileMeta)
+
+	err = d.badger.View(func(txn *badger.Txn) (err error) {
+		metaID := d.buildFilePrefix(id, 0)
+
+		var item *badger.Item
+		item, err = txn.Get(metaID)
+		if err != nil {
+			return
+		}
+
+		var valAsEncryptedBytes []byte
+		valAsEncryptedBytes, err = item.ValueCopy(valAsEncryptedBytes)
+		if err != nil {
+			return
+		}
+
+		var valAsBytes []byte
+		valAsBytes, err = cipher.Decrypt(d.PrivateKey, item.Key(), valAsEncryptedBytes)
+		if err != nil {
+			return
+		}
+
+		return json.Unmarshal(valAsBytes, meta)
+	})
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (d *DB) putFileMeta(id string, meta *FileMeta) (err error) {
+	metaID := d.buildFilePrefix(id, 0)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var metaAsBytes []byte
+	metaAsBytes, err = json.Marshal(meta)
+	if err != nil {
+		return
+	}
+
+	tx := transaction.NewTransaction(
+		ctx,
+		metaID,
+		metaAsBytes,
+		false,
+	)
+	// Run the insertion
+	select {
+	case d.writeChan <- tx:
+	case <-d.ctx.Done():
+		return d.ctx.Err()
+	}
+	// And wait for the end of the insertion
+	select {
+	case err = <-tx.ResponseChan:
+	case <-tx.Ctx.Done():
+		err = tx.Ctx.Err()
+	}
 	return
 }
 
@@ -81,7 +189,8 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 
 		it := txn.NewIterator(opt)
 		defer it.Close()
-		for it.Seek(storeID); it.ValidForPrefix(storeID); it.Next() {
+
+		for it.Seek(d.buildFilePrefix(id, 1)); it.ValidForPrefix(storeID); it.Next() {
 			var err error
 			var valAsEncryptedBytes []byte
 			valAsEncryptedBytes, err = it.Item().ValueCopy(valAsEncryptedBytes)
@@ -103,6 +212,18 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 
 		return nil
 	})
+}
+
+// GetFileReader returns a struct to provide simple reading of big files.
+func (d *DB) GetFileReader(id string) (reader *Reader, err error) {
+	reader = new(Reader)
+
+	reader.Meta, err = d.getFileMeta(id)
+
+	reader.db = d
+	reader.txn = d.badger.NewTransaction(false)
+
+	return
 }
 
 // DeleteFile deletes every chunks of the given file ID
@@ -186,4 +307,98 @@ func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
 
 	// Return the ID for the given file and ID
 	return append(prefixWithID, chunkPart...)
+}
+
+// Read implements the io.Reader interface
+func (r *Reader) Read(p []byte) (n int, err error) {
+	block, inside := r.getBlockAndInsidePosition(r.currentPosition)
+
+	opt := badger.DefaultIteratorOptions
+	opt.PrefetchSize = 3
+	opt.PrefetchValues = true
+
+	it := r.txn.NewIterator(opt)
+	defer it.Close()
+
+	buffer := bytes.NewBuffer(nil)
+	first := true
+
+	filePrefix := r.db.buildFilePrefix(r.Meta.ID, -1)
+	for it.Seek(r.db.buildFilePrefix(r.Meta.ID, block)); it.ValidForPrefix(filePrefix); it.Next() {
+		var err error
+		var valAsEncryptedBytes []byte
+		valAsEncryptedBytes, err = it.Item().ValueCopy(valAsEncryptedBytes)
+		if err != nil {
+			return 0, err
+		}
+
+		var valAsBytes []byte
+		valAsBytes, err = cipher.Decrypt(r.db.PrivateKey, it.Item().Key(), valAsEncryptedBytes)
+		if err != nil {
+			return 0, err
+		}
+
+		var toAdd []byte
+		if first {
+			toAdd = valAsBytes[inside:]
+		} else {
+			toAdd = valAsBytes
+		}
+		buffer.Write(toAdd)
+		if buffer.Len() >= len(p) {
+			copy(p, buffer.Bytes()[:len(p)])
+			r.currentPosition += int64(len(p))
+			return len(p), nil
+		}
+
+		first = false
+	}
+
+	copy(p, buffer.Bytes())
+
+	r.currentPosition = 0
+
+	return buffer.Len(), nil
+}
+
+// Seek implements the io.Seeker interface
+func (r *Reader) Seek(offset int64, whence int) (n int64, err error) {
+	switch whence {
+	case io.SeekStart:
+		n = offset
+	case io.SeekCurrent:
+		n = r.currentPosition + offset
+	case io.SeekEnd:
+		n = r.Meta.Size - offset
+	default:
+		err = fmt.Errorf("whence not recognized")
+	}
+
+	if n > r.Meta.Size || n < 0 {
+		err = fmt.Errorf("is out of the file")
+	}
+
+	r.currentPosition = n
+	return
+}
+
+// ReadAt implements the io.ReaderAt interface
+func (r *Reader) ReadAt(p []byte, off int64) (n int, err error) {
+	if r.Meta.Size <= off {
+		err = fmt.Errorf("the offset can not be equal or bigger than the file")
+		return
+	}
+
+	r.currentPosition = off
+	return r.Read(p)
+}
+
+// Close should be called when done with the Reader
+func (r *Reader) Close() (err error) {
+	r.txn.Discard()
+	return
+}
+
+func (r *Reader) getBlockAndInsidePosition(offset int64) (block, inside int) {
+	return int(offset/int64(r.Meta.ChuckSize)) + 1, int(offset) % r.Meta.ChuckSize
 }
