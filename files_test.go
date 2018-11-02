@@ -231,7 +231,7 @@ func interfaceReadAtTest(t *testing.T, fileID string, randBuff []byte, readStart
 	}
 }
 
-func interfaceReadTestAfterSeek(t *testing.T, reader *Reader, randBuff []byte, readStart, wantedN int) {
+func interfaceReadTestAfterSeek(t *testing.T, reader Reader, randBuff []byte, readStart, wantedN int) {
 	p := make([]byte, 100)
 	n, err := reader.Read(p)
 	if err != nil {
@@ -246,5 +246,101 @@ func interfaceReadTestAfterSeek(t *testing.T, reader *Reader, randBuff []byte, r
 		fmt.Println(randChunk, p)
 		fmt.Println(readStart)
 		t.Fatal("the saved and retrived buffer must be equal but not")
+	}
+}
+
+func TestFilesWriterInterface(t *testing.T) {
+	defer clean()
+	err := open(t)
+	if err != nil {
+		return
+	}
+
+	// ≊ 15MB
+	randBuff := make([]byte, 15*999*1000)
+	rand.Read(randBuff)
+
+	fileID := "test file ID"
+
+	n, err := testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if n != len(randBuff) {
+		t.Errorf("expected write size %d but had %d", len(randBuff), n)
+		return
+	}
+
+	writer, err := testDB.GetFileWriter(fileID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Close()
+
+	p := make([]byte, 200)
+	n, err = writer.WriteAt(p, 500)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != len(p) {
+		t.Fatalf("written %d bytes but contain %d", n, len(p))
+	}
+
+	expected := randBuff[400:500]
+	expected = append(expected, p...)
+	expected = append(expected, randBuff[500+len(p):500+len(p)+100]...)
+	testWriteFileParts(t, fileID, expected, 400)
+
+	p = make([]byte, 7*999*1000)
+	n, err = writer.WriteAt(p, 500)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != len(p) {
+		t.Fatalf("written %d bytes but contain %d", n, len(p))
+	}
+
+	expected = randBuff[400:500]
+	expected = append(expected, p...)
+	expected = append(expected, randBuff[500+len(p):500+len(p)+100]...)
+	testWriteFileParts(t, fileID, expected, 400)
+}
+
+func testWriteFileParts(t *testing.T, fileID string, expected []byte, at int64) {
+	reader, err := testDB.GetFileReader(fileID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p := make([]byte, len(expected))
+	var n int
+	n, err = reader.ReadAt(p, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(expected, p) {
+		printExpectedBytes := []byte{}
+		printBytes := []byte{}
+		counter := 0
+		for i := range expected {
+			if expected[i] != p[i] {
+				printExpectedBytes = append(printExpectedBytes, expected[i])
+				printBytes = append(printBytes, p[i])
+				counter++
+
+				fmt.Println(i)
+			}
+
+			if counter >= 300 {
+				break
+			}
+		}
+		fmt.Println(printExpectedBytes)
+		fmt.Println(printBytes)
+		t.Fatalf("the returned value is unexpected")
+	}
+	if n != len(expected) {
+		t.Fatalf("the returned n is not corrected. Expected %d has %d", n, len(expected))
 	}
 }
