@@ -141,10 +141,10 @@ func Example() {
 
 	// Display the result
 	fmt.Println(id)
-	fmt.Println(retrievedRecord.ID, retrievedRecord.Email, retrievedRecord.LastLogin.Format(time.RFC822))
+	fmt.Println(retrievedRecord.ID, retrievedRecord.Email, retrievedRecord.LastLogin.Format(time.Stamp))
 
 	// Output: id
-	// 316 jonas-90@tlaloc.com 05 Nov 18 12:20 CET
+	// 316 jonas-90@tlaloc.com Nov  5 12:20:44
 }
 
 func ExampleOpen() {

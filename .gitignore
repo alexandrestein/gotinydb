@@ -4,3 +4,4 @@ debug.test
 .vscode
 
 /examples/vendor
+/path_to_database_directory
