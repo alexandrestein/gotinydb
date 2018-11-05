@@ -18,19 +18,15 @@ jobs:
     ####   /go/src/github.com/circleci/go-tool
     ####   /go/src/bitbucket.org/circleci/go-tool
     working_directory: /go/src/github.com/alexandrestein/gotinydb
+
+    environment:
+      GO111MODULE: on
+
     steps:
       - checkout
       # specify any bash command here prefixed with `run: `
-
-      # dep
-      - run: go get -u github.com/golang/dep/cmd/dep
-      - run: dep ensure -v
       
-      # vgo 
-      # - run: go get -u golang.org/x/vgo
-      # - run: vgo get -v
-
       # test
-      - run: go test -race -v -cover -coverprofile=coverage.txt -covermode=atomic
+      - run: go vet ./...
+      - run: go test -race -v -cover -coverprofile=coverage.txt -covermode=atomic ./...
       - run: bash <(curl -s https://codecov.io/bash)
-      # - run: vgo test -v -race ./...

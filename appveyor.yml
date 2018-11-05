@@ -4,18 +4,14 @@ clone_folder: c:\gopath\src\github.com\alexandrestein\gotinydb
 
 environment:
   GOPATH: c:\gopath
-  # CGO_ENABLED: 1
 
 stack: go 1.11
 
 before_test:
   - set Path=c:\go\bin;c:\gopath\bin;%PATH%
-  - go get -u github.com/golang/dep/cmd/dep
-  # - go get -u golang.org/x/vgo
-  - dep ensure -v 
-  # - vgo get -v -u
+  - set GO111MODULE=on
+  - go mod download
   - go vet ./...
 
 test_script:
-  - go test -v -race -cover
-  # - vgo test -v -race ./...
+  - go test -v -race -cover ./...

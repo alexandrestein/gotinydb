@@ -69,7 +69,8 @@ Feedbacks and suggestions are welcome.
 
 ## Vendoring
 
-You can use [dep](https://github.com/golang/dep) for vendoring.
+We moved to go module.
+In future Go release this will be the default vendoring behavior. So this will be transparent in the next release.
 
 ## Versioning
 

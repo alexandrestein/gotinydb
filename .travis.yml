@@ -1,17 +1,23 @@
 language: go
 
-go_import_path: github.com/alexandrestein/gotinydb
-
-sudo: required 
-
 go:
   - "1.11.x"
   - master
   - tip
 
-before_install:
-  - go get ./...
+os:
+  - linux
+  - osx
+
+# go_import_path: github.com/alexandrestein/gotinydb
+
+dist: trusty
+sudo: false
+
+install: true
 
 script:
-  - go test -v -cover -race
+  - export GO111MODULE=on 
+  - go vet ./...
+  - go test -v -cover -race ./...
 
