@@ -13,6 +13,7 @@ import (
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/mapping"
 	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
@@ -45,6 +46,12 @@ type (
 		Prefix []byte
 	}
 )
+
+func init() {
+	// This should prevent indexing the not indexed values
+	mapping.StoreDynamic = false
+	mapping.DocValuesDynamic = false
+}
 
 // Open initialize a new database or open an existing one.
 // The path defines the place the data will be saved and the configuration key
@@ -96,7 +103,7 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 				savedCol.db = d
 			}
 			col = savedCol
-		} else if reflect.DeepEqual(col.Prefix, prefix) {
+		} else if reflect.DeepEqual(savedCol.Prefix, prefix) {
 			return nil, ErrHashCollision
 		}
 	}
@@ -395,4 +402,3 @@ newLoop:
 		goto newLoop
 	}
 }
-

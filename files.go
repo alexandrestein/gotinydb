@@ -29,7 +29,6 @@ type (
 		db              *DB
 		currentPosition int64
 		txn             *badger.Txn
-		reader, writer  bool
 	}
 
 	// Reader define a simple object to read parts of the file
@@ -58,15 +57,10 @@ type (
 func (d *DB) PutFile(id string, name string, reader io.Reader) (n int, err error) {
 	d.DeleteFile(id)
 
-	meta := new(FileMeta)
-	meta.ID = id
-	meta.Name = name
-	meta.Size = 0
-	meta.LastModified = time.Now()
-	meta.ChuckSize = fileChuckSize
+	meta := d.buildMeta(id, name)
 
 	// Set the meta
-	err = d.putFileMeta(id, meta)
+	err = d.putFileMeta(meta)
 	if err != nil {
 		return
 	}
@@ -104,7 +98,7 @@ func (d *DB) PutFile(id string, name string, reader io.Reader) (n int, err error
 
 	meta.Size = int64(n)
 	meta.LastModified = time.Now()
-	err = d.putFileMeta(id, meta)
+	err = d.putFileMeta(meta)
 	if err != nil {
 		return
 	}
@@ -143,15 +137,18 @@ func (d *DB) writeFileChunk(id string, chunk int, content []byte) (err error) {
 	return
 }
 
-func (d *DB) getFileMeta(id string) (meta *FileMeta, err error) {
-	meta = new(FileMeta)
-
+func (d *DB) getFileMeta(id, name string) (meta *FileMeta, err error) {
 	err = d.badger.View(func(txn *badger.Txn) (err error) {
 		metaID := d.buildFilePrefix(id, 0)
 
 		var item *badger.Item
 		item, err = txn.Get(metaID)
 		if err != nil {
+			if err == badger.ErrKeyNotFound {
+				err = nil
+				meta = d.buildMeta(id, name)
+				return
+			}
 			return
 		}
 
@@ -167,6 +164,7 @@ func (d *DB) getFileMeta(id string) (meta *FileMeta, err error) {
 			return
 		}
 
+		meta = new(FileMeta)
 		return json.Unmarshal(valAsBytes, meta)
 	})
 	if err != nil {
@@ -175,8 +173,19 @@ func (d *DB) getFileMeta(id string) (meta *FileMeta, err error) {
 	return
 }
 
-func (d *DB) putFileMeta(id string, meta *FileMeta) (err error) {
-	metaID := d.buildFilePrefix(id, 0)
+func (d *DB) buildMeta(id, name string) (meta *FileMeta) {
+	meta = new(FileMeta)
+	meta.ID = id
+	meta.Name = name
+	meta.Size = 0
+	meta.LastModified = time.Now()
+	meta.ChuckSize = fileChuckSize
+
+	return
+}
+
+func (d *DB) putFileMeta(meta *FileMeta) (err error) {
+	metaID := d.buildFilePrefix(meta.ID, 0)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -246,14 +255,17 @@ func (d *DB) ReadFile(id string, writer io.Writer) error {
 // GetFileReader returns a struct to provide simple reading partial of big files.
 // The default position is at the begining of the file.
 func (d *DB) GetFileReader(id string) (Reader, error) {
-	rw, err := d.newReadWriter(id, false)
+	rw, err := d.newReadWriter(id, "", false)
 	return Reader(rw), err
 }
 
 // GetFileWriter returns a struct to provide simple partial write of big files.
 // The default position is at the end of the file.
-func (d *DB) GetFileWriter(id string) (Writer, error) {
-	rw, err := d.newReadWriter(id, true)
+func (d *DB) GetFileWriter(id, name string) (Writer, error) {
+	rw, err := d.newReadWriter(id, name, true)
+	if err != nil {
+		return nil, err
+	}
 	rw.currentPosition = rw.meta.Size
 	return Writer(rw), err
 }
@@ -341,12 +353,10 @@ func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
 	return append(prefixWithID, chunkPart...)
 }
 
-func (d *DB) newReadWriter(id string, writer bool) (_ *readWriter, err error) {
+func (d *DB) newReadWriter(id, name string, writer bool) (_ *readWriter, err error) {
 	rw := new(readWriter)
-	rw.reader = !writer
-	rw.writer = writer
 
-	rw.meta, err = d.getFileMeta(id)
+	rw.meta, err = d.getFileMeta(id, name)
 	if err != nil {
 		return nil, err
 	}
@@ -373,6 +383,10 @@ func (r *readWriter) Read(p []byte) (n int, err error) {
 
 	filePrefix := r.db.buildFilePrefix(r.meta.ID, -1)
 	for it.Seek(r.db.buildFilePrefix(r.meta.ID, block)); it.ValidForPrefix(filePrefix); it.Next() {
+		if it.Item().IsDeletedOrExpired() {
+			break
+		}
+
 		var err error
 		var valAsEncryptedBytes []byte
 		valAsEncryptedBytes, err = it.Item().ValueCopy(valAsEncryptedBytes)
@@ -406,7 +420,7 @@ func (r *readWriter) Read(p []byte) (n int, err error) {
 
 	r.currentPosition = 0
 
-	return buffer.Len(), nil
+	return buffer.Len(), io.EOF
 }
 
 func (r *readWriter) checkReadWriteAt(off int64) error {
@@ -431,6 +445,12 @@ func (r *readWriter) getExistingBlock(blockN int) (ret []byte, err error) {
 	chunkID := r.db.buildFilePrefix(r.meta.ID, blockN)
 	var item *badger.Item
 	item, err = r.txn.Get(chunkID)
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return []byte{}, nil
+		}
+		return
+	}
 
 	var valAsEncryptedBytes []byte
 	valAsEncryptedBytes, err = item.ValueCopy(valAsEncryptedBytes)
@@ -442,17 +462,10 @@ func (r *readWriter) getExistingBlock(blockN int) (ret []byte, err error) {
 }
 
 func (r *readWriter) Write(p []byte) (n int, err error) {
+	// Get a new transaction to be able to call write multiple times
+	defer r.afterWrite(len(p))
+
 	block, inside := r.getBlockAndInsidePosition(r.currentPosition)
-
-	// chunkID := r.db.buildFilePrefix(r.meta.ID, block)
-	// var item *badger.Item
-	// item, err = r.txn.Get(chunkID)
-
-	// var valAsEncryptedBytes []byte
-	// valAsEncryptedBytes, err = item.ValueCopy(valAsEncryptedBytes)
-	// if err != nil {
-	// 	return 0, err
-	// }
 
 	var valAsBytes []byte
 	valAsBytes, err = r.getExistingBlock(block)
@@ -462,9 +475,16 @@ func (r *readWriter) Write(p []byte) (n int, err error) {
 
 	freeToWriteInThisChunk := fileChuckSize - inside
 	if freeToWriteInThisChunk > len(p) {
-		toWrite := valAsBytes[:inside]
+		toWrite := []byte{}
+		if inside <= len(valAsBytes) {
+			toWrite = valAsBytes[:inside]
+		}
 		toWrite = append(toWrite, p...)
-		toWrite = append(toWrite, valAsBytes[inside+len(p):]...)
+
+		// If the new content don't completely overwrite the previous content
+		if existingAfterNewWriteStartPosition := inside + len(p); existingAfterNewWriteStartPosition < len(valAsBytes) {
+			toWrite = append(toWrite, valAsBytes[existingAfterNewWriteStartPosition:]...)
+		}
 
 		return len(p), r.db.writeFileChunk(r.meta.ID, block, toWrite)
 	}
@@ -486,7 +506,6 @@ newLoop:
 	if newEnd > len(p) {
 		newEnd = len(p)
 		done = true
-
 	}
 
 	nextToWrite := p[n:newEnd]
@@ -512,6 +531,64 @@ newLoop:
 	}
 
 	goto newLoop
+}
+
+func (r *readWriter) afterWrite(writenLength int) {
+	// Refrech the transaction
+	r.txn.Discard()
+	r.txn = r.db.badger.NewTransaction(false)
+
+	r.meta.Size += r.getWrittenSize()
+	r.meta.LastModified = time.Now()
+
+	r.currentPosition += int64(writenLength)
+
+	r.db.putFileMeta(r.meta)
+}
+
+func (r *readWriter) getWrittenSize() (n int64) {
+	opt := badger.DefaultIteratorOptions
+	opt.PrefetchSize = 5
+	opt.PrefetchValues = false
+
+	it := r.txn.NewIterator(opt)
+	defer it.Close()
+
+	nbChunks := -1
+	blockesPrefix := r.db.buildFilePrefix(r.meta.ID, -1)
+	var item *badger.Item
+
+	var lastBlockItem *badger.Item
+	for it.Seek(r.db.buildFilePrefix(r.meta.ID, 1)); it.ValidForPrefix(blockesPrefix); it.Next() {
+		item = it.Item()
+		if item.IsDeletedOrExpired() {
+			break
+		}
+		lastBlockItem = item
+		nbChunks++
+	}
+
+	if lastBlockItem == nil {
+		return 0
+	}
+
+	var encryptedValue []byte
+	var err error
+	encryptedValue, err = lastBlockItem.ValueCopy(encryptedValue)
+	if err != nil {
+		return
+	}
+
+	var valAsBytes []byte
+	valAsBytes, err = cipher.Decrypt(r.db.PrivateKey, item.Key(), encryptedValue)
+	if err != nil {
+		return
+	}
+
+	n = int64(nbChunks * r.meta.ChuckSize)
+	n += int64(len(valAsBytes))
+
+	return
 }
 
 func (r *readWriter) WriteAt(p []byte, off int64) (n int, err error) {

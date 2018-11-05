@@ -4,7 +4,6 @@ clone_folder: c:\gopath\src\github.com\alexandrestein\gotinydb
 
 environment:
   GOPATH: c:\gopath
-  CGO_ENABLED: 1
 
 stack: go 1.11
 

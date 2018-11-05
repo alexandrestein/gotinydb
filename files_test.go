@@ -218,7 +218,7 @@ func interfaceReadAtTest(t *testing.T, fileID string, randBuff []byte, readStart
 	p := make([]byte, readLength)
 	var n int
 	n, err = reader.ReadAt(p, int64(readStart))
-	if err != nil {
+	if err != nil && err != io.EOF {
 		t.Fatal(err)
 	}
 	if n != wantedN {
@@ -234,7 +234,7 @@ func interfaceReadAtTest(t *testing.T, fileID string, randBuff []byte, readStart
 func interfaceReadTestAfterSeek(t *testing.T, reader Reader, randBuff []byte, readStart, wantedN int) {
 	p := make([]byte, 100)
 	n, err := reader.Read(p)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		t.Fatal(err)
 	}
 	if n != wantedN {
@@ -272,7 +272,7 @@ func TestFilesWriterInterface(t *testing.T) {
 		return
 	}
 
-	writer, err := testDB.GetFileWriter(fileID)
+	writer, err := testDB.GetFileWriter(fileID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
