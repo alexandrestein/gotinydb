@@ -37,10 +37,6 @@ type (
 		io.Seeker
 		io.ReaderAt
 
-		// Read(p []byte) (n int, err error)
-		// Seek(offset int64, whence int) (n int64, err error)
-		// ReadAt(p []byte, off int64) (n int, err error)
-		// Close() (err error)
 		GetMeta() *FileMeta
 	}
 

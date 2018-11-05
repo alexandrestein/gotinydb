@@ -1,3 +1,13 @@
+/*
+Package gotinydb implements a simple but useful embedded database.
+
+It supports document insertion and retrieving of golang pointers via the JSON package.
+Those documents can be indexed with Bleve. 
+
+File management is also supported and the all database is encrypted.
+
+It relais on Bleve and Badger to do the job.
+*/
 package gotinydb
 
 import (
