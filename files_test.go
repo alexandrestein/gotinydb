@@ -231,11 +231,7 @@ func interfaceReadAtTest(t *testing.T, fileID string, randBuff []byte, readStart
 	}
 }
 
-<<<<<<< HEAD
-func interfaceReadTestAfterSeek(t *testing.T, reader *Reader, randBuff []byte, readStart, wantedN int) {
-=======
 func interfaceReadTestAfterSeek(t *testing.T, reader Reader, randBuff []byte, readStart, wantedN int) {
->>>>>>> dev
 	p := make([]byte, 100)
 	n, err := reader.Read(p)
 	if err != nil {
@@ -252,8 +248,6 @@ func interfaceReadTestAfterSeek(t *testing.T, reader Reader, randBuff []byte, re
 		t.Fatal("the saved and retrived buffer must be equal but not")
 	}
 }
-<<<<<<< HEAD
-=======
 
 func TestFilesWriterInterface(t *testing.T) {
 	defer clean()
@@ -326,28 +320,9 @@ func testWriteFileParts(t *testing.T, fileID string, expected []byte, at int64) 
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(expected, p) {
-		printExpectedBytes := []byte{}
-		printBytes := []byte{}
-		counter := 0
-		for i := range expected {
-			if expected[i] != p[i] {
-				printExpectedBytes = append(printExpectedBytes, expected[i])
-				printBytes = append(printBytes, p[i])
-				counter++
-
-				fmt.Println(i)
-			}
-
-			if counter >= 300 {
-				break
-			}
-		}
-		fmt.Println(printExpectedBytes)
-		fmt.Println(printBytes)
 		t.Fatalf("the returned value is unexpected")
 	}
 	if n != len(expected) {
 		t.Fatalf("the returned n is not corrected. Expected %d has %d", n, len(expected))
 	}
 }
->>>>>>> dev
