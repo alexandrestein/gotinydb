@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Add
 
 - Support for partial file reads and writes [fixes #17](https://github.com/alexandrestein/gotinydb/issues/17).
+- Support batch writes.
+- Support multiple get at ones.
 
 ## Remove
 

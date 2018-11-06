@@ -23,9 +23,15 @@ var (
 
 	testColName = "collection name"
 
-	testUserID = "test ID"
-	testUser   = &testUserStruct{
+	testUserID      = "test ID"
+	cloneTestUserID = "test ID clone"
+	testUser        = &testUserStruct{
 		"toto",
+		"userName@internet.org",
+		&Account{"Github", "https://www.github.com"},
+	}
+	cloneTestUser = &testUserStruct{
+		"toto clone",
 		"userName@internet.org",
 		&Account{"Github", "https://www.github.com"},
 	}
@@ -125,6 +131,35 @@ func TestMain(t *testing.T) {
 		return
 	}
 
+	// test get
+	retrievedUser = new(testUserStruct)
+	_, err = testCol.Get(testUserID, retrievedUser)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !reflect.DeepEqual(testUser, retrievedUser) {
+		t.Errorf("the expected object is %v and got %v", testUser, retrievedUser)
+		return
+	}
+
+	// test get multi
+	ids := []string{testUserID, cloneTestUserID}
+	destinations := []interface{}{new(testUserStruct), new(testUserStruct)}
+	_, err = testCol.GetMulti(ids, destinations)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !reflect.DeepEqual(testUser, destinations[0]) {
+		t.Errorf("the expected object is %v and got %v", testUser, destinations[0])
+		return
+	}
+	if !reflect.DeepEqual(cloneTestUser, destinations[1]) {
+		t.Errorf("the expected object is %v and got %v", cloneTestUser, destinations[1])
+		return
+	}
+
 	query = bleve.NewQueryStringQuery(testUser.Email)
 	searchResult, err = testCol.Search(testIndexName, query)
 	if err != nil {
@@ -137,6 +172,11 @@ func TestMain(t *testing.T) {
 	}
 
 	err = testCol.Delete(testUserID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = testCol.Delete(cloneTestUserID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -184,6 +224,11 @@ func open(t *testing.T) (err error) {
 	}
 
 	err = testCol.Put(testUserID, testUser)
+	if err != nil {
+		t.Error(err)
+		return err
+	}
+	err = testCol.Put(cloneTestUserID, cloneTestUser)
 	if err != nil {
 		t.Error(err)
 		return err

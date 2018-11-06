@@ -22,6 +22,7 @@ var (
 	ErrEmptyID            = fmt.Errorf("ID must be provided")
 	ErrIndexNotFound      = fmt.Errorf("index not found")
 	ErrNameAllreadyExists = fmt.Errorf("element with the same name allready exists")
+	ErrGetMultiNotEqual   = fmt.Errorf("you must provied the same number of ids and destinations")
 
 	ErrEndOfQueryResult = fmt.Errorf("there is no more values to retrieve from the query")
 )

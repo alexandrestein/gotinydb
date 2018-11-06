@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
@@ -32,6 +33,15 @@ type (
 	Batch struct {
 		c  *Collection
 		tr *transaction.Transaction
+	}
+
+	multiGetCaller struct {
+		id                        string
+		dbID                      []byte
+		i                         int
+		pointer                   interface{}
+		asBytes, encryptedAsBytes []byte
+		err                       error
 	}
 )
 
@@ -134,27 +144,6 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	// Save the new settup
 	return c.db.saveConfig()
 }
-
-// func (c *Collection) newTransaction(ctx context.Context) (tr *transaction.Transaction) {
-// 	// if bytes, ok := content.([]byte); ok {
-// 	// 	tr = transaction.New(ctx, id, content, c.buildDBKey(id), bytes, false)
-// 	// } else {
-// 	// 	jsonBytes, marshalErr := json.Marshal(content)
-// 	// 	if marshalErr != nil {
-// 	// 		return nil, marshalErr
-// 	// 	}
-
-// 	// 	tr = transaction.New(ctx, id, content, c.buildDBKey(id), jsonBytes, false)
-// 	// }
-
-// 	// var op *transaction.Operation
-// 	// op, err = c.buildOperation(id, content, false, false)
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
-
-// 	return transaction.New(ctx)
-// }
 
 func (c *Collection) putSendToWriteAndWaitForResponse(tr *transaction.Transaction) (err error) {
 	select {
@@ -275,47 +264,155 @@ func (c *Collection) fromValueBytesGetContentToIndex(input []byte) interface{} {
 	return ret
 }
 
-// Get returns the saved element. It fills up the given dest pointer if provided.
-// It always returns the content as a stream of bytes and an error if any.
-func (c *Collection) Get(id string, dest interface{}) (contentAsBytes []byte, err error) {
+func (c *Collection) getEncrypted(txn *badger.Txn, caller *multiGetCaller) (err error) {
+	if caller.id == "" {
+		return ErrEmptyID
+	}
+
+	caller.dbID = c.buildDBKey(caller.id)
+
+	var item *badger.Item
+	item, err = txn.Get(caller.dbID)
+	if err != nil {
+		return err
+	}
+	caller.encryptedAsBytes, err = item.ValueCopy(caller.encryptedAsBytes)
+	if err != nil {
+		return err
+	}
+
+	return
+}
+
+func (c *Collection) buildGetCaller(txn *badger.Txn, id string, dest interface{}) (caller *multiGetCaller, err error) {
 	if id == "" {
 		return nil, ErrEmptyID
 	}
 
-	bdKey := c.buildDBKey(id)
+	caller = new(multiGetCaller)
+	caller.id = id
+	caller.pointer = dest
 
-	c.db.badger.View(func(txn *badger.Txn) (err error) {
-		var item *badger.Item
-		item, err = txn.Get(bdKey)
-		if err != nil {
-			return err
-		}
-		contentAsBytes, err = item.ValueCopy(contentAsBytes)
-		if err != nil {
-			return err
-		}
+	return
+}
 
-		return nil
-	})
-
-	contentAsBytes, err = c.db.decryptData(bdKey, contentAsBytes)
+func (c *Collection) get(txn *badger.Txn, id string, dest interface{}) (contentAsBytes []byte, err error) {
+	var caller *multiGetCaller
+	caller, err = c.buildGetCaller(txn, id, dest)
 	if err != nil {
 		return nil, err
 	}
 
-	if dest == nil {
-		return contentAsBytes, nil
+	err = c.getEncrypted(txn, caller)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.decryptAndUnmarshal(caller)
+	if err != nil {
+		return nil, err
+	}
+
+	dest = caller.pointer
+
+	return caller.asBytes, nil
+}
+
+func (c *Collection) decryptAndUnmarshal(caller *multiGetCaller) (err error) {
+	var contentAsBytes []byte
+	contentAsBytes, err = c.db.decryptData(caller.dbID, caller.encryptedAsBytes)
+	if err != nil {
+		return err
+	}
+
+	caller.asBytes = contentAsBytes
+
+	if caller.pointer == nil {
+		return nil
 	}
 
 	decoder := json.NewDecoder(bytes.NewBuffer(contentAsBytes))
 	decoder.UseNumber()
 
-	uMarshalErr := decoder.Decode(dest)
+	uMarshalErr := decoder.Decode(caller.pointer)
 	if uMarshalErr != nil {
-		return nil, uMarshalErr
+		return uMarshalErr
 	}
 
-	return contentAsBytes, nil
+	return nil
+}
+
+// Get returns the saved element. It fills up the given dest pointer if provided.
+// It always returns the content as a stream of bytes and an error if any.
+func (c *Collection) Get(id string, dest interface{}) (contentAsBytes []byte, err error) {
+	c.db.badger.View(func(txn *badger.Txn) error {
+		contentAsBytes, err = c.get(txn, id, dest)
+		return nil
+	})
+
+	return
+}
+
+// GetMulti open one badger transaction and get all document concurrently
+func (c *Collection) GetMulti(ids []string, destinations []interface{}) (contentsAsBytes [][]byte, err error) {
+	if len(ids) != len(destinations) {
+		return nil, ErrGetMultiNotEqual
+	}
+
+	contentsAsBytes = make([][]byte, len(ids))
+
+	var wg sync.WaitGroup
+	wg.Add(len(ids))
+
+	respChan := make(chan *multiGetCaller, len(ids))
+
+	c.db.badger.View(func(txn *badger.Txn) error {
+		for i, id := range ids {
+			var caller *multiGetCaller
+			caller, err = c.buildGetCaller(txn, id, destinations[i])
+			if err != nil {
+				caller.err = err
+				return err
+			}
+
+			err = c.getEncrypted(txn, caller)
+			if err != nil {
+				caller.err = err
+				return err
+			}
+
+			go func() {
+				c.decryptAndUnmarshal(caller)
+				if caller.err != nil {
+					caller.err = err
+				}
+				respChan <- caller
+			}()
+		}
+		return nil
+	})
+
+	go func() {
+		for {
+			caller := <-respChan
+			if caller.err != nil {
+				err = caller.err
+				return
+			}
+
+			contentsAsBytes[caller.i] = caller.asBytes
+
+			wg.Done()
+		}
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
+	wg.Wait()
+
+	return
 }
 
 // Delete deletes all references of the given id.
@@ -325,7 +422,7 @@ func (c *Collection) Delete(id string) (err error) {
 
 	tr := transaction.New(ctx)
 	tr.AddOperation(
-		transaction.NewOperation( id, nil, c.buildDBKey(id), nil, true, false),
+		transaction.NewOperation(id, nil, c.buildDBKey(id), nil, true, false),
 	)
 
 	// Send to the write channel

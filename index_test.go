@@ -179,6 +179,8 @@ func TestIndexResultNext(t *testing.T) {
 		t.Log(searchResult)
 	}
 
+	// Do next twice to pass the clone
+	_, err = searchResult.Next(retrievedUser)
 	_, err = searchResult.Next(retrievedUser)
 	if err == nil {
 		t.Errorf("there is no more result and this must returns an error")
