@@ -111,8 +111,10 @@ func (d *DB) writeFileChunk(id string, chunk int, content []byte) (err error) {
 		return fmt.Errorf("the maximum chunk size is %d bytes long but the content to write is %d bytes long", fileChuckSize, len(content))
 	}
 
-	tx := transaction.NewTransaction(
+	tx := transaction.New(
 		ctx,
+		"",
+		nil,
 		d.buildFilePrefix(id, chunk),
 		content,
 		false,
@@ -191,8 +193,9 @@ func (d *DB) putFileMeta(meta *FileMeta) (err error) {
 		return
 	}
 
-	tx := transaction.NewTransaction(
+	tx := transaction.New(
 		ctx,
+		"",nil,
 		metaID,
 		metaAsBytes,
 		false,
@@ -293,7 +296,7 @@ func (d *DB) DeleteFile(id string) (err error) {
 			var key []byte
 			key = it.Item().KeyCopy(key)
 			// And add it to the list of store IDs to delete
-			tx := transaction.NewTransaction(ctx, key, nil, true)
+			tx := transaction.New(ctx, "",nil, key, nil, true)
 			listOfTx = append(listOfTx, tx)
 			d.writeChan <- tx
 		}

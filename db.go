@@ -2,7 +2,7 @@
 Package gotinydb implements a simple but useful embedded database.
 
 It supports document insertion and retrieving of golang pointers via the JSON package.
-Those documents can be indexed with Bleve. 
+Those documents can be indexed with Bleve.
 
 File management is also supported and the all database is encrypted.
 
@@ -203,10 +203,10 @@ func (d *DB) goRoutineLoopForWrites() {
 	for {
 		writeSizeCounter := 0
 
-		var op *transaction.Transaction
+		var trans *transaction.Transaction
 		var ok bool
 		select {
-		case op, ok = <-d.writeChan:
+		case trans, ok = <-d.writeChan:
 			if !ok {
 				return
 			}
@@ -215,11 +215,11 @@ func (d *DB) goRoutineLoopForWrites() {
 		}
 
 		// Save the size of the write
-		writeSizeCounter += len(op.Value)
+		writeSizeCounter += trans.GetWriteSize()
 		firstArrivedAt := time.Now()
 
 		// Add to the list of operation to be done
-		waitingWrites := []*transaction.Transaction{op}
+		waitingWrites := []*transaction.Transaction{trans}
 
 		// Try to empty the queue if any
 	tryToGetAnOtherRequest:
@@ -244,20 +244,22 @@ func (d *DB) goRoutineLoopForWrites() {
 		}
 
 		err := d.badger.Update(func(txn *badger.Txn) error {
-			for _, op := range waitingWrites {
-				var err error
-				if op.Delete {
-					// fmt.Println("delete", op.DBKey)
-					err = txn.Delete(op.DBKey)
-				} else if op.CleanHistory {
-					err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), 0)
-				} else {
-					// fmt.Println("write", op.DBKey)
-					err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
-				}
-				// Returns the write error to the caller
-				if err != nil {
-					go d.nonBlockingResponseChan(op, err)
+			for _, transaction := range waitingWrites {
+				for _, op := range transaction.Operations {
+					var err error
+					if op.Delete {
+						// fmt.Println("delete", op.DBKey)
+						err = txn.Delete(op.DBKey)
+					} else if op.CleanHistory {
+						err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), 0)
+					} else {
+						// fmt.Println("write", op.DBKey)
+						err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
+					}
+					// Returns the write error to the caller
+					if err != nil {
+						go d.nonBlockingResponseChan(transaction, err)
+					}
 				}
 			}
 			return nil
@@ -330,7 +332,7 @@ func (d *DB) loadCollections() (err error) {
 		for _, index := range col.BleveIndexes {
 			indexPrefix := make([]byte, len(index.Prefix))
 			copy(indexPrefix, index.Prefix)
-			config := blevestore.NewBleveStoreConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.badger, d.writeChan)
+			config := blevestore.NewConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.badger, d.writeChan)
 			index.bleveIndex, err = bleve.OpenUsing(index.Path, config)
 			if err != nil {
 				return
@@ -386,7 +388,7 @@ newLoop:
 			var key []byte
 			key = item.KeyCopy(key)
 
-			tx := transaction.NewTransaction(ctx, key, nil, true)
+			tx := transaction.New(ctx, "", nil, key, nil, true)
 			idToDelete = append(idToDelete, tx)
 
 			if len(idToDelete) > 10000 {

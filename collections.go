@@ -76,7 +76,7 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	index.Path = fmt.Sprintf("%s/%x/%x", c.db.path, colHash[:2], indexHash[:2])
 
 	// Build the configuration to use the local bleve storage and initialize the index
-	config := blevestore.NewBleveStoreConfigMap(c.db.ctx, index.Path, c.db.PrivateKey, prefix, c.db.badger, c.db.writeChan)
+	config := blevestore.NewConfigMap(c.db.ctx, index.Path, c.db.PrivateKey, prefix, c.db.badger, c.db.writeChan)
 	index.bleveIndex, err = bleve.NewUsing(index.Path, bleveMapping, upsidedown.Name, blevestore.Name, config)
 	if err != nil {
 		return
@@ -131,14 +131,14 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 
 func (c *Collection) putIntoTransaction(ctx context.Context, id string, content interface{}) (tr *transaction.Transaction, err error) {
 	if bytes, ok := content.([]byte); ok {
-		tr = transaction.NewTransaction(ctx, c.buildDBKey(id), bytes, false)
+		tr = transaction.New(ctx, id, content, c.buildDBKey(id), bytes, false)
 	} else {
 		jsonBytes, marshalErr := json.Marshal(content)
 		if marshalErr != nil {
 			return nil, marshalErr
 		}
 
-		tr = transaction.NewTransaction(ctx, c.buildDBKey(id), jsonBytes, false)
+		tr = transaction.New(ctx, id, content, c.buildDBKey(id), jsonBytes, false)
 	}
 
 	return tr, nil
@@ -160,11 +160,18 @@ func (c *Collection) putSendToWriteAndWaitForResponse(tr *transaction.Transactio
 	return err
 }
 
-func (c *Collection) putLoopForIndexes(id string, content interface{}) (err error) {
+func (c *Collection) putLoopForIndexes(tr *transaction.Transaction) (err error) {
 	for _, index := range c.BleveIndexes {
-		err = index.bleveIndex.Index(id, content)
-		if err != nil {
-			return err
+		for _, op := range tr.Operations {
+			// If remove the content no need to index it
+			if op.Delete {
+				continue
+			}
+
+			err = index.bleveIndex.Index(op.CollectionID, op.Content)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -179,14 +186,9 @@ func (c *Collection) put(id string, content interface{}, clean bool) (err error)
 	if err != nil {
 		return err
 	}
-	tr.CleanHistory = true
+	tr.Operations[0].CleanHistory = clean
 
-	err = c.putSendToWriteAndWaitForResponse(tr)
-	if err != nil {
-		return err
-	}
-
-	return c.putLoopForIndexes(id, content)
+	return c.WriteBatch(tr)
 }
 
 // PutWithCleanHistory set the content to the given id but clean all previous records of this id
@@ -198,6 +200,16 @@ func (c *Collection) PutWithCleanHistory(id string, content interface{}) (err er
 // If the content match some of the indexes it will be indexed
 func (c *Collection) Put(id string, content interface{}) error {
 	return c.put(id, content, false)
+}
+
+// WriteBatch gives a simple access to batch operations
+func (c *Collection) WriteBatch(tr *transaction.Transaction) (err error) {
+	err = c.putSendToWriteAndWaitForResponse(tr)
+	if err != nil {
+		return err
+	}
+
+	return c.putLoopForIndexes(tr)
 }
 
 func (c *Collection) fromValueBytesGetContentToIndex(input []byte) interface{} {
@@ -264,7 +276,7 @@ func (c *Collection) Delete(id string) (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tr := transaction.NewTransaction(ctx, c.buildDBKey(id), nil, true)
+	tr := transaction.New(ctx, id, nil, c.buildDBKey(id), nil, true)
 
 	// Send to the write channel
 	select {

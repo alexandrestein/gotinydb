@@ -22,6 +22,7 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
+// Iterator is self explained
 type Iterator struct {
 	store    *Store
 	iterator *badger.Iterator
@@ -30,6 +31,7 @@ type Iterator struct {
 	end      []byte
 }
 
+// Seek move to a specific location
 func (i *Iterator) Seek(k []byte) {
 
 	if i.start != nil && bytes.Compare(k, i.start) < 0 {
@@ -42,17 +44,14 @@ func (i *Iterator) Seek(k []byte) {
 	}
 
 	i.iterator.Seek(i.store.buildID(k))
-
-	// fmt.Println("iter seek", string(k), i.Valid())
-	// fmt.Println(k)
-	// fmt.Println(i.store.buildID(k))
 }
 
+// Next moves to the next value
 func (i *Iterator) Next() {
 	i.iterator.Next()
-	// fmt.Println("iter next", i.Valid())
 }
 
+// Current returns the current stat of the pointer
 func (i *Iterator) Current() (key []byte, val []byte, valid bool) {
 	valid = i.Valid()
 	if !valid {
@@ -73,14 +72,15 @@ func (i *Iterator) key() (key []byte) {
 	return
 }
 
+// Key returns the key of the given position
 func (i *Iterator) Key() []byte {
 	if !i.Valid() {
 		return nil
 	}
-	// fmt.Println("iter key", i.key(), string(i.key()))
 	return i.key()
 }
 
+// Value returns the values for the actual position
 func (i *Iterator) Value() []byte {
 	if !i.Valid() {
 		return nil
@@ -92,18 +92,16 @@ func (i *Iterator) Value() []byte {
 	encryptVal, _ = item.ValueCopy(encryptVal)
 
 	val := []byte{}
-	// val, _ = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
 	var err error
 	val, err = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
 	if err != nil {
 		fmt.Println("err decrypt iterator blevestore", err, item.Key())
 	}
 
-	// fmt.Println("iter val", val, string(val))
-
 	return val
 }
 
+// Valid returns try if the value and the ID of the actual iterator position are both valid
 func (i *Iterator) Valid() bool {
 	if !i.iterator.Valid() {
 		return false
@@ -118,6 +116,7 @@ func (i *Iterator) Valid() bool {
 	return i.iterator.ValidForPrefix(i.store.buildID(nil))
 }
 
+// Close closes the iterator
 func (i *Iterator) Close() error {
 	i.iterator.Close()
 	return nil

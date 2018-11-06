@@ -15,11 +15,13 @@ import (
 )
 
 const (
-	Name = "internal"
+	// Name defines the internal name given to the bleve store
+	Name = "gotinydb"
 )
 
 type (
-	BleveStoreConfig struct {
+	// Config defines the different configurations needed to make the store work
+	Config struct {
 		ctx                 context.Context
 		key                 [32]byte
 		prefix              []byte
@@ -28,19 +30,16 @@ type (
 		transactionsTimeOut time.Duration
 	}
 
+	// Store implements the blevestore interface
 	Store struct {
 		// name is defined by the path
 		name   string
-		config *BleveStoreConfig
-		// writeTxn             *badger.Txn
-		// primaryEncryptionKey *[32]byte
-		// indexPrefixID        []byte
-		// indexPrefixIDLen     int
-		// db *badger.DB
-		mo store.MergeOperator
+		config *Config
+		mo     store.MergeOperator
 	}
 )
 
+// New returns a new store with the given options
 func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, error) {
 	path, ok := config["path"].(string)
 	if !ok {
@@ -50,40 +49,10 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 		return nil, os.ErrInvalid
 	}
 
-	configPointer, ok := config["config"].(*BleveStoreConfig)
+	configPointer, ok := config["config"].(*Config)
 	if !ok {
 		return nil, fmt.Errorf("must specify the config")
 	}
-
-	// prefixID, ok := config["prefix"].([]byte)
-	// if !ok {
-	// 	return nil, fmt.Errorf("must specify a prefix")
-	// }
-
-	// db, ok := config["db"].(*badger.DB)
-	// if !ok {
-	// 	return nil, fmt.Errorf("must specify a db")
-	// }
-
-	// primaryEncryptionKey, ok := config["key"].(*[32]byte)
-	// if !ok {
-	// 	return nil, fmt.Errorf("must specify a key as [32]byte")
-	// }
-
-	// encrypt, ok := config["encrypt"].(func(dbID, clearContent []byte) []byte)
-	// if !ok {
-	// 	return nil, fmt.Errorf("the encrypt function must be provided")
-	// }
-
-	// decrypt, ok := config["decrypt"].(func(dbID, encryptedContent []byte) (decryptedContent []byte, _ error))
-	// if !ok {
-	// 	return nil, fmt.Errorf("the decrypt function must be provided")
-	// }
-
-	// writeTxn, ok := config["writeTxn"].(*badger.Txn)
-	// if !ok {
-	// 	return nil, fmt.Errorf("the write transaction pointer must be initialized")
-	// }
 
 	rv := Store{
 		name:   path,
@@ -93,6 +62,7 @@ func New(mo store.MergeOperator, config map[string]interface{}) (store.KVStore, 
 	return &rv, nil
 }
 
+// Close is self explained
 func (bs *Store) Close() error {
 	return nil
 }
@@ -108,6 +78,7 @@ func (bs *Store) Reader() (store.KVReader, error) {
 	}, nil
 }
 
+// Writer returns a new writer interface
 func (bs *Store) Writer() (store.KVWriter, error) {
 	return &Writer{
 		store: bs,
@@ -125,8 +96,9 @@ func (bs *Store) buildID(key []byte) []byte {
 	return dbKey
 }
 
-func NewBleveStoreConfig(ctx context.Context, key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) (config *BleveStoreConfig) {
-	return &BleveStoreConfig{
+// NewConfig returns the configuration as an pointer
+func NewConfig(ctx context.Context, key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) (config *Config) {
+	return &Config{
 		ctx:        ctx,
 		key:        key,
 		prefix:     prefix,
@@ -135,10 +107,11 @@ func NewBleveStoreConfig(ctx context.Context, key [32]byte, prefix []byte, db *b
 	}
 }
 
-func NewBleveStoreConfigMap(ctx context.Context, path string, key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) map[string]interface{} {
+// NewConfigMap returns the configuration as a map
+func NewConfigMap(ctx context.Context, path string, key [32]byte, prefix []byte, db *badger.DB, writeElementsChan chan *transaction.Transaction) map[string]interface{} {
 	return map[string]interface{}{
 		"path": path,
-		"config": NewBleveStoreConfig(
+		"config": NewConfig(
 			ctx,
 			key,
 			prefix,
@@ -147,21 +120,3 @@ func NewBleveStoreConfigMap(ctx context.Context, path string, key [32]byte, pref
 		),
 	}
 }
-
-// func NewIndexRequest(ctx context.Context, id string, data interface{}) *IndexRequest {
-// 	writesChan := make(chan []*transactions.WriteElement, 0)
-
-// 	return &IndexRequest{
-// 		ID:               id,
-// 		Data:             data,
-// 		WriteOpperations: writesChan,
-// 	}
-// }
-
-// func NewBleveStoreWriteRequest(requests []*transactions.WriteElement) *transactions.WriteTransaction {
-// 	ret := new(transactions.WriteTransaction)
-// 	ret.ResponseChan = make(chan error, 0)
-// 	ret.Transactions = requests
-
-// 	return ret
-// }

@@ -38,22 +38,11 @@ var (
 	testPath = os.TempDir() + "/blevestoreTest"
 )
 
-// var (
-// 	key = [32]byte{}
-
-// 	encryptFunc = func(dbID, clearContent []byte) (encryptedContent []byte) {
-// 		return cipher.Encrypt(key, dbID, clearContent)
-// 	}
-// 	decryptFunc = func(dbID, encryptedContent []byte) (clearContent []byte, _ error) {
-// 		return cipher.Decrypt(key, dbID, encryptedContent)
-// 	}
-// )
-
 func init() {
 	rand.Read(testKey[:])
 }
 
-func open(t *testing.T, testCtx context.Context, mo store.MergeOperator) store.KVStore {
+func open(testCtx context.Context, t *testing.T, mo store.MergeOperator) store.KVStore {
 	opt := badger.DefaultOptions
 	opt.Dir = testPath
 	opt.ValueDir = testPath
@@ -67,20 +56,14 @@ func open(t *testing.T, testCtx context.Context, mo store.MergeOperator) store.K
 
 	go goRoutineLoopForWrites(testCtx)
 
-	var config *BleveStoreConfig
-	config = NewBleveStoreConfig(testCtx, testKey, testPrefix, testDB, testWritesChan)
+	var config *Config
+	config = NewConfig(testCtx, testKey, testPrefix, testDB, testWritesChan)
 
 	var rv store.KVStore
 	rv, err = New(mo, map[string]interface{}{
 		"path":   "test",
 		"config": config,
 	})
-	// rv, err = New(mo, map[string]interface{}{
-	// 	"path":     "test",
-	// 	"prefix":   []byte{1, 9},
-	// 	"db":       db,
-	// 	"writeTxn": writeTxn,
-	// })
 	if err != nil {
 		t.Error(err)
 	}
@@ -89,42 +72,6 @@ func open(t *testing.T, testCtx context.Context, mo store.MergeOperator) store.K
 }
 
 func goRoutineLoopForWrites(testCtx context.Context) {
-	// for {
-	// 	var ops *transaction.Transaction
-	// 	// select {
-	// 	// case op, ok := <-writesChan:
-	// 	// 	if !ok {
-	// 	// 		return
-	// 	// 	}
-	// 	// 	ops = append(ops, op)
-	// 	// }
-	// 	select {
-	// 	// There is an other request in the queue
-	// 	case ops = <-testWritesChan:
-	// 	case <-testCtx.Done():
-	// 		return
-	// 	}
-
-	// 	err := testDB.Update(func(txn *badger.Txn) error {
-	// 		var err error
-	// 		if ops.Delete {
-	// 			err = txn.Delete(ops.DBKey)
-	// 		} else {
-	// 			err = txn.Set(ops.DBKey, cipher.Encrypt(testKey, ops.DBKey, ops.Value))
-	// 		}
-	// 		if err != nil {
-	// 			fmt.Println(err)
-	// 		}
-	// 		return nil
-	// 	})
-
-	// 	ops.ResponseChan <- err
-
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// }
-
 	for {
 		var op *transaction.Transaction
 		var ok bool
@@ -156,20 +103,20 @@ func goRoutineLoopForWrites(testCtx context.Context) {
 		}
 
 		err := testDB.Update(func(txn *badger.Txn) error {
-			for _, op := range waitingWrites {
+			for _, transaction := range waitingWrites {
 				var err error
-				if op.Delete {
-					// fmt.Println("delete", op.DBKey)
-					err = txn.Delete(op.DBKey)
-				} else if op.CleanHistory {
-					err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value), 0)
-				} else {
-					// fmt.Println("write", op.DBKey)
-					err = txn.Set(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value))
-				}
-				// Returns the write error to the caller
-				if err != nil {
-					go nonBlockingResponseChan(testCtx,op, err)
+				for _, op := range transaction.Operations {
+					if op.Delete {
+						err = txn.Delete(op.DBKey)
+					} else if op.CleanHistory {
+						err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value), 0)
+					} else {
+						err = txn.Set(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value))
+					}
+					// Returns the write error to the caller
+					if err != nil {
+						go nonBlockingResponseChan(testCtx, transaction, err)
+					}
 				}
 			}
 			return nil
@@ -177,12 +124,12 @@ func goRoutineLoopForWrites(testCtx context.Context) {
 
 		// Dispatch the commit response to all callers
 		for _, op := range waitingWrites {
-			go nonBlockingResponseChan(testCtx,op, err)
+			go nonBlockingResponseChan(testCtx, op, err)
 		}
 	}
 }
 
-func  nonBlockingResponseChan(testCtx context.Context, tx *transaction.Transaction, err error) {
+func nonBlockingResponseChan(testCtx context.Context, tx *transaction.Transaction, err error) {
 	if tx.ResponseChan == nil {
 		return
 	}
@@ -217,7 +164,7 @@ func TestBadgerDBKVCrud(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, nil)
+	s := open(ctx, t, nil)
 	defer cleanup(t, s)
 	test.CommonTestKVCrud(t, s)
 }
@@ -226,7 +173,7 @@ func TestBadgerDBReaderIsolation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, nil)
+	s := open(ctx, t, nil)
 	defer cleanup(t, s)
 	test.CommonTestReaderIsolation(t, s)
 }
@@ -235,7 +182,7 @@ func TestBadgerDBReaderOwnsGetBytes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, nil)
+	s := open(ctx, t, nil)
 	defer cleanup(t, s)
 	test.CommonTestReaderOwnsGetBytes(t, s)
 }
@@ -244,7 +191,7 @@ func TestBadgerDBWriterOwnsBytes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, nil)
+	s := open(ctx, t, nil)
 	defer cleanup(t, s)
 	test.CommonTestWriterOwnsBytes(t, s)
 }
@@ -253,7 +200,7 @@ func TestBadgerDBPrefixIterator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, nil)
+	s := open(ctx, t, nil)
 	defer cleanup(t, s)
 	test.CommonTestPrefixIterator(t, s)
 }
@@ -262,7 +209,7 @@ func TestBadgerDBPrefixIteratorSeek(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, nil)
+	s := open(ctx, t, nil)
 	defer cleanup(t, s)
 	test.CommonTestPrefixIteratorSeek(t, s)
 }
@@ -271,7 +218,7 @@ func TestBadgerDBRangeIterator(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, nil)
+	s := open(ctx, t, nil)
 	defer cleanup(t, s)
 	test.CommonTestRangeIterator(t, s)
 }
@@ -280,7 +227,7 @@ func TestBadgerDBRangeIteratorSeek(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, nil)
+	s := open(ctx, t, nil)
 	defer cleanup(t, s)
 	test.CommonTestRangeIteratorSeek(t, s)
 }
@@ -289,76 +236,7 @@ func TestBadgerDBMerge(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := open(t, ctx, &test.TestMergeCounter{})
+	s := open(ctx, t, &test.TestMergeCounter{})
 	defer cleanup(t, s)
 	test.CommonTestMerge(t, s)
 }
-
-// func TestBadgerDBConfig(t *testing.T) {
-// 	path := "test"
-// 	defer os.RemoveAll(path)
-// 	os.RemoveAll(path)
-
-// 	opt := badger.DefaultOptions
-// 	opt.Dir = path
-// 	db, _ := badger.Open(opt)
-
-// 	var writeTxn *badger.Txn
-
-// 	var tests = []struct {
-// 		in            map[string]interface{}
-// 		name          string
-// 		indexPrefixID []byte
-// 		db            *badger.DB
-// 	}{
-// 		{
-// 			map[string]interface{}{
-// 				"path":     "test",
-// 				"prefix":   []byte{1, 9},
-// 				"db":       db,
-// 				"key":      &[32]byte{},
-// 				"writeTxn": writeTxn,
-// 			},
-// 			"test",
-// 			[]byte{1, 9},
-// 			db,
-// 		},
-// 		{
-// 			map[string]interface{}{
-// 				"path":     "test 2",
-// 				"prefix":   []byte{2, 5},
-// 				"key":      &[32]byte{},
-// 				"db":       db,
-// 				"writeTxn": writeTxn,
-// 			},
-// 			"test 2",
-// 			[]byte{2, 5},
-// 			db,
-// 		},
-// 	}
-
-// 	for _, test := range tests {
-// 		kv, err := New(nil, test.in)
-// 		if err != nil {
-// 			t.Error(err)
-// 			return
-// 		}
-// 		bs, ok := kv.(*Store)
-// 		if !ok {
-// 			t.Error("failed type assertion to *boltdb.Store")
-// 			return
-// 		}
-// 		if bs.name != test.name {
-// 			t.Errorf("path: expected %q, got %q", test.name, bs.name)
-// 			return
-// 		}
-// 		if !reflect.DeepEqual(bs.config.prefix, test.indexPrefixID) {
-// 			t.Errorf("prefix: expected %X, got %X", test.indexPrefixID, bs.config.prefix)
-// 			return
-// 		}
-// 		if bs.config.db != test.db {
-// 			t.Errorf("db: expected %v, got %v", test.db, bs.config.db)
-// 			return
-// 		}
-// 	}
-// }

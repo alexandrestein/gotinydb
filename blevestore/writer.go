@@ -24,33 +24,16 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
+// Writer implement the blevestore writer interface
 type Writer struct {
 	store      *Store
 	operations []*transaction.Transaction
 }
 
+// NewBatch start a new batch operation
 func (w *Writer) NewBatch() store.KVBatch {
 	return store.NewEmulatedBatch(w.store.mo)
 }
-
-// func (w *Writer) add(dbID, content []byte) {
-// 	elem := new(transactions.WriteElement)
-// 	elem.DBKey = dbID
-// 	elem.ContentAsBytes = content
-// 	w.listOfWrites = append(w.listOfWrites, elem)
-
-// 	// encrypted := cipher.Encrypt(w.store.config.key, dbID, content)
-// 	// req := NewBleveStoreWriteRequest(dbID, encrypted)
-
-// 	// w.store.config.bleveWriteChan <- req
-
-// 	// err := <-req.ResponseChan
-// 	// if err != nil {
-// 	// 	fmt.Println("done", err)
-// 	// }
-
-// 	// return err
-// }
 
 func (w *Writer) write() error {
 	for _, ope := range w.operations {
@@ -76,10 +59,12 @@ func (w *Writer) write() error {
 	return nil
 }
 
+// NewBatchEx returns an object to keep all operations before run
 func (w *Writer) NewBatchEx(options store.KVBatchOptions) ([]byte, store.KVBatch, error) {
 	return make([]byte, options.TotalBytes), w.NewBatch(), nil
 }
 
+// ExecuteBatch runs the batch
 func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 	emulatedBatch, ok := batch.(*store.EmulatedBatch)
 	if !ok {
@@ -118,12 +103,8 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 				return
 			}
 
-			// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, mergedVal))
-			// w.writeTransaction.AddTransaction(
-			// 	transactions.NewTransactionElement(storeID, mergedVal),
-			// )
 			w.operations = append(w.operations,
-				transaction.NewTransaction(ctx, storeID, mergedVal, false),
+				transaction.New(ctx, k, nil, storeID, mergedVal, false),
 			)
 		}
 
@@ -131,19 +112,12 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 			storeID := w.store.buildID(op.K)
 
 			if op.V != nil {
-				// err = txn.Set(storeID, cipher.Encrypt(w.store.config.key, storeID, op.V))
-				// w.writeTransaction.AddTransaction(
-				// 	transactions.NewTransactionElement(storeID, op.V),
-				// )
 				w.operations = append(w.operations,
-					transaction.NewTransaction(ctx, storeID, op.V, false),
+					transaction.New(ctx, "", nil, storeID, op.V, false),
 				)
 			} else {
-				// w.writeTransaction.AddTransaction(
-				// 	transactions.NewTransactionElement(storeID, nil),
-				// )
 				w.operations = append(w.operations,
-					transaction.NewTransaction(ctx, storeID, nil, true),
+					transaction.New(ctx, "", nil, storeID, nil, true),
 				)
 			}
 		}
@@ -156,6 +130,7 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 	return w.write()
 }
 
+// Close is self explained
 func (w *Writer) Close() error {
 	return nil
 }

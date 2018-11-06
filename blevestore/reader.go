@@ -20,10 +20,10 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
+// Reader implement the reader interface
 type Reader struct {
-	store *Store
-	txn   *badger.Txn
-	// indexPrefixID []byte
+	store     *Store
+	txn       *badger.Txn
 	iterators []*badger.Iterator
 }
 
@@ -46,17 +46,16 @@ func (r *Reader) get(key []byte) ([]byte, error) {
 	var clear []byte
 	clear, err = cipher.Decrypt(r.store.config.key, storeKey, rv)
 
-	// fmt.Println("get key", key, string(key))
-	// fmt.Println("get val", clear, string(clear))
-	// fmt.Println()
-
 	return clear, err
-	// return r.store.decrypt(storeKey, rv)
 }
+
+// Get returns the content of the given ID or an error if any
 func (r *Reader) Get(key []byte) (ret []byte, err error) {
 	return r.get(key)
 }
 
+// MultiGet returns multiple values of the given ID in on shot.
+// It returns an error if any
 func (r *Reader) MultiGet(keys [][]byte) (rvs [][]byte, err error) {
 	rvs = make([][]byte, len(keys))
 
@@ -82,6 +81,7 @@ func (r *Reader) iterator() *Iterator {
 	return rv
 }
 
+// PrefixIterator builds a new iterator with the provided prefix
 func (r *Reader) PrefixIterator(prefix []byte) store.KVIterator {
 	rv := r.iterator()
 	rv.prefix = prefix
@@ -90,6 +90,7 @@ func (r *Reader) PrefixIterator(prefix []byte) store.KVIterator {
 	return rv
 }
 
+// RangeIterator builds a new iterator which will start at start and automatically stop at end
 func (r *Reader) RangeIterator(start, end []byte) store.KVIterator {
 	rv := r.iterator()
 	rv.start = start
@@ -99,6 +100,7 @@ func (r *Reader) RangeIterator(start, end []byte) store.KVIterator {
 	return rv
 }
 
+// Close closes the reader
 func (r *Reader) Close() error {
 	for _, iter := range r.iterators {
 		iter.Close()
