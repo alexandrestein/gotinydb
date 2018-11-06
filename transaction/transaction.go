@@ -25,37 +25,45 @@ type (
 )
 
 // NewOperation returns a new operation pointer
-func NewOperation(id string, content interface{}, key, val []byte, del bool) *Operation {
+func NewOperation(id string, content interface{}, key, val []byte, del, cleanHistory bool) *Operation {
 	return &Operation{
 		CollectionID: id,
 		Content:      content,
 
-		DBKey:  key,
-		Value:  val,
-		Delete: del, CleanHistory: false,
+		DBKey:        key,
+		Value:        val,
+		Delete:       del,
+		CleanHistory: cleanHistory,
 	}
 }
 
 // New builds a new write transaction struct with it's chanel
-func New(ctx context.Context, id string, content interface{}, key, val []byte, del bool) *Transaction {
-	if del {
-		val = nil
-	}
+func New(ctx context.Context) *Transaction {
+	// 	if del {
+	// 		val = nil
+	// 	}
 
-	ope := NewOperation(id, content, key, val, del)
+	// 	op := NewOperation(id, content, key, val, del, cleanHistory)
 
 	return &Transaction{
 		Ctx:          ctx,
-		Operations:   []*Operation{ope},
+		Operations:   []*Operation{},
+		ResponseChan: make(chan error, 0),
+	}
+}
+
+// NewWithOperation build a new transaction based on an Operation pointer
+func NewWithOperation(ctx context.Context, op *Operation) *Transaction {
+	return &Transaction{
+		Ctx:          ctx,
+		Operations:   []*Operation{op},
 		ResponseChan: make(chan error, 0),
 	}
 }
 
 // AddOperation add a new operation to the given transaction
-func (t *Transaction) AddOperation(id string, content interface{}, key, val []byte, del bool) {
-	ope := NewOperation(id, content, key, val, del)
-
-	t.Operations = append(t.Operations, ope)
+func (t *Transaction) AddOperation(op *Operation) {
+	t.Operations = append(t.Operations, op)
 }
 
 // GetWriteSize returns the length of bytes this transaction wants to write

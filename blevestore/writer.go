@@ -26,8 +26,8 @@ import (
 
 // Writer implement the blevestore writer interface
 type Writer struct {
-	store      *Store
-	operations []*transaction.Transaction
+	store *Store
+	// operations []*transaction.Transaction
 }
 
 // NewBatch start a new batch operation
@@ -35,25 +35,43 @@ func (w *Writer) NewBatch() store.KVBatch {
 	return store.NewEmulatedBatch(w.store.mo)
 }
 
-func (w *Writer) write() error {
-	for _, ope := range w.operations {
-		// Send to the write routine
-		select {
-		case w.store.config.writesChan <- ope:
-		case <-w.store.config.ctx.Done():
-			return w.store.config.ctx.Err()
-		}
+func (w *Writer) write(tx *transaction.Transaction) error {
 
-		// Wait for the response
-		select {
-		case err := <-ope.ResponseChan:
-			if err != nil {
-				return err
-			}
-		case <-ope.Ctx.Done():
-		case <-w.store.config.ctx.Done():
-			return w.store.config.ctx.Err()
+	// for _, ope := range w.operations {
+	// Send to the write routine
+	// select {
+	// case w.store.config.writesChan <- ope:
+	// case <-w.store.config.ctx.Done():
+	// 	return w.store.config.ctx.Err()
+	// }
+
+	// // Wait for the response
+	// select {
+	// case err := <-ope.ResponseChan:
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// case <-ope.Ctx.Done():
+	// case <-w.store.config.ctx.Done():
+	// 	return w.store.config.ctx.Err()
+	// }
+	// }
+
+	select {
+	case w.store.config.writesChan <- tx:
+	case <-w.store.config.ctx.Done():
+		return w.store.config.ctx.Err()
+	}
+
+	// Wait for the response
+	select {
+	case err := <-tx.ResponseChan:
+		if err != nil {
+			return err
 		}
+	case <-tx.Ctx.Done():
+	case <-w.store.config.ctx.Done():
+		return w.store.config.ctx.Err()
 	}
 
 	return nil
@@ -73,6 +91,8 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	tx := transaction.New(ctx)
 
 	err = w.store.config.db.View(func(txn *badger.Txn) (err error) {
 		for k, mergeOps := range emulatedBatch.Merger.Merges {
@@ -103,22 +123,16 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 				return
 			}
 
-			w.operations = append(w.operations,
-				transaction.New(ctx, k, nil, storeID, mergedVal, false),
-			)
+			tx.AddOperation(transaction.NewOperation(k, nil, storeID, mergedVal, false, false))
 		}
 
 		for _, op := range emulatedBatch.Ops {
 			storeID := w.store.buildID(op.K)
 
 			if op.V != nil {
-				w.operations = append(w.operations,
-					transaction.New(ctx, "", nil, storeID, op.V, false),
-				)
+				tx.AddOperation(transaction.NewOperation("", nil, storeID, op.V, false, false))
 			} else {
-				w.operations = append(w.operations,
-					transaction.New(ctx, "", nil, storeID, nil, true),
-				)
+				tx.AddOperation(transaction.NewOperation("", nil, storeID, nil, true, true))
 			}
 		}
 		return nil
@@ -127,7 +141,7 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 		return err
 	}
 
-	return w.write()
+	return w.write(tx)
 }
 
 // Close is self explained

@@ -17,10 +17,14 @@ func TestAll(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tx := New(ctx, testID, nil, key, val, false)
+	tx := New(ctx)
+	// tx := New(ctx, testID, nil, key, val, false, false)
 	if tx == nil {
 		t.Fatalf("tx is nil")
 	}
+
+	op := NewOperation(testID, nil, key, val, false, false)
+	tx.AddOperation(op)
 
 	go func(ch chan error) {
 		<-ch
@@ -45,10 +49,13 @@ func TestAll(t *testing.T) {
 		t.Fatalf("chanel is not open")
 	}
 
-	tx = New(ctx, testID, nil, key, val, true)
+	tx = New(ctx)
 	if tx == nil {
 		t.Fatalf("tx is nil")
 	}
+
+	op = NewOperation(testID, nil, key, val, true, false)
+	tx.AddOperation(op)
 
 	if tx.Operations[0].Delete == false {
 		t.Fatalf("tx should be a deletation")

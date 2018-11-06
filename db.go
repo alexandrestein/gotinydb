@@ -248,12 +248,10 @@ func (d *DB) goRoutineLoopForWrites() {
 				for _, op := range transaction.Operations {
 					var err error
 					if op.Delete {
-						// fmt.Println("delete", op.DBKey)
 						err = txn.Delete(op.DBKey)
 					} else if op.CleanHistory {
 						err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), 0)
 					} else {
-						// fmt.Println("write", op.DBKey)
 						err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
 					}
 					// Returns the write error to the caller
@@ -388,7 +386,10 @@ newLoop:
 			var key []byte
 			key = item.KeyCopy(key)
 
-			tx := transaction.New(ctx, "", nil, key, nil, true)
+			tx := transaction.New(ctx)
+			tx.AddOperation(
+				transaction.NewOperation("", nil, key, nil, true, false),
+			)
 			idToDelete = append(idToDelete, tx)
 
 			if len(idToDelete) > 10000 {
@@ -410,7 +411,7 @@ newLoop:
 	}
 
 	if !finished {
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 50)
 		goto newLoop
 	}
 }

@@ -27,6 +27,12 @@ type (
 		// BleveIndexes in public for marshalling reason and should never be used directly
 		BleveIndexes []*BleveIndex
 	}
+
+	// Batch is a simple struct to manage multiple write in one commit
+	Batch struct {
+		c  *Collection
+		tr *transaction.Transaction
+	}
 )
 
 func newCollection(name string) *Collection {
@@ -129,20 +135,26 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	return c.db.saveConfig()
 }
 
-func (c *Collection) putIntoTransaction(ctx context.Context, id string, content interface{}) (tr *transaction.Transaction, err error) {
-	if bytes, ok := content.([]byte); ok {
-		tr = transaction.New(ctx, id, content, c.buildDBKey(id), bytes, false)
-	} else {
-		jsonBytes, marshalErr := json.Marshal(content)
-		if marshalErr != nil {
-			return nil, marshalErr
-		}
+// func (c *Collection) newTransaction(ctx context.Context) (tr *transaction.Transaction) {
+// 	// if bytes, ok := content.([]byte); ok {
+// 	// 	tr = transaction.New(ctx, id, content, c.buildDBKey(id), bytes, false)
+// 	// } else {
+// 	// 	jsonBytes, marshalErr := json.Marshal(content)
+// 	// 	if marshalErr != nil {
+// 	// 		return nil, marshalErr
+// 	// 	}
 
-		tr = transaction.New(ctx, id, content, c.buildDBKey(id), jsonBytes, false)
-	}
+// 	// 	tr = transaction.New(ctx, id, content, c.buildDBKey(id), jsonBytes, false)
+// 	// }
 
-	return tr, nil
-}
+// 	// var op *transaction.Operation
+// 	// op, err = c.buildOperation(id, content, false, false)
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
+
+// 	return transaction.New(ctx)
+// }
 
 func (c *Collection) putSendToWriteAndWaitForResponse(tr *transaction.Transaction) (err error) {
 	select {
@@ -178,17 +190,25 @@ func (c *Collection) putLoopForIndexes(tr *transaction.Transaction) (err error) 
 	return nil
 }
 
-func (c *Collection) put(id string, content interface{}, clean bool) (err error) {
+func (c *Collection) put(id string, content interface{}, clean bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tr, err := c.putIntoTransaction(ctx, id, content)
+	tr, err := c.NewBatch(ctx)
 	if err != nil {
 		return err
 	}
-	tr.Operations[0].CleanHistory = clean
 
-	return c.WriteBatch(tr)
+	if clean {
+		err = tr.PutClean(id, content)
+	} else {
+		err = tr.Put(id, content)
+	}
+	if err != nil {
+		return err
+	}
+
+	return c.writeBatch(tr)
 }
 
 // PutWithCleanHistory set the content to the given id but clean all previous records of this id
@@ -202,14 +222,41 @@ func (c *Collection) Put(id string, content interface{}) error {
 	return c.put(id, content, false)
 }
 
-// WriteBatch gives a simple access to batch operations
-func (c *Collection) WriteBatch(tr *transaction.Transaction) (err error) {
-	err = c.putSendToWriteAndWaitForResponse(tr)
+// NewBatch build a new write transaction to do all write operation in one commit
+func (c *Collection) NewBatch(ctx context.Context) (*Batch, error) {
+	tr := transaction.New(ctx)
+
+	ret := new(Batch)
+	ret.c = c
+	ret.tr = tr
+
+	return ret, nil
+}
+
+// BuildOperation builds a new operation to add in a transaction
+func (c *Collection) buildOperation(id string, content interface{}, delete, cleanHistory bool) (*transaction.Operation, error) {
+	var bytes []byte
+	if tmpBytes, ok := content.([]byte); ok {
+		bytes = tmpBytes
+	} else {
+		jsonBytes, marshalErr := json.Marshal(content)
+		if marshalErr != nil {
+			return nil, marshalErr
+		}
+		bytes = jsonBytes
+	}
+
+	return transaction.NewOperation(id, content, c.buildDBKey(id), bytes, delete, cleanHistory), nil
+}
+
+// writeBatch gives a simple access to batch operations
+func (c *Collection) writeBatch(b *Batch) (err error) {
+	err = c.putSendToWriteAndWaitForResponse(b.tr)
 	if err != nil {
 		return err
 	}
 
-	return c.putLoopForIndexes(tr)
+	return c.putLoopForIndexes(b.tr)
 }
 
 func (c *Collection) fromValueBytesGetContentToIndex(input []byte) interface{} {
@@ -276,7 +323,10 @@ func (c *Collection) Delete(id string) (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tr := transaction.New(ctx, id, nil, c.buildDBKey(id), nil, true)
+	tr := transaction.New(ctx)
+	tr.AddOperation(
+		transaction.NewOperation( id, nil, c.buildDBKey(id), nil, true, false),
+	)
 
 	// Send to the write channel
 	select {
@@ -416,4 +466,37 @@ func (c *Collection) DeleteIndex(name string) {
 	index.delete()
 
 	c.db.deletePrefix(index.Prefix)
+}
+
+// addOperation add an operation to the existing Transactio pointer
+func (b *Batch) addOperation(id string, content interface{}, delete, cleanHistory bool) error {
+	op, err := b.c.buildOperation(id, content, delete, cleanHistory)
+	if err != nil {
+		return err
+	}
+
+	b.tr.AddOperation(op)
+
+	return nil
+}
+
+// Put add a put operation to the existing Transactio pointer
+func (b *Batch) Put(id string, content interface{}) error {
+	return b.addOperation(id, content, false, false)
+}
+
+// PutClean add a put operation to the existing Transactio pointer but clean
+// existing history of the id
+func (b *Batch) PutClean(id string, content interface{}) error {
+	return b.addOperation(id, content, false, true)
+}
+
+// Delete add a delete operation to the existing Transactio pointer
+func (b *Batch) Delete(id string) error {
+	return b.addOperation(id, nil, true, false)
+}
+
+// Write execut the batch
+func (b *Batch) Write() error {
+	return b.c.writeBatch(b)
 }

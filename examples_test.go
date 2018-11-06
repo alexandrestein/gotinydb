@@ -1,6 +1,7 @@
 package gotinydb_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -311,4 +312,35 @@ func ExampleCollection_Search() {
 	// index X document
 	// {"Name":"I'm the example document"}
 	// 0.7071067690849304
+}
+
+func ExampleBatch() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	u1 := &user{
+		2435,
+		"user1@dom.com",
+		testTime,
+	}
+	batch, err := exampleCollection.NewBatch(ctx)
+	batch.Put("second write", u1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	u2 := &user{
+		56548,
+		"user2@dom.com",
+		testTime,
+	}
+
+	batch.Put("second write", u2)
+
+	err = batch.Write()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(err)
+	// Output: <nil>
 }
