@@ -18,7 +18,6 @@ func TestAll(t *testing.T) {
 	defer cancel()
 
 	tx := New(ctx)
-	// tx := New(ctx, testID, nil, key, val, false, false)
 	if tx == nil {
 		t.Fatalf("tx is nil")
 	}

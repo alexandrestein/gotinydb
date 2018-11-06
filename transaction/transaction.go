@@ -26,6 +26,11 @@ type (
 
 // NewOperation returns a new operation pointer
 func NewOperation(id string, content interface{}, key, val []byte, del, cleanHistory bool) *Operation {
+	if del {
+		content = nil
+		val = nil
+	}
+
 	return &Operation{
 		CollectionID: id,
 		Content:      content,
@@ -39,12 +44,6 @@ func NewOperation(id string, content interface{}, key, val []byte, del, cleanHis
 
 // New builds a new write transaction struct with it's chanel
 func New(ctx context.Context) *Transaction {
-	// 	if del {
-	// 		val = nil
-	// 	}
-
-	// 	op := NewOperation(id, content, key, val, del, cleanHistory)
-
 	return &Transaction{
 		Ctx:          ctx,
 		Operations:   []*Operation{},
