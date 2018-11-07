@@ -80,6 +80,7 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 
 	db.writeChan = make(chan *transaction.Transaction, 1000)
 	go db.goRoutineLoopForWrites()
+	go db.goRoutineLoopForGC()
 
 	db.badger, err = badger.Open(options)
 	if err != nil {
@@ -192,6 +193,19 @@ func (d *DB) Load(r io.Reader) error {
 	}
 
 	return d.loadCollections()
+}
+
+func (d *DB) goRoutineLoopForGC() {
+	ticker := time.NewTicker(time.Hour * 12)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			d.badger.RunValueLogGC(0.5)
+		case <-d.ctx.Done():
+			return
+		}
+	}
 }
 
 // This is where all writes are made
@@ -417,7 +431,7 @@ newLoop:
 }
 
 // GetFileIterator returns a file iterator which help to list existing files
-func (d *DB) GetFileIterator() *FileIterator{
+func (d *DB) GetFileIterator() *FileIterator {
 	iterOptions := badger.DefaultIteratorOptions
 	iterOptions.PrefetchValues = false
 
