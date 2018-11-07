@@ -268,8 +268,8 @@ func (c *Collection) getEncrypted(txn *badger.Txn, caller *multiGetCaller) (err 
 	if caller.id == "" {
 		return ErrEmptyID
 	}
-
-	caller.dbID = c.buildDBKey(caller.id)
+	
+	c.buildDBKey(caller.id)
 
 	var item *badger.Item
 	item, err = txn.Get(caller.dbID)
@@ -292,6 +292,7 @@ func (c *Collection) buildGetCaller(txn *badger.Txn, id string, dest interface{}
 	caller = new(multiGetCaller)
 	caller.id = id
 	caller.pointer = dest
+	caller.dbID = c.buildDBKey(id)
 
 	return
 }
@@ -455,6 +456,12 @@ func (c *Collection) buildDBKey(id string) []byte {
 	return append(key, []byte(id)...)
 }
 
+// buildToJustBigDBPrefix this is used when iterating values from the last one.
+// It gives the smalles to big prefix for the collection.
+func (c *Collection) buildJustTooBigDBPrefix() []byte {
+	return append(c.Prefix, prefixCollectionsData+1)
+}
+
 // GetBleveIndex gives an  easy way to interact directly with bleve
 func (c *Collection) GetBleveIndex(name string) (*BleveIndex, error) {
 	for _, bi := range c.BleveIndexes {
@@ -563,6 +570,39 @@ func (c *Collection) DeleteIndex(name string) {
 	index.delete()
 
 	c.db.deletePrefix(index.Prefix)
+}
+
+func (c *Collection) getIterator(reverted bool) *Iterator {
+	iterOptions := badger.DefaultIteratorOptions
+	iterOptions.Reverse = reverted
+
+	txn := c.db.badger.NewTransaction(false)
+	badgerIter := txn.NewIterator(iterOptions)
+
+	tmpPrefix := c.buildDBKey("")
+	prefix :=  make([]byte, len(tmpPrefix))
+	copy(prefix, tmpPrefix)
+
+	return &Iterator{
+		txn:        txn,
+		c:          c,
+		badgerIter: badgerIter,
+		colPrefix:  prefix,
+	}
+}
+
+// GetIterator provides an easy way to list elements
+func (c *Collection) GetIterator() *Iterator {
+	iter := c.getIterator(false)
+	iter.badgerIter.Seek(iter.colPrefix)
+	return iter
+}
+
+// GetRevertedIterator does same as above but work in the oposite way
+func (c *Collection) GetRevertedIterator() *Iterator {
+	iter := c.getIterator(true)
+	iter.badgerIter.Seek(c.buildJustTooBigDBPrefix())
+	return iter
 }
 
 // addOperation add an operation to the existing Transactio pointer
