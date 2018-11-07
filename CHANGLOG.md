@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support batch writes, [fixes #19](https://github.com/alexandrestein/gotinydb/issues/19).
 - Support multiple get at ones.
 - Add collection iterator related to [#18](https://github.com/alexandrestein/gotinydb/issues/18).
+- Add file lock to prevent concurrent writes on a single file.
 
 ## Remove
 

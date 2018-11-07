@@ -25,6 +25,8 @@ var (
 	ErrGetMultiNotEqual   = fmt.Errorf("you must provied the same number of ids and destinations")
 
 	ErrEndOfQueryResult = fmt.Errorf("there is no more values to retrieve from the query")
+
+	ErrFileInWrite = fmt.Errorf("this file is already in write mode")
 )
 
 var (

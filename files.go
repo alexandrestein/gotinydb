@@ -22,6 +22,7 @@ type (
 		Size         int64
 		LastModified time.Time
 		ChuckSize    int
+		inWrite      bool
 	}
 
 	readWriter struct {
@@ -29,6 +30,7 @@ type (
 		db              *DB
 		currentPosition int64
 		txn             *badger.Txn
+		writer          bool
 	}
 
 	// Reader define a simple object to read parts of the file
@@ -54,6 +56,7 @@ func (d *DB) PutFile(id string, name string, reader io.Reader) (n int, err error
 	d.DeleteFile(id)
 
 	meta := d.buildMeta(id, name)
+	meta.inWrite = true
 
 	// Set the meta
 	err = d.putFileMeta(meta)
@@ -94,6 +97,7 @@ func (d *DB) PutFile(id string, name string, reader io.Reader) (n int, err error
 
 	meta.Size = int64(n)
 	meta.LastModified = time.Now()
+	meta.inWrite = false
 	err = d.putFileMeta(meta)
 	if err != nil {
 		return
@@ -258,6 +262,17 @@ func (d *DB) GetFileWriter(id, name string) (Writer, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if rw.meta.inWrite {
+		return nil, ErrFileInWrite
+	}
+
+	rw.meta.inWrite = true
+	err = d.putFileMeta(rw.meta)
+	if err != nil {
+		return nil, err
+	}
+
 	rw.currentPosition = rw.meta.Size
 	return Writer(rw), err
 }
@@ -350,6 +365,7 @@ func (d *DB) buildFilePrefix(id string, chunkN int) []byte {
 
 func (d *DB) newReadWriter(id, name string, writer bool) (_ *readWriter, err error) {
 	rw := new(readWriter)
+	rw.writer = writer
 
 	rw.meta, err = d.getFileMeta(id, name)
 	if err != nil {
@@ -619,6 +635,10 @@ func (r *readWriter) Seek(offset int64, whence int) (n int64, err error) {
 
 // Close should be called when done with the Reader
 func (r *readWriter) Close() (err error) {
+	if r.writer {
+		r.meta.inWrite = false
+		r.db.putFileMeta(r.meta)
+	}
 	r.txn.Discard()
 	return
 }
