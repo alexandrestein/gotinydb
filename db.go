@@ -415,3 +415,22 @@ newLoop:
 		goto newLoop
 	}
 }
+
+// GetFileIterator returns a file iterator which help to list existing files
+func (d *DB) GetFileIterator() *FileIterator{
+	iterOptions := badger.DefaultIteratorOptions
+	iterOptions.PrefetchValues = false
+
+	txn := d.badger.NewTransaction(false)
+	badgerIter := txn.NewIterator(iterOptions)
+
+	badgerIter.Seek([]byte{prefixFiles})
+
+	return &FileIterator{
+		baseIterator: &baseIterator{
+			txn:        txn,
+			badgerIter: badgerIter,
+		},
+		db: d,
+	}
+}

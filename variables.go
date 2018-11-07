@@ -26,7 +26,8 @@ var (
 
 	ErrEndOfQueryResult = fmt.Errorf("there is no more values to retrieve from the query")
 
-	ErrFileInWrite = fmt.Errorf("this file is already in write mode")
+	ErrFileInWrite              = fmt.Errorf("this file is already in write mode")
+	ErrFileItemIteratorNotValid = fmt.Errorf("item is not valid")
 )
 
 var (

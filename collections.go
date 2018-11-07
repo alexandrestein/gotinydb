@@ -572,7 +572,7 @@ func (c *Collection) DeleteIndex(name string) {
 	c.db.deletePrefix(index.Prefix)
 }
 
-func (c *Collection) getIterator(reverted bool) *Iterator {
+func (c *Collection) getIterator(reverted bool) *CollectionIterator {
 	iterOptions := badger.DefaultIteratorOptions
 	iterOptions.Reverse = reverted
 
@@ -583,23 +583,27 @@ func (c *Collection) getIterator(reverted bool) *Iterator {
 	prefix :=  make([]byte, len(tmpPrefix))
 	copy(prefix, tmpPrefix)
 
-	return &Iterator{
+	baseIterator := &baseIterator{
 		txn:        txn,
-		c:          c,
 		badgerIter: badgerIter,
+	}
+
+	return &CollectionIterator{
+		baseIterator: baseIterator,
+		c:          c,
 		colPrefix:  prefix,
 	}
 }
 
 // GetIterator provides an easy way to list elements
-func (c *Collection) GetIterator() *Iterator {
+func (c *Collection) GetIterator() *CollectionIterator {
 	iter := c.getIterator(false)
 	iter.badgerIter.Seek(iter.colPrefix)
 	return iter
 }
 
 // GetRevertedIterator does same as above but work in the oposite way
-func (c *Collection) GetRevertedIterator() *Iterator {
+func (c *Collection) GetRevertedIterator() *CollectionIterator {
 	iter := c.getIterator(true)
 	iter.badgerIter.Seek(c.buildJustTooBigDBPrefix())
 	return iter
