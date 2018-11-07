@@ -344,3 +344,29 @@ func ExampleBatch() {
 	fmt.Println(err)
 	// Output: <nil>
 }
+
+func ExampleCollectionIterator() {
+	iter := exampleCollection.GetIterator()
+	defer iter.Close()
+
+	for ; iter.Valid(); iter.Next() {
+		fmt.Println(string(iter.GetBytes()))
+	}
+
+	// Output: {"Name":"testing name"}
+	// {"Name":"I'm the example document"}
+	// {"ID":56548,"Email":"user2@dom.com","LastLogin":"2018-11-05T12:20:44.588809926+01:00"}
+}
+
+func ExampleFileIterator() {
+	iter := exampleDB.GetFileIterator()
+	defer iter.Close()
+
+	for ; iter.Valid(); iter.Next() {
+		meta := iter.GetMeta()
+		fmt.Println(meta.ID, meta.Name)
+	}
+
+	// Output: read file txt
+	// file example test.txt
+}
