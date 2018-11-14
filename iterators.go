@@ -91,6 +91,9 @@ func (i *CollectionIterator) getDBKey() []byte {
 // GetID returns the collection id if the current element
 func (i *CollectionIterator) GetID() string {
 	dbKey := i.getDBKey()
+	if dbKey == nil {
+		return ""
+	}
 
 	cleanDBKey := dbKey[len(i.colPrefix):]
 	return string(cleanDBKey)

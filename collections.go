@@ -268,7 +268,7 @@ func (c *Collection) getEncrypted(txn *badger.Txn, caller *multiGetCaller) (err 
 	if caller.id == "" {
 		return ErrEmptyID
 	}
-	
+
 	c.buildDBKey(caller.id)
 
 	var item *badger.Item
@@ -580,7 +580,7 @@ func (c *Collection) getIterator(reverted bool) *CollectionIterator {
 	badgerIter := txn.NewIterator(iterOptions)
 
 	tmpPrefix := c.buildDBKey("")
-	prefix :=  make([]byte, len(tmpPrefix))
+	prefix := make([]byte, len(tmpPrefix))
 	copy(prefix, tmpPrefix)
 
 	baseIterator := &baseIterator{
@@ -590,8 +590,8 @@ func (c *Collection) getIterator(reverted bool) *CollectionIterator {
 
 	return &CollectionIterator{
 		baseIterator: baseIterator,
-		c:          c,
-		colPrefix:  prefix,
+		c:            c,
+		colPrefix:    prefix,
 	}
 }
 
@@ -637,7 +637,7 @@ func (b *Batch) Delete(id string) error {
 	return b.addOperation(id, nil, true, false)
 }
 
-// Write execut the batch
+// Write execute the batch
 func (b *Batch) Write() error {
 	return b.c.writeBatch(b)
 }

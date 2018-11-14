@@ -79,8 +79,8 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 	options.NumVersionsToKeep = math.MaxInt32
 
 	db.writeChan = make(chan *transaction.Transaction, 1000)
-	go db.goRoutineLoopForWrites()
-	go db.goRoutineLoopForGC()
+
+	db.startBackgroundLoops()
 
 	db.badger, err = badger.Open(options)
 	if err != nil {
@@ -102,6 +102,11 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 	}
 
 	return db, nil
+}
+
+func (d *DB) startBackgroundLoops() {
+	go d.goRoutineLoopForWrites()
+	go d.goRoutineLoopForGC()
 }
 
 // Use build a new collection or open an existing one.
@@ -188,7 +193,10 @@ func (d *DB) Load(r io.Reader) error {
 
 	for _, col := range d.Collections {
 		for _, index := range col.BleveIndexes {
-			index.indexUnzipper()
+			err = index.indexUnzipper()
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -315,11 +323,12 @@ func (d *DB) saveConfig() (err error) {
 	})
 }
 
-func (d *DB) loadConfig() (err error) {
-	return d.badger.View(func(txn *badger.Txn) error {
+func (d *DB) getConfig() (db *DB, err error) {
+	err = d.badger.View(func(txn *badger.Txn) error {
 		dbKey := []byte{prefixConfig}
 
-		item, err := txn.Get(dbKey)
+		var item *badger.Item
+		item, err = txn.Get(dbKey)
 		if err != nil {
 			return err
 		}
@@ -335,8 +344,35 @@ func (d *DB) loadConfig() (err error) {
 			return err
 		}
 
-		return json.Unmarshal(dbAsBytes, d)
+		db = new(DB)
+		return json.Unmarshal(dbAsBytes, db)
 	})
+
+	if db != nil {
+		db.configKey = d.configKey
+	}
+
+	return
+}
+
+func (d *DB) loadConfig() error {
+	db, err := d.getConfig()
+	if err != nil {
+		return err
+	}
+
+	d.cancel()
+
+	db.cancel = d.cancel
+	db.badger = d.badger
+	db.ctx, db.cancel = context.WithCancel(context.Background())
+	db.writeChan = d.writeChan
+
+	*d = *db
+
+	d.startBackgroundLoops()
+
+	return nil
 }
 
 func (d *DB) loadCollections() (err error) {

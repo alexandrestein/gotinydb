@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/blevesearch/bleve"
 )
@@ -122,6 +123,7 @@ func (i *BleveIndex) indexUnzipper() error {
 		if err != nil {
 			return err
 		}
+		defer rc.Close()
 
 		var fileBytes []byte
 		fileBytes, err = ioutil.ReadAll(rc)
@@ -129,11 +131,21 @@ func (i *BleveIndex) indexUnzipper() error {
 			return err
 		}
 
-		err = ioutil.WriteFile(i.Path+"/"+f.Name, fileBytes, 0640)
+		filePath := i.Path + "/" + f.Name
+
+		err = os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
 		if err != nil {
 			return err
 		}
-		rc.Close()
+
+		err = ioutil.WriteFile(filePath, fileBytes, 0640)
+		if err != nil {
+			return err
+		}
+		err = rc.Close()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
