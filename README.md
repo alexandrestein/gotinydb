@@ -8,6 +8,7 @@
 [![codecov](https://codecov.io/gh/alexandreStein/GoTinyDB/branch/master/graph/badge.svg)](https://codecov.io/gh/alexandreStein/GoTinyDB) 
 [![Go Report Card](https://goreportcard.com/badge/github.com/alexandrestein/gotinydb)](https://goreportcard.com/report/github.com/alexandrestein/gotinydb)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+[![codebeat badge](https://codebeat.co/badges/f00fff9a-bfb8-429e-b285-cef39a0e4fd4)](https://codebeat.co/projects/github-com-alexandrestein-gotinydb-master)
 
 The goal is to have a fairly simple database which is light and don't needs to fit in RAM. This part is done by [Badger](https://github.com/dgraph-io/badger) which use SSD capabilities to have low
 RAM consumption and good performances.
