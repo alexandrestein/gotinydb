@@ -89,13 +89,18 @@ func (i *Iterator) Value() []byte {
 	item := i.iterator.Item()
 
 	var encryptVal []byte
-	encryptVal, _ = item.ValueCopy(encryptVal)
+	var err error
+	encryptVal, err = item.ValueCopy(encryptVal)
+	if err != nil {
+		fmt.Println("err decrypt iterator blevestore 1", err, item.Key())
+		return nil
+	}
 
 	val := []byte{}
-	var err error
 	val, err = cipher.Decrypt(i.store.config.key, item.Key(), encryptVal)
 	if err != nil {
-		fmt.Println("err decrypt iterator blevestore", err, item.Key())
+		fmt.Println("err decrypt iterator blevestore 2", err, item.Key())
+		return nil
 	}
 
 	return val
