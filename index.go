@@ -14,7 +14,6 @@ import (
 
 type (
 	// BleveIndex defines for now the only supported index (no plan for other unless it's needed).
-	// It
 	BleveIndex struct {
 		dbElement
 

@@ -10,6 +10,7 @@ github.com/blevesearch/go-porterstemmer v1.0.1 h1:+ZjIF3K4U+LxqMybaE4hxyMuMvdX1F
 github.com/blevesearch/go-porterstemmer v1.0.1/go.mod h1:haWQqFT3RdOGz7PJuM3or/pWNJS1pKkoZJWCkWu0DVA=
 github.com/blevesearch/segment v0.0.0-20160915185041-762005e7a34f h1:kqbi9lqXLLs+zfWlgo1PIiRQ86n33K1JKotjj4rSYOg=
 github.com/blevesearch/segment v0.0.0-20160915185041-762005e7a34f/go.mod h1:IInt5XRvpiGE09KOk9mmCMLjHhydIhNPKPPFLFBB7L8=
+github.com/boltdb/bolt v1.3.1 h1:JQmyP4ZBrce+ZQu0dY660FMfatumYDLun9hBCUVIkF4=
 github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx27Ps=
 github.com/couchbase/vellum v0.0.0-20180910213445-01d5c56e6095 h1:dh7mqP7LS9voSd1Wx515giC2lPjPVduBpujISaftHrc=
 github.com/couchbase/vellum v0.0.0-20180910213445-01d5c56e6095/go.mod h1:prYTC8EgTu3gwbqJihkud9zRXISvyulAplQ6exdCo1g=

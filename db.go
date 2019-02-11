@@ -367,6 +367,7 @@ func (d *DB) loadConfig() error {
 	db.badger = d.badger
 	db.ctx, db.cancel = context.WithCancel(context.Background())
 	db.writeChan = d.writeChan
+	db.path = d.path
 
 	*d = *db
 
