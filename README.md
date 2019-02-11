@@ -59,10 +59,6 @@ Take a look at [GoDoc](https://godoc.org/github.com/alexandrestein/gotinydb) and
 
 - Make a basic master/slaves replication system for data protection
 
-### Maybe
-
-- Full text search with [Bleve](http://www.blevesearch.com/)
-
 ## Contributing
 
 Any contribution will be appreciate.
