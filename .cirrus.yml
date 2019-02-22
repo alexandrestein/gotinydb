@@ -1,7 +1,7 @@
 container:
   image: golang:latest
   cpu: 2
-  memory: 6G
+  memory: 2G
 
 test_task:
   env:
@@ -9,4 +9,4 @@ test_task:
   get_script: go get -v ./...
   test_script: 
   - ./.test.sh
-  - curl -s https://codecov.io/bash | bash -s - -t 334afc5a-bf17-476f-bd9d-7598c2d7b224)
+  - curl -s https://codecov.io/bash | bash -s - -t 334afc5a-bf17-476f-bd9d-7598c2d7b224
