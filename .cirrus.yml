@@ -1,7 +1,7 @@
 container:
   image: golang:latest
   cpu: 2
-  memory: 2G
+  memory: 4G
 
 test_task:
   env:
