@@ -1,13 +1,12 @@
 container:
   image: golang:latest
   cpu: 2
-  memory: 4G
+  memory: 6G
 
 test_task:
   env:
     GO111MODULE: on
   get_script: go get -v ./...
   test_script: 
-  # - go test -v -cover -coverprofile=coverage.txt -covermode=atomic -race ./...
   - ./.test.sh
-  - bash <(wget https://codecov.io/bash  -q -O -)
+  - bash <(wget https://codecov.io/bash -q -O - -t 334afc5a-bf17-476f-bd9d-7598c2d7b224)
