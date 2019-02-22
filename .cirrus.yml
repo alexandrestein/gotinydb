@@ -1,17 +1,7 @@
 container:
   image: golang:latest
   cpu: 2
-  memory: 4
-
-windows_container:
-  image: cirrusci/windowsservercore:2019
-  os_version: 2019
-
-osx_instance:
-  image: mojave-xcode-10.1
-
-freebsd_instance:
-  image: freebsd-11-2-release-amd64
+  memory: 4G
 
 test_task:
   env:
