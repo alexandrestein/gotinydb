@@ -1,0 +1,13 @@
+container:
+  image: golang:latest
+  cpu: 2
+  memory: 4
+
+test_task:
+  env:
+    # CIRRUS_WORKING_DIR: /go/src/github.com/$CIRRUS_REPO_FULL_NAME
+    GO111MODULE: on
+  get_script: go get -t -v ./...
+  test_script: 
+  - go test -v -cover -coverprofile=coverage.txt -covermode=atomic -race ./...
+  - bash <(wget https://codecov.io/bash  -q -O -)
