@@ -3,11 +3,21 @@ container:
   cpu: 2
   memory: 4
 
+windows_container:
+  image: cirrusci/windowsservercore:2019
+  os_version: 2019
+
+osx_instance:
+  image: mojave-xcode-10.1
+
+freebsd_instance:
+  image: freebsd-11-2-release-amd64
+
 test_task:
   env:
-    # CIRRUS_WORKING_DIR: /go/src/github.com/$CIRRUS_REPO_FULL_NAME
     GO111MODULE: on
-  get_script: go get -t -v ./...
+  get_script: go get -v ./...
   test_script: 
-  - go test -v -cover -coverprofile=coverage.txt -covermode=atomic -race ./...
+  # - go test -v -cover -coverprofile=coverage.txt -covermode=atomic -race ./...
+  - ./.test.sh
   - bash <(wget https://codecov.io/bash  -q -O -)
