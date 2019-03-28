@@ -319,7 +319,7 @@ func testWriteFileParts(t *testing.T, fileID string, expected []byte, at int64) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(expected, p) {
+	if !bytes.Equal(expected, p) {
 		t.Fatalf("the returned value is unexpected")
 	}
 	if n != len(expected) {

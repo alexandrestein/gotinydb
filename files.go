@@ -27,6 +27,8 @@ type (
 
 	readWriter struct {
 		meta            *FileMeta
+		cache           []byte
+		cachedChunk     int
 		db              *DB
 		currentPosition int64
 		txn             *badger.Txn
@@ -379,7 +381,7 @@ func (d *DB) newReadWriter(id, name string, writer bool) (_ *readWriter, err err
 }
 
 // Read implements the io.Reader interface
-func (r *readWriter) Read(p []byte) (n int, err error) {
+func (r *readWriter) Read(dest []byte) (n int, err error) {
 	block, inside := r.getBlockAndInsidePosition(r.currentPosition)
 
 	opt := badger.DefaultIteratorOptions
@@ -398,18 +400,31 @@ func (r *readWriter) Read(p []byte) (n int, err error) {
 			break
 		}
 
+		// they are a variable which is used later but because of the cache we declare it here
 		var err error
 		var valAsEncryptedBytes []byte
+		var valAsBytes []byte
+		if block == r.cachedChunk && r.cache != nil && first {
+			valAsBytes = make([]byte, len(r.cache))
+			copy(valAsBytes, r.cache)
+			goto useCache
+		}
+
 		valAsEncryptedBytes, err = it.Item().ValueCopy(valAsEncryptedBytes)
 		if err != nil {
 			return 0, err
 		}
 
-		var valAsBytes []byte
 		valAsBytes, err = cipher.Decrypt(r.db.PrivateKey, it.Item().Key(), valAsEncryptedBytes)
 		if err != nil {
 			return 0, err
 		}
+
+		// Save for caching
+		r.cache = make([]byte, len(valAsBytes))
+		copy(r.cache, valAsBytes)
+		r.cachedChunk = block
+	useCache:
 
 		var toAdd []byte
 		if first {
@@ -417,17 +432,18 @@ func (r *readWriter) Read(p []byte) (n int, err error) {
 		} else {
 			toAdd = valAsBytes
 		}
+
 		buffer.Write(toAdd)
-		if buffer.Len() >= len(p) {
-			copy(p, buffer.Bytes()[:len(p)])
-			r.currentPosition += int64(len(p))
-			return len(p), nil
+		if buffer.Len() >= len(dest) {
+			copy(dest, buffer.Bytes()[:len(dest)])
+			r.currentPosition += int64(len(dest))
+			return len(dest), nil
 		}
 
 		first = false
 	}
 
-	copy(p, buffer.Bytes())
+	copy(dest, buffer.Bytes())
 
 	r.currentPosition = 0
 
@@ -544,15 +560,17 @@ newLoop:
 	goto newLoop
 }
 
-func (r *readWriter) afterWrite(writenLength int) {
-	// Refrech the transaction
+func (r *readWriter) afterWrite(writtenLength int) {
+	// Refresh the transaction
 	r.txn.Discard()
 	r.txn = r.db.badger.NewTransaction(false)
+
+	r.cachedChunk = 0
 
 	r.meta.Size += r.getWrittenSize()
 	r.meta.LastModified = time.Now()
 
-	r.currentPosition += int64(writenLength)
+	r.currentPosition += int64(writtenLength)
 
 	r.db.putFileMeta(r.meta)
 }
