@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.3.3...master)
 
+- Add cache to file reader to prevent unnecessary reads when caller user small buffer.
+
 ## [0.3.2](https://github.com/alexandrestein/gotinydb/compare/v0.3.2...v0.3.3)
 
 ### Fixes
