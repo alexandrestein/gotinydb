@@ -6,8 +6,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.3.3...master)
+.
+### Add
 
 - Add cache to file reader to prevent unnecessary reads when caller user small buffer.
+
+### Changed
+
+- *Collection.SetBleveIndex now takes a *mapping.DocumentMapping which is used as *index.IndexImpl.DefaultMapping.
+  This makes the reindexing more reliable and the use of the field more user friendly.
 
 ## [0.3.2](https://github.com/alexandrestein/gotinydb/compare/v0.3.2...v0.3.3)
 
