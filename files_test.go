@@ -326,3 +326,104 @@ func testWriteFileParts(t *testing.T, fileID string, expected []byte, at int64) 
 		t.Fatalf("the returned n is not corrected. Expected %d has %d", n, len(expected))
 	}
 }
+
+func TestRelatedPutFiles(t *testing.T) {
+	defer clean()
+	err := open(t)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// ≊ 15MB
+	randBuff := make([]byte, 15*999*1000)
+	rand.Read(randBuff)
+
+	fileID := "test file ID"
+
+	err = testCol.Put(fileID, struct{}{})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	buff := bytes.NewBuffer(nil)
+	_, err = testDB.PutFileRelated(fileID, "", buff, testCol.Name, fileID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = testCol.Delete(fileID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	buff.Reset()
+	err = testDB.ReadFile(fileID, buff)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if buff.Len() != 0 {
+		t.Errorf("the file should be empty because the related document has been removed")
+		return
+	}
+}
+
+func TestRelatedFilesWriterInterface(t *testing.T) {
+	defer clean()
+	err := open(t)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// ≊ 15MB
+	randBuff := make([]byte, 15*999*1000)
+	rand.Read(randBuff)
+
+	fileID := "test file ID"
+
+	err = testCol.Put(fileID, struct{}{})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	var w Writer
+	w, err = testDB.GetFileWriterRelated(fileID, "", testCol.Name, fileID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer w.Close()
+
+	_, err = w.Write(randBuff)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	w.Close()
+
+	err = testCol.Delete(fileID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	buff := bytes.NewBuffer(nil)
+	err = testDB.ReadFile(fileID, buff)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if buff.Len() != 0 {
+		t.Errorf("the file should be empty because the related document has been removed")
+		return
+	}
+}

@@ -25,14 +25,14 @@ type (
 )
 
 // NewOperation returns a new operation pointer
-func NewOperation(id string, content interface{}, key, val []byte, del, cleanHistory bool) *Operation {
+func NewOperation(colName string, content interface{}, key, val []byte, del, cleanHistory bool) *Operation {
 	if del {
 		content = nil
 		val = nil
 	}
 
 	return &Operation{
-		CollectionID: id,
+		CollectionID: colName,
 		Content:      content,
 
 		DBKey:        key,

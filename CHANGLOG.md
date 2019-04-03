@@ -6,10 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.3.3...master)
-.
+
 ### Add
 
 - Add cache to file reader to prevent unnecessary reads when caller user small buffer.
+- Add support for file related to document. The files are automatically removed when the related document is.
 
 ### Changed
 

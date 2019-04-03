@@ -7,6 +7,7 @@ const (
 	prefixConfig byte = iota
 	prefixCollections
 	prefixFiles
+	prefixFilesRelated
 )
 
 // Those constants defines the second level of prefixes or value from config.

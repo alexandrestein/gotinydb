@@ -17,12 +17,14 @@ import (
 type (
 	// FileMeta defines some file metadata informations
 	FileMeta struct {
-		ID           string
-		Name         string
-		Size         int64
-		LastModified time.Time
-		ChuckSize    int
-		inWrite      bool
+		ID                        string
+		Name                      string
+		Size                      int64
+		LastModified              time.Time
+		ChuckSize                 int
+		RelatedDocumentID         string
+		RelatedDocumentCollection string
+		inWrite                   bool
 	}
 
 	readWriter struct {
@@ -55,10 +57,25 @@ type (
 
 // PutFile let caller insert large element into the database via a reader interface
 func (d *DB) PutFile(id string, name string, reader io.Reader) (n int, err error) {
+	return d.PutFileRelated(id, name, reader, "", "")
+}
+
+func (d *DB) PutFileRelated(id string, name string, reader io.Reader, colName, documentID string) (n int, err error) {
 	d.DeleteFile(id)
 
 	meta := d.buildMeta(id, name)
 	meta.inWrite = true
+
+	if colName != "" {
+		meta.RelatedDocumentCollection = colName
+		meta.RelatedDocumentID = documentID
+
+		// Save the related document
+		err = d.addRelatedFileIDs(colName, documentID, id)
+		if err != nil {
+			return
+		}
+	}
 
 	// Set the meta
 	err = d.putFileMeta(meta)
@@ -137,35 +154,41 @@ func (d *DB) writeFileChunk(id string, chunk int, content []byte) (err error) {
 	return
 }
 
+func (d *DB) getFileMetaWithTxn(txn *badger.Txn, id, name string) (meta *FileMeta, err error) {
+	metaID := d.buildFilePrefix(id, 0)
+
+	var item *badger.Item
+	item, err = txn.Get(metaID)
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			err = nil
+			meta = d.buildMeta(id, name)
+			return
+		}
+		return
+	}
+
+	var valAsEncryptedBytes []byte
+	valAsEncryptedBytes, err = item.ValueCopy(valAsEncryptedBytes)
+	if err != nil {
+		return
+	}
+
+	var valAsBytes []byte
+	valAsBytes, err = cipher.Decrypt(d.PrivateKey, item.Key(), valAsEncryptedBytes)
+	if err != nil {
+		return
+	}
+
+	meta = new(FileMeta)
+	err = json.Unmarshal(valAsBytes, meta)
+	return meta, err
+}
+
 func (d *DB) getFileMeta(id, name string) (meta *FileMeta, err error) {
 	err = d.badger.View(func(txn *badger.Txn) (err error) {
-		metaID := d.buildFilePrefix(id, 0)
-
-		var item *badger.Item
-		item, err = txn.Get(metaID)
-		if err != nil {
-			if err == badger.ErrKeyNotFound {
-				err = nil
-				meta = d.buildMeta(id, name)
-				return
-			}
-			return
-		}
-
-		var valAsEncryptedBytes []byte
-		valAsEncryptedBytes, err = item.ValueCopy(valAsEncryptedBytes)
-		if err != nil {
-			return
-		}
-
-		var valAsBytes []byte
-		valAsBytes, err = cipher.Decrypt(d.PrivateKey, item.Key(), valAsEncryptedBytes)
-		if err != nil {
-			return
-		}
-
-		meta = new(FileMeta)
-		return json.Unmarshal(valAsBytes, meta)
+		meta, err = d.getFileMetaWithTxn(txn, id, name)
+		return
 	})
 	if err != nil {
 		return
@@ -214,6 +237,147 @@ func (d *DB) putFileMeta(meta *FileMeta) (err error) {
 	return
 }
 
+// buildRelatedFileID returns the id of the saved list of files related to the given document into the given collection
+func (d *DB) buildRelatedID(colName, documentID string) []byte {
+	col, err := d.Use(colName)
+	if err != nil {
+		return nil
+	}
+	id := []byte{prefixFilesRelated}
+	id = append(id, col.Prefix...)
+	id = append(id, []byte(documentID)...)
+
+	return id
+}
+
+func (d *DB) getRelatedFileIDsInternal(colName, documentID string, txn *badger.Txn) (fileIDs []string, _ error) {
+	relatedID := d.buildRelatedID(colName, documentID)
+	item, err := txn.Get(relatedID)
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return []string{}, nil
+		}
+		return nil, err
+	}
+
+	valAsEncryptedBytes := []byte{}
+	valAsEncryptedBytes, err = item.ValueCopy(valAsEncryptedBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var valAsBytes []byte
+	valAsBytes, err = cipher.Decrypt(d.PrivateKey, item.Key(), valAsEncryptedBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	fileIDs = []string{}
+	err = json.Unmarshal(valAsBytes, &fileIDs)
+	return fileIDs, err
+}
+
+func (d *DB) getRelatedFileIDs(colName, documentID string) (fileIDs []string) {
+	d.badger.View(func(txn *badger.Txn) (err error) {
+		fileIDs, err = d.getRelatedFileIDsInternal(colName, documentID, txn)
+		return err
+	})
+	return
+}
+
+func (d *DB) addRelatedFileIDs(colName, documentID string, fileIDsToAdd ...string) (err error) {
+	return d.badger.View(func(txn *badger.Txn) error {
+		fileIDs, err := d.getRelatedFileIDsInternal(colName, documentID, txn)
+		if err != nil {
+			return err
+		}
+
+		fileIDs = append(fileIDs, fileIDsToAdd...)
+
+		var retBytes []byte
+		retBytes, err = json.Marshal(fileIDs)
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// And add it to the list of store IDs to delete
+		tx := transaction.New(ctx)
+		tx.AddOperation(
+			transaction.NewOperation("", fileIDs, d.buildRelatedID(colName, documentID), retBytes, false, false),
+		)
+
+		// Send the write request
+		d.writeChan <- tx
+
+		// Wait for the write response
+		select {
+		case err = <-tx.ResponseChan:
+		case <-tx.Ctx.Done():
+			err = tx.Ctx.Err()
+		}
+
+		return err
+	})
+}
+
+func (d *DB) deleteRelatedFileIDs(colName, documentID string, fileIDsToDelete ...string) (err error) {
+	return d.badger.View(func(txn *badger.Txn) error {
+		fileIDs, err := d.getRelatedFileIDsInternal(colName, documentID, txn)
+		if err != nil {
+			return err
+		}
+
+		for i := len(fileIDs) - 1; i >= 0; i-- {
+			for _, idToDelete := range fileIDsToDelete {
+				if idToDelete == fileIDs[i] {
+					fileIDs = append(fileIDs[:i], fileIDs[i+1:]...)
+				}
+			}
+		}
+
+		var retBytes []byte
+		if len(fileIDs) != 0 {
+			retBytes, err = json.Marshal(fileIDs)
+			if err != nil {
+				return err
+			}
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// And add it to the list of store IDs to delete
+		tx := transaction.New(ctx)
+		if len(fileIDs) != 0 {
+			tx.AddOperation(
+				transaction.NewOperation("", fileIDs, d.buildRelatedID(colName, documentID), retBytes, false, false),
+			)
+		} else {
+			tx.AddOperation(
+				transaction.NewOperation("", nil, d.buildRelatedID(colName, documentID), nil, true, true),
+			)
+		}
+
+		// Send the write request
+		d.writeChan <- tx
+
+		// Wait for the write response
+		select {
+		case err = <-tx.ResponseChan:
+		case <-tx.Ctx.Done():
+			err = tx.Ctx.Err()
+		}
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
 // ReadFile write file content into the given writer
 func (d *DB) ReadFile(id string, writer io.Writer) error {
 	return d.badger.View(func(txn *badger.Txn) error {
@@ -260,6 +424,11 @@ func (d *DB) GetFileReader(id string) (Reader, error) {
 // GetFileWriter returns a struct to provide simple partial write of big files.
 // The default position is at the end of the file.
 func (d *DB) GetFileWriter(id, name string) (Writer, error) {
+	return d.GetFileWriterRelated(id, name, "", "")
+}
+
+// GetFileWriterRelated does the same as GetFileWriter but with related document
+func (d *DB) GetFileWriterRelated(id, name string, colName, documentID string) (Writer, error) {
 	rw, err := d.newReadWriter(id, name, true)
 	if err != nil {
 		return nil, err
@@ -267,6 +436,17 @@ func (d *DB) GetFileWriter(id, name string) (Writer, error) {
 
 	if rw.meta.inWrite {
 		return nil, ErrFileInWrite
+	}
+
+	if colName != "" {
+		rw.meta.RelatedDocumentCollection = colName
+		rw.meta.RelatedDocumentID = documentID
+
+		// Save the related document
+		err = d.addRelatedFileIDs(colName, documentID, id)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rw.meta.inWrite = true
@@ -324,6 +504,10 @@ func (d *DB) DeleteFile(id string) (err error) {
 				return err
 			}
 		}
+
+		var meta *FileMeta
+		meta, err = d.getFileMetaWithTxn(txn, id, "")
+		d.deleteRelatedFileIDs(meta.RelatedDocumentCollection, meta.RelatedDocumentID, id)
 
 		// Close the view transaction
 		return nil
@@ -541,7 +725,9 @@ newLoop:
 		if err != nil {
 			return 0, err
 		}
-		nextToWrite = append(nextToWrite, valAsBytes[len(nextToWrite):]...)
+		if len(valAsBytes) >= len(nextToWrite) {
+			nextToWrite = append(nextToWrite, valAsBytes[len(nextToWrite):]...)
+		}
 	}
 
 	err = r.db.writeFileChunk(r.meta.ID, block, nextToWrite)
