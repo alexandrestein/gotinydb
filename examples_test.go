@@ -54,10 +54,7 @@ func init() {
 	}
 
 	userDocumentMapping := bleve.NewDocumentMapping()
-	indexMapping := bleve.NewIndexMapping()
-	// This is because you can have multiple mapping for the same index
-	indexMapping.AddDocumentMapping("main", userDocumentMapping)
-	exampleCollection.SetBleveIndex("index X", indexMapping)
+	exampleCollection.SetBleveIndex("index X", userDocumentMapping)
 	doc := &struct {
 		Name string
 	}{
@@ -96,15 +93,10 @@ func Example() {
 	emailFieldMapping := bleve.NewTextFieldMapping()
 	// Add a text filed to Email property
 	userDocumentMapping.AddFieldMappingsAt("Email", emailFieldMapping)
-	// Build the index mapping it self
-	indexMapping := bleve.NewIndexMapping()
-	// This is because you can have multiple mapping for the same index
-	indexMapping.AddDocumentMapping("exampleUser", userDocumentMapping)
-
 	// In this case it indexes only the field "Email"
 
 	// Save the bleve indexexes
-	err = c.SetBleveIndex("email", indexMapping)
+	err = c.SetBleveIndex("email", userDocumentMapping)
 	if err != nil {
 		if err != gotinydb.ErrNameAllreadyExists {
 			log.Fatal(err)
@@ -277,12 +269,8 @@ func ExampleCollection_SetBleveIndex() {
 	emailFieldMapping := bleve.NewTextFieldMapping()
 	// Add a text filed to Email property
 	userDocumentMapping.AddFieldMappingsAt("Email", emailFieldMapping)
-	// Build the index mapping it self
-	indexMapping := bleve.NewIndexMapping()
-	// This is because you can have multiple mapping for the same index
-	indexMapping.AddDocumentMapping("exampleUser", userDocumentMapping)
 
-	err := exampleCollection.SetBleveIndex("your index name", indexMapping)
+	err := exampleCollection.SetBleveIndex("your index name", userDocumentMapping)
 	fmt.Println(err)
 
 	// Output: <nil>

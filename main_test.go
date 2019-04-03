@@ -208,16 +208,13 @@ func open(t *testing.T) (err error) {
 	emailFieldMapping := bleve.NewTextFieldMapping()
 	userDocumentMapping.AddFieldMappingsAt("email", emailFieldMapping)
 
-	indexMapping := bleve.NewIndexMapping()
-	indexMapping.AddDocumentMapping(testUser.Type(), userDocumentMapping)
-
-	err = testCol.SetBleveIndex(testIndexName, indexMapping)
+	err = testCol.SetBleveIndex(testIndexName, userDocumentMapping)
 	if err != nil {
 		t.Error(err)
 		return err
 	}
 
-	err = testCol.SetBleveIndex("all", bleve.NewIndexMapping())
+	err = testCol.SetBleveIndex("all", bleve.NewDocumentMapping())
 	if err != nil {
 		t.Error(err)
 		return err
@@ -419,7 +416,7 @@ func TestChainOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = userCollection.SetBleveIndex("all", bleve.NewIndexMapping())
+	err = userCollection.SetBleveIndex("all", bleve.NewDocumentMapping())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,7 +435,7 @@ func TestChainReOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = userCollection.SetBleveIndex("all", bleve.NewIndexMapping())
+	err = userCollection.SetBleveIndex("all", bleve.NewDocumentMapping())
 	if err == nil {
 		t.Fatal("the index exist")
 	}

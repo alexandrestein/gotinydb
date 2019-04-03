@@ -38,19 +38,20 @@ func TestIndexExistingValue(t *testing.T) {
 		return
 	}
 
-	err = testCol.SetBleveIndex("car brand", bleve.NewIndexMapping())
+	err = testCol.SetBleveIndex("car brand", bleve.NewDocumentMapping())
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	err = testCol.SetBleveIndex("car brand", bleve.NewIndexMapping())
+	err = testCol.SetBleveIndex("car brand", bleve.NewDocumentMapping())
 	if err == nil {
 		t.Error("setting index with same name must returns an error")
 		return
 	}
 
-	query := bleve.NewQueryStringQuery("BMW")
+	query := bleve.NewMatchQuery("BMW")
 	searchRequest := bleve.NewSearchRequestOptions(query, 10, 0, true)
+
 	var searchResult *SearchResult
 	searchResult, err = testCol.SearchWithOptions("car brand", searchRequest)
 	if err != nil {
@@ -74,13 +75,13 @@ func TestIndexResultNext(t *testing.T) {
 	emailFieldMapping := bleve.NewTextFieldMapping()
 	userDocumentMapping.AddFieldMappingsAt("email", emailFieldMapping)
 
+	nameFieldMapping := bleve.NewTextFieldMapping()
+	userDocumentMapping.AddFieldMappingsAt("name", nameFieldMapping)
+
 	accountDocumentMapping := bleve.NewDocumentMapping()
 	userDocumentMapping.AddSubDocumentMapping("oauth", accountDocumentMapping)
 
-	indexMapping := bleve.NewIndexMapping()
-	indexMapping.AddDocumentMapping(testUser.Type(), userDocumentMapping)
-
-	err := testCol.SetBleveIndex("test index name", indexMapping)
+	err := testCol.SetBleveIndex("test index name", userDocumentMapping)
 	if err != nil {
 		t.Error(err)
 		return
@@ -135,7 +136,8 @@ func TestIndexResultNext(t *testing.T) {
 		t.Log(searchResult)
 	}
 
-	query = bleve.NewWildcardQuery("*github*")
+	query = bleve.NewWildcardQuery("*aol*")
+	query.SetField("email")
 	searchResult, err = testCol.Search("test index name", query)
 	if err != nil {
 		t.Error(err)
@@ -157,7 +159,7 @@ func TestIndexResultNext(t *testing.T) {
 		t.Log(searchResult)
 	}
 
-	query2 := bleve.NewMatchQuery("GitHub")
+	query2 := bleve.NewMatchQuery("george")
 	searchResult, err = testCol.Search("test index name", query2)
 	if err != nil {
 		t.Error(err)

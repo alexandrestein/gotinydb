@@ -64,7 +64,7 @@ func (c *Collection) buildIndexPrefix() []byte {
 
 // SetBleveIndex adds a bleve index to the collection.
 // It build a new index with the given index mapping.
-func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMapping) (err error) {
+func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.DocumentMapping) (err error) {
 	// Use only the tow first bytes as index prefix.
 	// The prefix is used to confine indexes with a prefixes.
 	prefix := c.buildIndexPrefix()
@@ -90,6 +90,10 @@ func (c *Collection) SetBleveIndex(name string, bleveMapping mapping.IndexMappin
 	// The path is based on a part of the collection hash and the index prefix.
 	colHash := blake2b.Sum256([]byte(c.Name))
 	index.Path = fmt.Sprintf("%s/%x/%x", c.db.path, colHash[:2], indexHash[:2])
+
+	// Build the index and set the given document index as default
+	bleveMapping := bleve.NewIndexMapping()
+	bleveMapping.DefaultMapping = documentMapping
 
 	// Build the configuration to use the local bleve storage and initialize the index
 	config := blevestore.NewConfigMap(c.db.ctx, index.Path, c.db.PrivateKey, prefix, c.db.badger, c.db.writeChan)
