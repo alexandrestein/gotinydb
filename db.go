@@ -80,12 +80,11 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 
 	db.writeChan = make(chan *transaction.Transaction, 1000)
 
-	db.startBackgroundLoops()
-
 	db.badger, err = badger.Open(options)
 	if err != nil {
 		return nil, err
 	}
+	db.startBackgroundLoops()
 
 	err = db.loadConfig()
 	if err != nil {
@@ -107,6 +106,7 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 func (d *DB) startBackgroundLoops() {
 	go d.goRoutineLoopForWrites()
 	go d.goRoutineLoopForGC()
+	go d.goWatchForTTLToClean()
 }
 
 // Use build a new collection or open an existing one.
@@ -145,6 +145,8 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 // Close close the database and all subcomposants. It returns the error if any
 func (d *DB) Close() (err error) {
 	d.cancel()
+
+	time.Sleep(time.Millisecond * 50)
 
 	// In case of any error
 	defer func() {
@@ -271,22 +273,13 @@ func (d *DB) goRoutineLoopForWrites() {
 					var err error
 					if op.Delete {
 						err = txn.Delete(op.DBKey)
-					}
-
-					if op.CleanHistory {
-						err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), 0)
-						// } else if op.TTL != 0 {
-						// 	err = txn.SetWithTTL(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), op.TTL)
 					} else {
-						err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
+						if op.CleanHistory {
+							err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), 0)
+						} else {
+							err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
+						}
 					}
-
-					// // Check if the record is TTL
-					// if err == nil && op.TTL != nil {
-					// 	fmt.Println("add TTL", op.TTL)
-					// 	dbKey := op.TTL.TimeAsKey([]byte{prefixTTL})
-					// 	err = txn.Set(dbKey, cipher.Encrypt(d.PrivateKey, dbKey, op.TTL.ExportAsBytes()))
-					// }
 
 					// Returns the write error to the caller
 					if err != nil {
@@ -452,7 +445,7 @@ newLoop:
 
 			tx := transaction.New(ctx)
 			tx.AddOperation(
-				transaction.NewOperation("", nil, key, nil, true, false, nil),
+				transaction.NewOperation("", nil, key, nil, true, false),
 			)
 			idToDelete = append(idToDelete, tx)
 

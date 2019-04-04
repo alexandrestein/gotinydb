@@ -136,7 +136,7 @@ func (d *DB) writeFileChunk(id string, chunk int, content []byte) (err error) {
 
 	tx := transaction.New(ctx)
 	tx.AddOperation(
-		transaction.NewOperation("", nil, d.buildFilePrefix(id, chunk), content, false, true, nil),
+		transaction.NewOperation("", nil, d.buildFilePrefix(id, chunk), content, false, true),
 	)
 	// Run the insertion
 	select {
@@ -220,7 +220,7 @@ func (d *DB) putFileMeta(meta *FileMeta) (err error) {
 
 	tx := transaction.New(ctx)
 	tx.AddOperation(
-		transaction.NewOperation("", nil, metaID, metaAsBytes, false, false, nil),
+		transaction.NewOperation("", nil, metaID, metaAsBytes, false, false),
 	)
 	// Run the insertion
 	select {
@@ -306,7 +306,7 @@ func (d *DB) addRelatedFileIDs(colName, documentID string, fileIDsToAdd ...strin
 		// And add it to the list of store IDs to delete
 		tx := transaction.New(ctx)
 		tx.AddOperation(
-			transaction.NewOperation("", fileIDs, d.buildRelatedID(colName, documentID), retBytes, false, false, nil),
+			transaction.NewOperation("", fileIDs, d.buildRelatedID(colName, documentID), retBytes, false, false),
 		)
 
 		// Send the write request
@@ -353,11 +353,11 @@ func (d *DB) deleteRelatedFileIDs(colName, documentID string, fileIDsToDelete ..
 		tx := transaction.New(ctx)
 		if len(fileIDs) != 0 {
 			tx.AddOperation(
-				transaction.NewOperation("", fileIDs, d.buildRelatedID(colName, documentID), retBytes, false, false, nil),
+				transaction.NewOperation("", fileIDs, d.buildRelatedID(colName, documentID), retBytes, false, false),
 			)
 		} else {
 			tx.AddOperation(
-				transaction.NewOperation("", nil, d.buildRelatedID(colName, documentID), nil, true, true, nil),
+				transaction.NewOperation("", nil, d.buildRelatedID(colName, documentID), nil, true, true),
 			)
 		}
 
@@ -488,7 +488,7 @@ func (d *DB) DeleteFile(id string) (err error) {
 			// And add it to the list of store IDs to delete
 			tx := transaction.New(ctx)
 			tx.AddOperation(
-				transaction.NewOperation("", nil, key, nil, true, true, nil),
+				transaction.NewOperation("", nil, key, nil, true, true),
 			)
 			listOfTx = append(listOfTx, tx)
 			d.writeChan <- tx

@@ -21,16 +21,14 @@ type (
 
 		DBKey, Value         []byte
 		Delete, CleanHistory bool
-		TTL                  *TTL
 	}
 )
 
 // NewOperation returns a new operation pointer
-func NewOperation(colName string, content interface{}, key, val []byte, del, cleanHistory bool, ttl *TTL) *Operation {
+func NewOperation(colName string, content interface{}, key, val []byte, del, cleanHistory bool) *Operation {
 	if del {
 		content = nil
 		val = nil
-		ttl = nil
 	}
 
 	return &Operation{
@@ -41,7 +39,6 @@ func NewOperation(colName string, content interface{}, key, val []byte, del, cle
 		Value:        val,
 		Delete:       del,
 		CleanHistory: cleanHistory,
-		TTL:          ttl,
 	}
 }
 
