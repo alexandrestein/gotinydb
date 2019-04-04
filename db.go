@@ -271,15 +271,28 @@ func (d *DB) goRoutineLoopForWrites() {
 					var err error
 					if op.Delete {
 						err = txn.Delete(op.DBKey)
-					} else if op.CleanHistory {
+					}
+
+					if op.CleanHistory {
 						err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), 0)
+						// } else if op.TTL != 0 {
+						// 	err = txn.SetWithTTL(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), op.TTL)
 					} else {
 						err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
 					}
+
+					// // Check if the record is TTL
+					// if err == nil && op.TTL != nil {
+					// 	fmt.Println("add TTL", op.TTL)
+					// 	dbKey := op.TTL.TimeAsKey([]byte{prefixTTL})
+					// 	err = txn.Set(dbKey, cipher.Encrypt(d.PrivateKey, dbKey, op.TTL.ExportAsBytes()))
+					// }
+
 					// Returns the write error to the caller
 					if err != nil {
 						go d.nonBlockingResponseChan(transaction, err)
 					}
+
 				}
 			}
 			return nil
@@ -439,7 +452,7 @@ newLoop:
 
 			tx := transaction.New(ctx)
 			tx.AddOperation(
-				transaction.NewOperation("", nil, key, nil, true, false),
+				transaction.NewOperation("", nil, key, nil, true, false, nil),
 			)
 			idToDelete = append(idToDelete, tx)
 

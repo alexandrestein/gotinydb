@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
@@ -183,7 +184,7 @@ func (c *Collection) putLoopForIndexes(tr *transaction.Transaction) (err error) 
 	return nil
 }
 
-func (c *Collection) put(id string, content interface{}, clean bool) error {
+func (c *Collection) put(id string, content interface{}, clean bool, ttl time.Duration) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -194,6 +195,8 @@ func (c *Collection) put(id string, content interface{}, clean bool) error {
 
 	if clean {
 		err = tr.PutClean(id, content)
+	} else if ttl != 0 {
+		err = tr.PutWithTTL(id, content, ttl)
 	} else {
 		err = tr.Put(id, content)
 	}
@@ -206,13 +209,19 @@ func (c *Collection) put(id string, content interface{}, clean bool) error {
 
 // PutWithCleanHistory set the content to the given id but clean all previous records of this id
 func (c *Collection) PutWithCleanHistory(id string, content interface{}) (err error) {
-	return c.put(id, content, true)
+	return c.put(id, content, true, 0)
 }
 
 // Put sets a new element into the collection.
 // If the content match some of the indexes it will be indexed
 func (c *Collection) Put(id string, content interface{}) error {
-	return c.put(id, content, false)
+	return c.put(id, content, false, 0)
+}
+
+// PutWithTTL does the same as *Collection.Put but removes the content and
+// its ID after the given duration
+func (c *Collection) PutWithTTL(id string, content interface{}, ttl time.Duration) error {
+	return c.put(id, content, false, ttl)
 }
 
 // NewBatch build a new write transaction to do all write operation in one commit
@@ -227,7 +236,7 @@ func (c *Collection) NewBatch(ctx context.Context) (*Batch, error) {
 }
 
 // BuildOperation builds a new operation to add in a transaction
-func (c *Collection) buildOperation(id string, content interface{}, delete, cleanHistory bool) (*transaction.Operation, error) {
+func (c *Collection) buildOperation(id string, content interface{}, delete, cleanHistory bool, ttl time.Duration) (*transaction.Operation, error) {
 	var bytes []byte
 	if tmpBytes, ok := content.([]byte); ok {
 		bytes = tmpBytes
@@ -239,7 +248,13 @@ func (c *Collection) buildOperation(id string, content interface{}, delete, clea
 		bytes = jsonBytes
 	}
 
-	return transaction.NewOperation(id, content, c.buildDBKey(id), bytes, delete, cleanHistory), nil
+	return transaction.NewOperation(id, content, c.buildDBKey(id), bytes, delete, cleanHistory,
+		transaction.NewTTL(
+			c.Name,
+			id,
+			false,
+			ttl,
+		)), nil
 }
 
 // writeBatch gives a simple access to batch operations
@@ -427,7 +442,7 @@ func (c *Collection) Delete(id string) (err error) {
 
 	tr := transaction.New(ctx)
 	tr.AddOperation(
-		transaction.NewOperation(id, nil, c.buildDBKey(id), nil, true, false),
+		transaction.NewOperation(id, nil, c.buildDBKey(id), nil, true, false, nil),
 	)
 
 	// Send to the write channel
@@ -617,16 +632,16 @@ func (c *Collection) GetIterator() *CollectionIterator {
 	return iter
 }
 
-// GetRevertedIterator does same as above but work in the oposite way
+// GetRevertedIterator does same as above but work in the opposite way
 func (c *Collection) GetRevertedIterator() *CollectionIterator {
 	iter := c.getIterator(true)
 	iter.badgerIter.Seek(c.buildJustTooBigDBPrefix())
 	return iter
 }
 
-// addOperation add an operation to the existing Transactio pointer
-func (b *Batch) addOperation(id string, content interface{}, delete, cleanHistory bool) error {
-	op, err := b.c.buildOperation(id, content, delete, cleanHistory)
+// addOperation add an operation to the existing Transaction pointer
+func (b *Batch) addOperation(id string, content interface{}, delete, cleanHistory bool, ttl time.Duration) error {
+	op, err := b.c.buildOperation(id, content, delete, cleanHistory, ttl)
 	if err != nil {
 		return err
 	}
@@ -636,20 +651,27 @@ func (b *Batch) addOperation(id string, content interface{}, delete, cleanHistor
 	return nil
 }
 
-// Put add a put operation to the existing Transactio pointer
+// Put add a put operation to the existing Transaction pointer
 func (b *Batch) Put(id string, content interface{}) error {
-	return b.addOperation(id, content, false, false)
+	return b.addOperation(id, content, false, false, 0)
 }
 
-// PutClean add a put operation to the existing Transactio pointer but clean
+// PutWithTTL add a put operation to the existing Transaction pointer.
+// The ttl parameter tels the database who long to keep the record in DB.
+// After the given duration the content and the ID are removed from DB with clean history.
+func (b *Batch) PutWithTTL(id string, content interface{}, ttl time.Duration) error {
+	return b.addOperation(id, content, false, false, ttl)
+}
+
+// PutClean add a put operation to the existing Transaction pointer but clean
 // existing history of the id
 func (b *Batch) PutClean(id string, content interface{}) error {
-	return b.addOperation(id, content, false, true)
+	return b.addOperation(id, content, false, true, 0)
 }
 
-// Delete add a delete operation to the existing Transactio pointer
+// Delete add a delete operation to the existing Transaction pointer
 func (b *Batch) Delete(id string) error {
-	return b.addOperation(id, nil, true, false)
+	return b.addOperation(id, nil, true, false, 0)
 }
 
 // Write execute the batch

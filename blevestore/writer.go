@@ -123,16 +123,16 @@ func (w *Writer) ExecuteBatch(batch store.KVBatch) (err error) {
 				return
 			}
 
-			tx.AddOperation(transaction.NewOperation(k, nil, storeID, mergedVal, false, false))
+			tx.AddOperation(transaction.NewOperation(k, nil, storeID, mergedVal, false, false, nil))
 		}
 
 		for _, op := range emulatedBatch.Ops {
 			storeID := w.store.buildID(op.K)
 
 			if op.V != nil {
-				tx.AddOperation(transaction.NewOperation("", nil, storeID, op.V, false, false))
+				tx.AddOperation(transaction.NewOperation("", nil, storeID, op.V, false, false, nil))
 			} else {
-				tx.AddOperation(transaction.NewOperation("", nil, storeID, nil, true, true))
+				tx.AddOperation(transaction.NewOperation("", nil, storeID, nil, true, true, nil))
 			}
 		}
 		return nil

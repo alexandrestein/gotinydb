@@ -8,6 +8,7 @@ const (
 	prefixCollections
 	prefixFiles
 	prefixFilesRelated
+	prefixTTL
 )
 
 // Those constants defines the second level of prefixes or value from config.
