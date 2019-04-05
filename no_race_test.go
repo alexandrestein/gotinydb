@@ -183,3 +183,41 @@ func TestBackup(t *testing.T) {
 		t.Log("searchResult", searchResult)
 	}
 }
+
+func TestChainOpen(t *testing.T) {
+	db, err := Open("db", testConfigKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	var userCollection *Collection
+	userCollection, err = db.Use("users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = userCollection.SetBleveIndex("all", bleve.NewDocumentMapping())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestChainReOpen(t *testing.T) {
+	defer os.RemoveAll("db")
+	db, err := Open("db", testConfigKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	var userCollection *Collection
+	userCollection, err = db.Use("users")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = userCollection.SetBleveIndex("all", bleve.NewDocumentMapping())
+	if err == nil {
+		t.Fatal("the index exist")
+	}
+}
