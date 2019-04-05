@@ -100,7 +100,7 @@ start:
 					// Tries to delete the document
 					err = col.Delete(ttl.DocumentID)
 				} else {
-					err = d.DeleteFile(ttl.DocumentID)
+					err = d.FileStore.DeleteFile(ttl.DocumentID)
 				}
 				// If any error the TTL record is not remove to run the task again
 				if err == nil {

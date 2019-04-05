@@ -31,7 +31,7 @@ func TestFiles(t *testing.T) {
 	rand.Read(randBuff)
 
 	fileID := "test file ID"
-	n, err := testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
+	n, err := testDB.FileStore.PutFile(fileID, "", bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -45,7 +45,7 @@ func TestFiles(t *testing.T) {
 	randHash := blake2b.Sum256(randBuff)
 
 	readBuff := bytes.NewBuffer(nil)
-	err = testDB.ReadFile(fileID, readBuff)
+	err = testDB.FileStore.ReadFile(fileID, readBuff)
 	if err != nil {
 		t.Error(err)
 		return
@@ -60,7 +60,7 @@ func TestFiles(t *testing.T) {
 
 	// Check the ids with chunk number are well generated
 	err = testDB.badger.View(func(txn *badger.Txn) error {
-		storeID := testDB.buildFilePrefix(fileID, -1)
+		storeID := testDB.FileStore.buildFilePrefix(fileID, -1)
 
 		opt := badger.DefaultIteratorOptions
 		opt.PrefetchValues = false
@@ -85,14 +85,14 @@ func TestFiles(t *testing.T) {
 		return
 	}
 
-	err = testDB.DeleteFile(fileID)
+	err = testDB.FileStore.DeleteFile(fileID)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
 	err = testDB.badger.View(func(txn *badger.Txn) error {
-		storeID := testDB.buildFilePrefix(fileID, -1)
+		storeID := testDB.FileStore.buildFilePrefix(fileID, -1)
 
 		opt := badger.DefaultIteratorOptions
 		opt.PrefetchValues = false
@@ -124,7 +124,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 
 	fileID := "test file ID"
 
-	n, err := testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
+	n, err := testDB.FileStore.PutFile(fileID, "", bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -138,7 +138,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 	randBuff = make([]byte, 5*999*1000)
 	rand.Read(randBuff)
 
-	n, err = testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
+	n, err = testDB.FileStore.PutFile(fileID, "", bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -149,7 +149,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 	}
 
 	readBuff := bytes.NewBuffer(nil)
-	err = testDB.ReadFile(fileID, readBuff)
+	err = testDB.FileStore.ReadFile(fileID, readBuff)
 	if err != nil {
 		t.Error(err)
 		return
@@ -177,7 +177,7 @@ func TestFilesReaderInterface(t *testing.T) {
 
 	fileID := "test file ID"
 
-	n, err := testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
+	n, err := testDB.FileStore.PutFile(fileID, "", bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -194,7 +194,7 @@ func TestFilesReaderInterface(t *testing.T) {
 	interfaceReadAtTest(t, fileID, randBuff, len(randBuff)-200, 500, 200)
 
 	// Test seek
-	reader, err := testDB.GetFileReader(fileID)
+	reader, err := testDB.FileStore.GetFileReader(fileID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestFilesReaderInterface(t *testing.T) {
 }
 
 func interfaceReadAtTest(t *testing.T, fileID string, randBuff []byte, readStart, readLength, wantedN int) {
-	reader, err := testDB.GetFileReader(fileID)
+	reader, err := testDB.FileStore.GetFileReader(fileID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestFilesWriterInterface(t *testing.T) {
 
 	fileID := "test file ID"
 
-	n, err := testDB.PutFile(fileID, "", bytes.NewBuffer(randBuff))
+	n, err := testDB.FileStore.PutFile(fileID, "", bytes.NewBuffer(randBuff))
 	if err != nil {
 		t.Error(err)
 		return
@@ -272,7 +272,7 @@ func TestFilesWriterInterface(t *testing.T) {
 		return
 	}
 
-	writer, err := testDB.GetFileWriter(fileID, "")
+	writer, err := testDB.FileStore.GetFileWriter(fileID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +308,7 @@ func TestFilesWriterInterface(t *testing.T) {
 }
 
 func testWriteFileParts(t *testing.T, fileID string, expected []byte, at int64) {
-	reader, err := testDB.GetFileReader(fileID)
+	reader, err := testDB.FileStore.GetFileReader(fileID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestRelatedPutFiles(t *testing.T) {
 	}
 
 	buff := bytes.NewBuffer(nil)
-	_, err = testDB.PutFileRelated(fileID, "", buff, testCol.Name, fileID)
+	_, err = testDB.FileStore.PutFileRelated(fileID, "", buff, testCol.Name, fileID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -361,7 +361,7 @@ func TestRelatedPutFiles(t *testing.T) {
 	}
 
 	buff.Reset()
-	err = testDB.ReadFile(fileID, buff)
+	err = testDB.FileStore.ReadFile(fileID, buff)
 	if err != nil {
 		t.Error(err)
 		return
@@ -394,7 +394,7 @@ func TestRelatedFilesWriterInterface(t *testing.T) {
 	}
 
 	var w Writer
-	w, err = testDB.GetFileWriterRelated(fileID, "", testCol.Name, fileID)
+	w, err = testDB.FileStore.GetFileWriterRelated(fileID, "", testCol.Name, fileID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -416,7 +416,7 @@ func TestRelatedFilesWriterInterface(t *testing.T) {
 	}
 
 	buff := bytes.NewBuffer(nil)
-	err = testDB.ReadFile(fileID, buff)
+	err = testDB.FileStore.ReadFile(fileID, buff)
 	if err != nil {
 		t.Error(err)
 		return

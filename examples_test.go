@@ -63,7 +63,7 @@ func init() {
 	exampleCollection.Put("index X document", doc)
 
 	var writer gotinydb.Writer
-	writer, err = exampleDB.GetFileWriter("read file", "txt")
+	writer, err = exampleDB.FileStore.GetFileWriter("read file", "txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func ExampleCollection_Get() {
 }
 
 func ExampleWriter() {
-	writer, err := exampleDB.GetFileWriter("file example", "test.txt")
+	writer, err := exampleDB.FileStore.GetFileWriter("file example", "test.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -241,7 +241,7 @@ func ExampleWriter() {
 }
 
 func ExampleReader() {
-	reader, err := exampleDB.GetFileReader("read file")
+	reader, err := exampleDB.FileStore.GetFileReader("read file")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -347,7 +347,7 @@ func ExampleCollectionIterator() {
 }
 
 func ExampleFileIterator() {
-	iter := exampleDB.GetFileIterator()
+	iter := exampleDB.FileStore.GetFileIterator()
 	defer iter.Close()
 
 	for ; iter.Valid(); iter.Next() {

@@ -467,11 +467,11 @@ func (c *Collection) Delete(id string) (err error) {
 
 // deleteRelatedFiles removes every files which is related to the given document
 func (c *Collection) deleteRelatedFiles(id string) {
-	fileIDs := c.db.getRelatedFileIDs(c.Name, id)
+	fileIDs := c.db.FileStore.getRelatedFileIDs(c.Name, id)
 	for _, fileID := range fileIDs {
-		c.db.DeleteFile(fileID)
+		c.db.FileStore.DeleteFile(fileID)
 	}
-	c.db.deleteRelatedFileIDs(c.Name, id, fileIDs...)
+	c.db.FileStore.deleteRelatedFileIDs(c.Name, id, fileIDs...)
 }
 
 func (c *Collection) buildDBKey(id string) []byte {

@@ -47,6 +47,9 @@ type (
 		// It contains the collections pointers used to manage the documents.
 		Collections []*Collection
 
+		// FileStore provides all accessibility to the file storage facilities
+		FileStore *FileStore
+
 		writeChan chan *transaction.Transaction
 	}
 
@@ -71,6 +74,8 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 	db.path = path
 	db.configKey = configKey
 	db.ctx, db.cancel = context.WithCancel(context.Background())
+
+	db.FileStore = &FileStore{db}
 
 	options := badger.DefaultOptions
 	options.Dir = path
@@ -145,8 +150,6 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 // Close close the database and all subcomposants. It returns the error if any
 func (d *DB) Close() (err error) {
 	d.cancel()
-
-	time.Sleep(time.Millisecond * 50)
 
 	// In case of any error
 	defer func() {
@@ -366,14 +369,17 @@ func (d *DB) loadConfig() error {
 	if err != nil {
 		return err
 	}
-
+	
 	d.cancel()
 
-	db.cancel = d.cancel
+	time.Sleep(time.Millisecond * 500)
+
+	// db.cancel = d.cancel
 	db.badger = d.badger
 	db.ctx, db.cancel = context.WithCancel(context.Background())
 	db.writeChan = d.writeChan
 	db.path = d.path
+	db.FileStore = d.FileStore
 
 	*d = *db
 
@@ -470,24 +476,5 @@ newLoop:
 	if !finished {
 		time.Sleep(time.Millisecond * 50)
 		goto newLoop
-	}
-}
-
-// GetFileIterator returns a file iterator which help to list existing files
-func (d *DB) GetFileIterator() *FileIterator {
-	iterOptions := badger.DefaultIteratorOptions
-	iterOptions.PrefetchValues = false
-
-	txn := d.badger.NewTransaction(false)
-	badgerIter := txn.NewIterator(iterOptions)
-
-	badgerIter.Seek([]byte{prefixFiles})
-
-	return &FileIterator{
-		baseIterator: &baseIterator{
-			txn:        txn,
-			badgerIter: badgerIter,
-		},
-		db: d,
 	}
 }

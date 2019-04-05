@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.4.1...master)
 
+### Changed
+
+- Externalized the file storage system from the main DB object. Now all files actions are done in an other object called FileStore. The goal is to make the package easier to understand and use.
+
 ## [0.4.1](https://github.com/alexandrestein/gotinydb/compare/v0.4.0...v0.4.1)
 
 ### Add

@@ -123,14 +123,14 @@ func TestTTLFile(t *testing.T) {
 	}
 
 	buffer := bytes.NewBufferString("this is the text file content")
-	_, err = testDB.PutFileWithTTL("test TTL file", "txt.txt", buffer, time.Millisecond*200)
+	_, err = testDB.FileStore.PutFileWithTTL("test TTL file", "txt.txt", buffer, time.Millisecond*200)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
 	var w Writer
-	w, err = testDB.GetFileWriterWithTTL("file writer with TTL ID", "test.txt", time.Millisecond*400)
+	w, err = testDB.FileStore.GetFileWriterWithTTL("file writer with TTL ID", "test.txt", time.Millisecond*400)
 	if err != nil {
 		t.Error(err)
 		return
@@ -150,12 +150,12 @@ func TestTTLFile(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 1500)
 
-	_, err = testDB.GetFileReader("test TTL file")
+	_, err = testDB.FileStore.GetFileReader("test TTL file")
 	if err == nil {
 		t.Error(err)
 	}
 
-	_, err = testDB.GetFileReader("file writer with TTL ID")
+	_, err = testDB.FileStore.GetFileReader("file writer with TTL ID")
 	if err == nil {
 		t.Error(err)
 	}

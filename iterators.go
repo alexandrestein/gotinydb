@@ -1,9 +1,6 @@
 package gotinydb
 
 import (
-	"encoding/json"
-
-	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/dgraph-io/badger"
 )
 
@@ -26,7 +23,7 @@ type (
 	FileIterator struct {
 		*baseIterator
 
-		db   *DB
+		fs   *FileStore
 		meta *FileMeta
 	}
 )
@@ -117,82 +114,4 @@ func (i *CollectionIterator) Valid() bool {
 // if iterating in the forward direction. Behavior would be reversed is iterating backwards.
 func (i *CollectionIterator) Seek(id string) {
 	i.badgerIter.Seek(i.c.buildDBKey(id))
-}
-
-// GetMeta returns the metadata of the actual cursor position
-func (i *FileIterator) GetMeta() *FileMeta {
-	return i.meta
-}
-
-// Next moves to the next valid metadata element
-func (i *FileIterator) Next() error {
-	i.badgerIter.Next()
-
-goToNext:
-	if !i.Valid() {
-		return ErrFileItemIteratorNotValid
-	}
-
-	isMeta, err := i.isMetaChunk()
-	if !isMeta || err != nil {
-		if err != nil {
-			return err
-		}
-
-		i.badgerIter.Next()
-		goto goToNext
-	}
-
-	return nil
-}
-
-// Seek moves to the meta coresponding to the given id
-func (i *FileIterator) Seek(id string) {
-	i.badgerIter.Seek(i.db.buildFilePrefix(id, 0))
-}
-
-// Valid checks if the cursor point a valid metadata document
-func (i *FileIterator) Valid() bool {
-	valid := i.valid([]byte{prefixFiles})
-	if valid {
-		i.isMetaChunk()
-	}
-	return valid
-}
-
-func (i *FileIterator) isMetaChunk() (bool, error) {
-	dbKey := i.item.Key()
-	if len(dbKey) != 34 || dbKey[len(dbKey)-1] != 0 {
-		return false, nil
-	}
-
-	buff, err := i.decrypt()
-	if err != nil {
-		return false, err
-	}
-
-	meta := new(FileMeta)
-	err = json.Unmarshal(buff, meta)
-	if err != nil {
-		return false, err
-	}
-
-	i.meta = meta
-
-	return true, nil
-}
-
-func (i *FileIterator) decrypt() ([]byte, error) {
-	valAsEncryptedBytes, err := i.item.ValueCopy(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var valAsBytes []byte
-	valAsBytes, err = cipher.Decrypt(i.db.PrivateKey, i.item.Key(), valAsEncryptedBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return valAsBytes, nil
 }

@@ -64,13 +64,13 @@ func TestFileIterator(t *testing.T) {
 		randBuff := make([]byte, 20*1000*1000)
 		rand.Read(randBuff)
 		buff := bytes.NewBuffer(randBuff)
-		_, err := testDB.PutFile(fmt.Sprint(i), fmt.Sprint(i), buff)
+		_, err := testDB.FileStore.PutFile(fmt.Sprint(i), fmt.Sprint(i), buff)
 		if err != nil {
 			t.Fatalf("can't write the file %d: %s", i, err.Error())
 		}
 	}
 
-	iter := testDB.GetFileIterator()
+	iter := testDB.FileStore.GetFileIterator()
 	defer iter.Close()
 
 	expectedOrder := []string{"0", "2", "3", "1", "4"}
