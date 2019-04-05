@@ -369,7 +369,7 @@ func (d *DB) loadConfig() error {
 	if err != nil {
 		return err
 	}
-	
+
 	d.cancel()
 
 	time.Sleep(time.Millisecond * 500)

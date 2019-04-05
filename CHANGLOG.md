@@ -5,11 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.4.1...master)
+## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.5.0...master)
+
+## [0.5.0](https://github.com/alexandrestein/gotinydb/compare/v0.4.1...v0.5.0)
 
 ### Changed
 
 - Externalized the file storage system from the main DB object. Now all files actions are done in an other object called FileStore. The goal is to make the package easier to understand and use.
+- Tests are not running race test on TestBackup and TestMain.
 
 ## [0.4.1](https://github.com/alexandrestein/gotinydb/compare/v0.4.0...v0.4.1)
 

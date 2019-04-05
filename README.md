@@ -76,6 +76,18 @@ There is no compatibility promise for now.
 
 ## Limitations
 
+### Concurrency
+
+Most of the methods can be run concurrently. But management actions can not:
+- *DB.Backup
+- *DB.Close
+- *DB.DeleteCollection
+- *DB.Load
+- *Collection.DeleteIndex
+- *Collection.SetBleveIndex
+
+Those functions and methods should be run on idle database.
+
 ### Prefixes
 
 Prefixes to split different parts of the database: collection, files, indexes and documents.
