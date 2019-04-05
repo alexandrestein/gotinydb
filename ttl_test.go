@@ -1,11 +1,12 @@
 package gotinydb
 
 import (
+	"bytes"
 	"testing"
 	"time"
 )
 
-func TestTTLStruct(t *testing.T) {
+func TestTTLDocument(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 		return
@@ -28,6 +29,12 @@ func TestTTLStruct(t *testing.T) {
 	dest := struct{}{}
 	_, err = testCol.Get("test TTL ID", &dest)
 	if err == nil {
+		t.Error("it must return an error but not")
+		return
+	}
+
+	err = testCol.Put("test NO TTL ID", struct{}{})
+	if err != nil {
 		t.Error(err)
 		return
 	}
@@ -64,4 +71,92 @@ func TestTTLStruct(t *testing.T) {
 	}
 
 	time.Sleep(time.Second * 3)
+
+	_, err = testCol.Get("test TTL ID1", &dest)
+	if err == nil {
+		t.Error("it must return an error but not")
+		return
+	}
+	_, err = testCol.Get("test TTL ID20", &dest)
+	if err == nil {
+		t.Error("it must return an error but not")
+		return
+	}
+	_, err = testCol.Get("test TTL ID21", &dest)
+	if err == nil {
+		t.Error("it must return an error but not")
+		return
+	}
+	_, err = testCol.Get("test TTL ID22", &dest)
+	if err == nil {
+		t.Error("it must return an error but not")
+		return
+	}
+	_, err = testCol.Get("test TTL ID23", &dest)
+	if err == nil {
+		t.Error("it must return an error but not")
+		return
+	}
+	_, err = testCol.Get("test TTL ID3", &dest)
+	if err == nil {
+		t.Error("it must return an error but not")
+		return
+	}
+
+	_, err = testCol.Get("test NO TTL ID", &dest)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func TestTTLFile(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	defer clean()
+	err := open(t)
+	if err != nil {
+		return
+	}
+
+	buffer := bytes.NewBufferString("this is the text file content")
+	_, err = testDB.PutFileWithTTL("test TTL file", "txt.txt", buffer, time.Millisecond*200)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	var w Writer
+	w, err = testDB.GetFileWriterWithTTL("file writer with TTL ID", "test.txt", time.Millisecond*400)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer w.Close()
+
+	_, err = w.Write([]byte("This is the text file content"))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.Close()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	time.Sleep(time.Millisecond * 1500)
+
+	_, err = testDB.GetFileReader("test TTL file")
+	if err == nil {
+		t.Error(err)
+	}
+
+	_, err = testDB.GetFileReader("file writer with TTL ID")
+	if err == nil {
+		t.Error(err)
+	}
 }

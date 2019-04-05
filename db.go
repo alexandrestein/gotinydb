@@ -206,7 +206,7 @@ func (d *DB) Load(r io.Reader) error {
 }
 
 func (d *DB) goRoutineLoopForGC() {
-	ticker := time.NewTicker(time.Hour * 12)
+	ticker := time.NewTicker(time.Minute * 15)
 	defer ticker.Stop()
 	for {
 		select {

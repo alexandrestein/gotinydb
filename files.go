@@ -60,6 +60,51 @@ func (d *DB) PutFile(id string, name string, reader io.Reader) (n int, err error
 	return d.PutFileRelated(id, name, reader, "", "")
 }
 
+// PutFileWithTTL let caller insert large element into the database via a reader interface
+func (d *DB) PutFileWithTTL(id string, name string, reader io.Reader, ttl time.Duration) (n int, err error) {
+	// Add the new file
+	n, err = d.PutFileRelated(id, name, reader, "", "")
+	go d.putFileTTL(id, ttl)
+	return n, err
+}
+
+func (d *DB) putFileTTL(id string, ttl time.Duration) {
+	ttlObj := newTTL("", id, true, ttl)
+
+	ctx, cancel := context.WithTimeout(d.ctx, time.Second*10)
+	defer cancel()
+
+	tx := transaction.New(ctx)
+	tx.AddOperation(
+		transaction.NewOperation(
+			"",
+			nil,
+			ttlObj.timeAsKey(),
+			ttlObj.exportAsBytes(),
+			false,
+			false,
+		),
+	)
+
+	// Do the writing:
+	select {
+	case d.writeChan <- tx:
+	case <-d.ctx.Done():
+		return
+	}
+
+	// Wait for the response
+	select {
+	case <-tx.ResponseChan:
+	case <-tx.Ctx.Done():
+	}
+}
+
+// PutFileRelated does the same as *DB.PutFile but the file is automatically removed
+// when the related document is removed.
+// The use case can be for blog post for example. You have posts which has images and medias in it.
+// Ones the post is removed the images and the medias are not needed anymore.
+// This provide a easy way remove files automatically based on collection documents.
 func (d *DB) PutFileRelated(id string, name string, reader io.Reader, colName, documentID string) (n int, err error) {
 	d.DeleteFile(id)
 
@@ -161,7 +206,6 @@ func (d *DB) getFileMetaWithTxn(txn *badger.Txn, id, name string) (meta *FileMet
 	item, err = txn.Get(metaID)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			err = nil
 			meta = d.buildMeta(id, name)
 			return
 		}
@@ -201,7 +245,7 @@ func (d *DB) buildMeta(id, name string) (meta *FileMeta) {
 	meta.ID = id
 	meta.Name = name
 	meta.Size = 0
-	meta.LastModified = time.Now()
+	meta.LastModified = time.Time{}
 	meta.ChuckSize = fileChuckSize
 
 	return
@@ -427,6 +471,14 @@ func (d *DB) GetFileWriter(id, name string) (Writer, error) {
 	return d.GetFileWriterRelated(id, name, "", "")
 }
 
+// GetFileWriterWithTTL does the same as GetFileWriter but it's
+// automatically removed after the given duration
+func (d *DB) GetFileWriterWithTTL(id, name string, ttl time.Duration) (Writer, error) {
+	w, err := d.GetFileWriterRelated(id, name, "", "")
+	go d.putFileTTL(id, ttl)
+	return w, err
+}
+
 // GetFileWriterRelated does the same as GetFileWriter but with related document
 func (d *DB) GetFileWriterRelated(id, name string, colName, documentID string) (Writer, error) {
 	rw, err := d.newReadWriter(id, name, true)
@@ -477,7 +529,7 @@ func (d *DB) DeleteFile(id string) (err error) {
 		defer it.Close()
 
 		// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(d.ctx)
 		defer cancel()
 
 		// Go the the first file chunk
@@ -555,7 +607,13 @@ func (d *DB) newReadWriter(id, name string, writer bool) (_ *readWriter, err err
 
 	rw.meta, err = d.getFileMeta(id, name)
 	if err != nil {
-		return nil, err
+		if err == badger.ErrKeyNotFound && writer {
+			//  not found but it's ok for writer
+			err = nil
+		} else {
+			// otherways the error is returned
+			return nil, err
+		}
 	}
 
 	rw.db = d

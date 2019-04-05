@@ -3,7 +3,6 @@ package gotinydb
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/alexandrestein/gotinydb/transaction"
@@ -100,17 +99,20 @@ start:
 
 					// Tries to delete the document
 					err = col.Delete(ttl.DocumentID)
-					// If any error the TTL record is not remove to run the task again
-					if err == nil {
-						// No error the TTL record needs to be removed
-						cleanTTLRecordOp := transaction.NewOperation("", "", ttl.timeAsKey(), nil, true, false)
-						tr.AddOperation(cleanTTLRecordOp)
-					}
 				} else {
-					fmt.Println("file not ready yet")
+					err = d.DeleteFile(ttl.DocumentID)
+				}
+				// If any error the TTL record is not remove to run the task again
+				if err == nil {
+					cleanTTLRecordOp := transaction.NewOperation("", "", ttl.timeAsKey(), nil, true, false)
+					tr.AddOperation(cleanTTLRecordOp)
 				}
 			} else {
+				// Setup the next run
 				nextRun = ttl.CleanTime.Sub(time.Now())
+				if nextRun > time.Second {
+					nextRun = time.Second
+				}
 				return
 			}
 		}
@@ -136,7 +138,7 @@ start:
 	}
 
 	if nextRun == 0 {
-		nextRun = time.Millisecond * 500
+		nextRun = time.Second
 	}
 
 	// Found but in some time.

@@ -5,7 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.4.0...master)
+## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.4.1...master)
+
+## [0.4.1](https://github.com/alexandrestein/gotinydb/compare/v0.4.0...v0.4.1)
+
+### Add
+
+- Add TTL (Time To Live) support for files and documents.
+
+### Changed
+
+- Garbage collection is done every 15 minutes instead of every 12 hours.
+
+### Fixes
+
+- When try to open file which is deleted it returns an error and not an empty file.
 
 ## [0.4.0](https://github.com/alexandrestein/gotinydb/compare/v0.3.3...v0.4.0)
 
