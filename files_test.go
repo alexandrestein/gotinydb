@@ -427,3 +427,86 @@ func TestRelatedFilesWriterInterface(t *testing.T) {
 		return
 	}
 }
+
+func TestWriteFileCopy(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	defer clean()
+	err := open(t)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	randBuff := make([]byte, 999*1000*67)
+	rand.Read(randBuff)
+	buff := bytes.NewBuffer(nil)
+	var n int
+	n, err = buff.Write(randBuff)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if n != len(randBuff) {
+		t.Error("length are not equal", n, len(randBuff))
+		return
+	}
+
+	var w Writer
+	w, err = testDB.FileStore.GetFileWriter("test file copy", "no name")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer w.Close()
+
+	buff2 := make([]byte, 1000*1000*10)
+	var written int64
+	written, err = io.CopyBuffer(w, buff, buff2)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = w.Close()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if int(written) != len(randBuff) {
+		t.Error("length are not equal", written, len(randBuff))
+		return
+	}
+
+	var r Reader
+	r, err = testDB.FileStore.GetFileReader("test file copy")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer r.Close()
+
+	buffTarget := bytes.NewBuffer(nil)
+	buff3 := make([]byte, 2048)
+	var readed int64
+
+	readed, err = io.CopyBuffer(buffTarget, r, buff3)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if int(readed) != len(randBuff) {
+		t.Error("length are not equal", readed, len(randBuff))
+		return
+	}
+
+	if !bytes.Equal(buffTarget.Bytes(), randBuff) {
+		t.Error("The tow buffer are not equal")
+		return
+	}
+}

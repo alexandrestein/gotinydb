@@ -630,7 +630,8 @@ func (fs *FileStore) newReadWriter(id, name string, writer bool) (_ *readWriter,
 // GetFileIterator returns a file iterator which help to list existing files
 func (fs *FileStore) GetFileIterator() *FileIterator {
 	iterOptions := badger.DefaultIteratorOptions
-	iterOptions.PrefetchValues = false
+	iterOptions.PrefetchValues = true
+	iterOptions.PrefetchSize = 1
 
 	txn := fs.db.badger.NewTransaction(false)
 	badgerIter := txn.NewIterator(iterOptions)
@@ -835,7 +836,7 @@ func (r *readWriter) afterWrite(writtenLength int) {
 
 	r.cachedChunk = 0
 
-	r.meta.Size += r.getWrittenSize()
+	r.meta.Size += int64(writtenLength)
 	r.meta.LastModified = time.Now()
 
 	r.currentPosition += int64(writtenLength)
