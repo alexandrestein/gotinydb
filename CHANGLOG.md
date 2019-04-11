@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixes
 
-- Bad file length after write.
+- Bad file length after write. ([commit](https://github.com/alexandrestein/gotinydb/commit/404723961306176253538b5b19aa5aad54839461))
 
 ## [0.5.0](https://github.com/alexandrestein/gotinydb/compare/v0.4.1...v0.5.0)
 
