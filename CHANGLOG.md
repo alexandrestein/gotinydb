@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.5.1...master)
 
+### Fixes
+
+- **BREAKING CHANGES**: If the database is open from on location and then from an other one. The path of the index is lost.
+
 ## [0.5.1](https://github.com/alexandrestein/gotinydb/compare/v0.5.0...v0.5.1)
 
 ### Fixes

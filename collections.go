@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sync"
 	"time"
+	"os"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
@@ -85,12 +86,13 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 	// ok, start building a new index
 	index := newIndex(name)
 	index.Name = name
+	index.collection = c
 	index.Prefix = prefix
 
 	// Bleve needs to save some parts on the drive.
 	// The path is based on a part of the collection hash and the index prefix.
 	colHash := blake2b.Sum256([]byte(c.Name))
-	index.Path = fmt.Sprintf("%s/%x/%x", c.db.path, colHash[:2], indexHash[:2])
+	index.Path = fmt.Sprintf("%x%s%x",  colHash[:2], string(os.PathSeparator), indexHash[:2])
 
 	// Build the index and set the given document index as default
 	bleveMapping := bleve.NewIndexMapping()
@@ -98,7 +100,7 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 
 	// Build the configuration to use the local bleve storage and initialize the index
 	config := blevestore.NewConfigMap(c.db.ctx, index.Path, c.db.PrivateKey, prefix, c.db.badger, c.db.writeChan)
-	index.bleveIndex, err = bleve.NewUsing(index.Path, bleveMapping, upsidedown.Name, blevestore.Name, config)
+	index.bleveIndex, err = bleve.NewUsing(c.db.path+string(os.PathSeparator)+index.Path, bleveMapping, upsidedown.Name, blevestore.Name, config)
 	if err != nil {
 		return
 	}

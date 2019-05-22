@@ -53,7 +53,7 @@ func (i *BleveIndex) indexZipper() ([]byte, error) {
 	})
 
 	// Add some files to the archive.
-	err := i.addFiles(w, i.Path, "")
+	err := i.addFiles(w, i.collection.db.path+string(os.PathSeparator)+i.Path, "")
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (i *BleveIndex) addFiles(w *zip.Writer, basePath, baseInZip string) error {
 
 	for _, file := range files {
 		if !file.IsDir() {
-			dat, err := ioutil.ReadFile(basePath + "/" + file.Name())
+			dat, err := ioutil.ReadFile(basePath + string(os.PathSeparator) + file.Name())
 			if err != nil {
 				return err
 			}
@@ -92,9 +92,9 @@ func (i *BleveIndex) addFiles(w *zip.Writer, basePath, baseInZip string) error {
 			}
 		} else if file.IsDir() {
 
-			newBase := basePath + file.Name() + "/"
+			newBase := basePath + file.Name() + string(os.PathSeparator)
 
-			err := i.addFiles(w, newBase, file.Name()+"/")
+			err := i.addFiles(w, newBase, file.Name()+string(os.PathSeparator))
 			if err != nil {
 				return err
 			}
@@ -130,7 +130,7 @@ func (i *BleveIndex) indexUnzipper() error {
 			return err
 		}
 
-		filePath := i.Path + "/" + f.Name
+		filePath := i.Path + string(os.PathSeparator) + f.Name
 
 		err = os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
 		if err != nil {

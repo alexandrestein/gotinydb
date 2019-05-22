@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"io"
 	"math"
+	"os"
 	"reflect"
 	"time"
 
@@ -394,7 +395,7 @@ func (d *DB) loadCollections() (err error) {
 			indexPrefix := make([]byte, len(index.Prefix))
 			copy(indexPrefix, index.Prefix)
 			config := blevestore.NewConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.badger, d.writeChan)
-			index.bleveIndex, err = bleve.OpenUsing(index.Path, config)
+			index.bleveIndex, err = bleve.OpenUsing(d.path+string(os.PathSeparator)+index.Path, config)
 			if err != nil {
 				return
 			}
