@@ -96,6 +96,14 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 
 	// Build the index and set the given document index as default
 	bleveMapping := bleve.NewIndexMapping()
+	bleveMapping.StoreDynamic = false 
+	bleveMapping.IndexDynamic = true
+	bleveMapping.DocValuesDynamic = false
+
+	for _, fieldMapping := range documentMapping.Fields {
+		fieldMapping.Store = false		
+		fieldMapping.Index = true
+	}
 	bleveMapping.DefaultMapping = documentMapping
 
 	// Build the configuration to use the local bleve storage and initialize the index

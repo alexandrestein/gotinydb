@@ -38,12 +38,19 @@ func TestIndexExistingValue(t *testing.T) {
 		return
 	}
 
-	err = testCol.SetBleveIndex("car brand", bleve.NewDocumentMapping())
+	docMapping := bleve.NewDocumentMapping()
+	// carMapping := bleve.NewDocumentStaticMapping()
+	// fieldMapping := bleve.NewTextFieldMapping()
+	// fieldMapping.Analyzer = simple.Name
+	// carMapping.AddFieldMappingsAt("Brand", fieldMapping)
+	// docMapping.AddSubDocumentMapping("Car", carMapping)
+
+	err = testCol.SetBleveIndex("car brand", docMapping)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	err = testCol.SetBleveIndex("car brand", bleve.NewDocumentMapping())
+	err = testCol.SetBleveIndex("car brand", docMapping)
 	if err == nil {
 		t.Error("setting index with same name must returns an error")
 		return

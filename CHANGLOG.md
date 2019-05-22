@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixes
 
-- **BREAKING CHANGES**: If the database is open from on location and then from an other one. The path of the index is lost.
+- **BREAKING CHANGES**: If the database was open from on location and then from an other one. The path of the index was lost.
+- **BREAKING CHANGES**: Tells **Bleve** to not save values just index it.
 
 ## [0.5.1](https://github.com/alexandrestein/gotinydb/compare/v0.5.0...v0.5.1)
 
