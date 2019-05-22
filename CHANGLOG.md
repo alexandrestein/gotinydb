@@ -5,12 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.5.1...master)
+## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.6.0...master)
+
+## [0.6.0](https://github.com/alexandrestein/gotinydb/compare/v0.5.1...v0.6.0)
 
 ### Fixes
 
-- **BREAKING CHANGES**: If the database was open from on location and then from an other one. The path of the index was lost.
-- **BREAKING CHANGES**: Tells **Bleve** to not save values just index it.
+- **BREAKING CHANGES**: If the database was open from on location and then from an other one. The path of the index was lost. ([commit](https://github.com/alexandrestein/gotinydb/commit/8a3c019c3dd92986564b0415f1e27bcb4ba7ab29))
+- **BREAKING CHANGES**: Tells **Bleve** to not save values just index it. ([commit](https://github.com/alexandrestein/gotinydb/commit/85c5ee3fe7b0c52b0c0f6926cd3791868cd5bc84))
 
 ## [0.5.1](https://github.com/alexandrestein/gotinydb/compare/v0.5.0...v0.5.1)
 
