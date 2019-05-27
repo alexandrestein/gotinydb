@@ -5,11 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.6.0...master)
+## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.6.1...master)
+
+## [0.6.1](https://github.com/alexandrestein/gotinydb/compare/v0.6.0...v0.6.1)
 
 ### Add 
 
-- New command to 
+- New command to run database garbage collection. ([commit](https://github.com/alexandrestein/gotinydb/commit/24bf0d85293ddefcad8ef47e7ec8da262fd5f8ff))
 
 ## [0.6.0](https://github.com/alexandrestein/gotinydb/compare/v0.5.1...v0.6.0)
 
