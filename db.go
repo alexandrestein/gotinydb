@@ -178,7 +178,16 @@ func (d *DB) Backup(w io.Writer) error {
 	return err
 }
 
-// GarbageCollection provides access to the garbage collection for the underneath database storeage.
+// GarbageCollection provides access to the garbage collection for the underneath database storeage (Badger).
+//
+// RunValueLogGC triggers a value log garbage collection.
+//
+// It picks value log files to perform GC based on statistics that are collected duing compactions. If no such statistics are available, then log files are picked in random order. The process stops as soon as the first log file is encountered which does not result in garbage collection.
+// When a log file is picked, it is first sampled. If the sample shows that we can discard at least discardRatio space of that file, it would be rewritten.
+// If a call to RunValueLogGC results in no rewrites, then an ErrNoRewrite is thrown indicating that the call resulted in no file rewrites.
+// We recommend setting discardRatio to 0.5, thus indicating that a file be rewritten if half the space can be discarded. This results in a lifetime value log write amplification of 2 (1 from original write + 0.5 rewrite + 0.25 + 0.125 + ... = 2). Setting it to higher value would result in fewer space reclaims, while setting it to a lower value would result in more space reclaims at the cost of increased activity on the LSM tree. discardRatio must be in the range (0.0, 1.0), both endpoints excluded, otherwise an ErrInvalidRequest is returned.
+// Only one GC is allowed at a time. If another value log GC is running, or DB has been closed, this would return an ErrRejected.
+// Note: Every time GC is run, it would produce a spike of activity on the LSM tree.
 func (d *DB) GarbageCollection(discardRatio float64) error {
 	if discardRatio == 0 {
 		discardRatio = 0.5
