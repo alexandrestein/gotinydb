@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.6.0...master)
 
+### Add 
+
+- New command to 
+
 ## [0.6.0](https://github.com/alexandrestein/gotinydb/compare/v0.5.1...v0.6.0)
 
 ### Fixes

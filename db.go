@@ -178,6 +178,15 @@ func (d *DB) Backup(w io.Writer) error {
 	return err
 }
 
+// GarbageCollection provides access to the garbage collection for the underneath database storeage.
+func (d *DB) GarbageCollection(discardRatio float64) error {
+	if discardRatio == 0 {
+		discardRatio = 0.5
+	}
+
+	return d.badger.RunValueLogGC(discardRatio)
+}
+
 // Load recover an existing database from a backup generated with *DB.Backup
 func (d *DB) Load(r io.Reader) error {
 	err := d.badger.Update(func(txn *badger.Txn) error {
