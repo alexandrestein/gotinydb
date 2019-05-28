@@ -33,6 +33,7 @@ type (
 	}
 
 	readWriter struct {
+		deadLineTimer   *time.Timer
 		meta            *FileMeta
 		cache           []byte
 		cachedChunk     int
@@ -42,7 +43,9 @@ type (
 		writer          bool
 	}
 
-	// Reader define a simple object to read parts of the file
+	// Reader define a simple object to read parts of the file.
+	// After 10 minutes (ReaderWriterTimeout variable) the reader
+	// is automatically closed.
 	Reader interface {
 		io.ReadCloser
 		io.Seeker
@@ -51,7 +54,9 @@ type (
 		GetMeta() *FileMeta
 	}
 
-	// Writer define a simple object to write parts of the file
+	// Writer define a simple object to write parts of the file.
+	// After 10 minutes (ReaderWriterTimeout variable) the writer
+	// is automatically closed.
 	Writer interface {
 		Reader
 
@@ -87,7 +92,7 @@ func (fs *FileStore) putFileTTL(id string, ttl time.Duration) {
 			ttlObj.timeAsKey(),
 			ttlObj.exportAsBytes(),
 			false,
-			false,
+			true,
 		),
 	)
 
@@ -138,7 +143,7 @@ func (fs *FileStore) PutFileRelated(id string, name string, reader io.Reader, co
 	// Open a loop
 	for true {
 		// Initialize the read buffer
-		buff := make([]byte, fileChuckSize)
+		buff := make([]byte, FileChuckSize)
 		var nWritten int
 		nWritten, err = reader.Read(buff)
 		// The read is done and it returns
@@ -180,8 +185,8 @@ func (fs *FileStore) writeFileChunk(id string, chunk int, content []byte) (err e
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if fileChuckSize < len(content) {
-		return fmt.Errorf("the maximum chunk size is %d bytes long but the content to write is %d bytes long", fileChuckSize, len(content))
+	if FileChuckSize < len(content) {
+		return fmt.Errorf("the maximum chunk size is %d bytes long but the content to write is %d bytes long", FileChuckSize, len(content))
 	}
 
 	tx := transaction.New(ctx)
@@ -251,7 +256,7 @@ func (fs *FileStore) buildMeta(id, name string) (meta *FileMeta) {
 	meta.Name = name
 	meta.Size = 0
 	meta.LastModified = time.Time{}
-	meta.ChuckSize = fileChuckSize
+	meta.ChuckSize = FileChuckSize
 
 	return
 }
@@ -269,7 +274,7 @@ func (fs *FileStore) putFileMeta(meta *FileMeta) (err error) {
 
 	tx := transaction.New(ctx)
 	tx.AddOperation(
-		transaction.NewOperation("", nil, metaID, metaAsBytes, false, false),
+		transaction.NewOperation("", nil, metaID, metaAsBytes, false, true),
 	)
 	// Run the insertion
 	select {
@@ -355,7 +360,7 @@ func (fs *FileStore) addRelatedFileIDs(colName, documentID string, fileIDsToAdd 
 		// And add it to the list of store IDs to delete
 		tx := transaction.New(ctx)
 		tx.AddOperation(
-			transaction.NewOperation("", fileIDs, fs.buildRelatedID(colName, documentID), retBytes, false, false),
+			transaction.NewOperation("", fileIDs, fs.buildRelatedID(colName, documentID), retBytes, false, true),
 		)
 
 		// Send the write request
@@ -402,7 +407,7 @@ func (fs *FileStore) deleteRelatedFileIDs(colName, documentID string, fileIDsToD
 		tx := transaction.New(ctx)
 		if len(fileIDs) != 0 {
 			tx.AddOperation(
-				transaction.NewOperation("", fileIDs, fs.buildRelatedID(colName, documentID), retBytes, false, false),
+				transaction.NewOperation("", fileIDs, fs.buildRelatedID(colName, documentID), retBytes, false, true),
 			)
 		} else {
 			tx.AddOperation(
@@ -466,7 +471,7 @@ func (fs *FileStore) ReadFile(id string, writer io.Writer) error {
 // GetFileReader returns a struct to provide simple reading partial of big files.
 // The default position is at the begining of the file.
 func (fs *FileStore) GetFileReader(id string) (Reader, error) {
-	rw, err := fs.newReadWriter(id, "", false)
+	rw, err := fs.newReadWriter(id, "", false, 0)
 	return Reader(rw), err
 }
 
@@ -486,7 +491,7 @@ func (fs *FileStore) GetFileWriterWithTTL(id, name string, ttl time.Duration) (W
 
 // GetFileWriterRelated does the same as GetFileWriter but with related document
 func (fs *FileStore) GetFileWriterRelated(id, name string, colName, documentID string) (Writer, error) {
-	rw, err := fs.newReadWriter(id, name, true)
+	rw, err := fs.newReadWriter(id, name, true, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -528,6 +533,7 @@ func (fs *FileStore) DeleteFile(id string) (err error) {
 		// Defines the iterator options to get only IDs
 		opt := badger.DefaultIteratorOptions
 		opt.PrefetchValues = false
+		opt.AllVersions = true
 
 		// Initialize the iterator
 		it := txn.NewIterator(opt)
@@ -606,9 +612,14 @@ func (fs *FileStore) buildFilePrefix(id string, chunkN int) []byte {
 	return append(prefixWithID, chunkPart...)
 }
 
-func (fs *FileStore) newReadWriter(id, name string, writer bool) (_ *readWriter, err error) {
+func (fs *FileStore) newReadWriter(id, name string, writer bool, timeOut time.Duration) (_ *readWriter, err error) {
 	rw := new(readWriter)
 	rw.writer = writer
+	if timeOut == 0 {
+		rw.deadLineTimer = time.AfterFunc(ReaderWriterTimeout, rw.mustClose)
+	} else {
+		rw.deadLineTimer = time.AfterFunc(timeOut, rw.mustClose)
+	}
 
 	rw.meta, err = fs.getFileMeta(id, name)
 	if err != nil {
@@ -767,7 +778,7 @@ func (r *readWriter) Write(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	freeToWriteInThisChunk := fileChuckSize - inside
+	freeToWriteInThisChunk := FileChuckSize - inside
 	if freeToWriteInThisChunk > len(p) {
 		toWrite := []byte{}
 		if inside <= len(valAsBytes) {
@@ -796,7 +807,7 @@ func (r *readWriter) Write(p []byte) (n int, err error) {
 	done := false
 
 newLoop:
-	newEnd := n + fileChuckSize
+	newEnd := n + FileChuckSize
 	if newEnd > len(p) {
 		newEnd = len(p)
 		done = true
@@ -818,7 +829,7 @@ newLoop:
 		return n, err
 	}
 
-	n += fileChuckSize
+	n += FileChuckSize
 	block++
 
 	if done {
@@ -927,7 +938,12 @@ func (r *readWriter) Close() (err error) {
 		r.fs.putFileMeta(r.meta)
 	}
 	r.txn.Discard()
+	r.deadLineTimer.Stop()
 	return
+}
+
+func (r *readWriter) mustClose() {
+	r.Close()
 }
 
 func (r *readWriter) GetMeta() *FileMeta {

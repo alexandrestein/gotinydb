@@ -1,6 +1,9 @@
 package gotinydb
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Those constants defines the first level of prefixes.
 const (
@@ -34,5 +37,9 @@ var (
 
 var (
 	// FileChuckSize define the default chunk size when saving files
-	fileChuckSize = 5 * 1000 * 1000 // 5MB
+	FileChuckSize = 5 * 1000 * 1000 // 5MB
+	// ReaderWriterTimeout define the default time before the file reader or writer
+	// close itself. The goal of this is to prevent having many reader/writer
+	// left open by mistake.
+	ReaderWriterTimeout = time.Minute * 10
 )

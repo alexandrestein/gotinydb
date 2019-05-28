@@ -683,7 +683,7 @@ func (b *Batch) PutClean(id string, content interface{}) error {
 
 // Delete add a delete operation to the existing Transaction pointer
 func (b *Batch) Delete(id string) error {
-	return b.addOperation(id, nil, true, false)
+	return b.addOperation(id, nil, true, true)
 }
 
 // Write execute the batch

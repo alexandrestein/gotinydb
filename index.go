@@ -130,7 +130,7 @@ func (i *BleveIndex) indexUnzipper() error {
 			return err
 		}
 
-		filePath := i.Path + string(os.PathSeparator) + f.Name
+		filePath := i.collection.db.path + string(os.PathSeparator) + i.Path + string(os.PathSeparator) + f.Name
 
 		err = os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
 		if err != nil {

@@ -14,10 +14,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math"
 	"os"
 	"reflect"
+	"runtime"
 	"time"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
@@ -81,6 +83,11 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 	options := badger.DefaultOptions
 	options.Dir = path
 	options.ValueDir = path
+
+	options.MaxTableSize = int64(FileChuckSize) / 5     // 1MB
+	options.ValueLogFileSize = int64(FileChuckSize) * 4 // 20MB
+	options.NumCompactors = runtime.NumCPU()
+	options.Truncate = true
 	// Keep as much version as possible
 	options.NumVersionsToKeep = math.MaxInt32
 
@@ -189,7 +196,7 @@ func (d *DB) Backup(w io.Writer) error {
 // Only one GC is allowed at a time. If another value log GC is running, or DB has been closed, this would return an ErrRejected.
 // Note: Every time GC is run, it would produce a spike of activity on the LSM tree.
 func (d *DB) GarbageCollection(discardRatio float64) error {
-	if discardRatio == 0 {
+	if discardRatio <= 0 || discardRatio >= 1 {
 		discardRatio = 0.5
 	}
 
@@ -216,7 +223,9 @@ func (d *DB) Load(r io.Reader) error {
 	}
 
 	for _, col := range d.Collections {
+		col.db = d
 		for _, index := range col.BleveIndexes {
+			index.collection = col
 			err = index.indexUnzipper()
 			if err != nil {
 				return err
@@ -233,6 +242,7 @@ func (d *DB) goRoutineLoopForGC() {
 	for {
 		select {
 		case <-ticker.C:
+			// d.badger.Flatten(runtime.NumCPU())
 			d.badger.RunValueLogGC(0.5)
 		case <-d.ctx.Done():
 			return
@@ -415,6 +425,7 @@ func (d *DB) loadCollections() (err error) {
 			config := blevestore.NewConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.badger, d.writeChan)
 			index.bleveIndex, err = bleve.OpenUsing(d.path+string(os.PathSeparator)+index.Path, config)
 			if err != nil {
+				fmt.Println("d.path", d.path)
 				return
 			}
 		}

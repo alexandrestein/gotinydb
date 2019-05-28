@@ -20,10 +20,10 @@ func TestFiles(t *testing.T) {
 	}
 
 	// Change the file size from 5MB to 100KB
-	defaultFileChuckSize := fileChuckSize
-	fileChuckSize = 100 * 1000
+	defaultFileChuckSize := FileChuckSize
+	FileChuckSize = 100 * 1000
 	defer func(defaultFileChuckSize int) {
-		fileChuckSize = defaultFileChuckSize
+		FileChuckSize = defaultFileChuckSize
 	}(defaultFileChuckSize)
 
 	// 100MB
