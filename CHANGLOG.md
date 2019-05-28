@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.6.1...master)
 
-<!-- ## [0.6.2](https://github.com/alexandrestein/gotinydb/compare/v0.6.1...v0.6.2) -->
+## [0.6.2](https://github.com/alexandrestein/gotinydb/compare/v0.6.1...v0.6.2)
 
 ### Add 
 
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Limit file size of the Badger database. The goal is to take advantage of the garbage collection which needs multiple files to work.
 - CI now run test twice. Ones with verbose parameter and the second with race. This should run every test function and after eventually with the race condition.
+- Upgrade Badger from short after v1.5.3 to v2.0.0.rc-2.
 
 ### Fixes
 
