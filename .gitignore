@@ -3,7 +3,7 @@
 debug.test
 .vscode
 
-.go.sum
+go.sum
 
 /examples/vendor
 /path_to_database_directory

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.6.1...master)
 
+<!-- ## [0.6.2](https://github.com/alexandrestein/gotinydb/compare/v0.6.1...v0.6.2) -->
+
+### Add 
+
+- Timeout for file reader and writer.
+
+### Changed
+
+- Limit file size of the Badger database. The goal is to take advantage of the garbage collection which needs multiple files to work.
+- CI now run test twice. Ones with verbose parameter and the second with race. This should run every test function and after eventually with the race condition.
+
+### Fixes
+
+- The management path introduced in [commit](https://github.com/alexandrestein/gotinydb/commit/8a3c019c3dd92986564b0415f1e27bcb4ba7ab29) was not working for backup and restore.
+
 ## [0.6.1](https://github.com/alexandrestein/gotinydb/compare/v0.6.0...v0.6.1)
 
 ### Add 
