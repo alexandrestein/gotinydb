@@ -4,18 +4,26 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/flate"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"golang.org/x/crypto/blake2b"
+
 	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/mapping"
 )
 
 type (
 	// BleveIndex defines for now the only supported index (no plan for other unless it's needed).
 	BleveIndex struct {
 		dbElement
+
+		// Signature provide a way to check if the index definition
+		// has been updated since initialization.
+		Signature [blake2b.Size256]byte
 
 		collection *Collection
 
@@ -39,7 +47,7 @@ func (i *BleveIndex) close() error {
 }
 
 func (i *BleveIndex) delete() {
-	os.RemoveAll(i.Path)
+	os.RemoveAll(i.collection.db.path + string(os.PathSeparator) + i.Path)
 }
 
 func (i *BleveIndex) indexZipper() ([]byte, error) {
@@ -147,5 +155,15 @@ func (i *BleveIndex) indexUnzipper() error {
 		}
 	}
 
+	return nil
+}
+
+func (i *BleveIndex) buildSignature(documentMapping *mapping.DocumentMapping) error {
+	resp, err := json.Marshal(documentMapping)
+	if err != nil {
+		return err
+	}
+
+	i.Signature = blake2b.Sum256(resp)
 	return nil
 }

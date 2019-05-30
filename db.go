@@ -14,7 +14,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"io"
 	"math"
 	"os"
@@ -420,12 +419,12 @@ func (d *DB) loadConfig() error {
 func (d *DB) loadCollections() (err error) {
 	for _, col := range d.Collections {
 		for _, index := range col.BleveIndexes {
+			index.collection = col
 			indexPrefix := make([]byte, len(index.Prefix))
 			copy(indexPrefix, index.Prefix)
 			config := blevestore.NewConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.badger, d.writeChan)
 			index.bleveIndex, err = bleve.OpenUsing(d.path+string(os.PathSeparator)+index.Path, config)
 			if err != nil {
-				fmt.Println("d.path", d.path)
 				return
 			}
 		}
@@ -456,55 +455,6 @@ func (d *DB) DeleteCollection(colName string) {
 	d.deletePrefix(col.Prefix)
 }
 
-func (d *DB) deletePrefix(prefix []byte) {
-	// Wait for write to be done in case any
-	time.Sleep(time.Millisecond * 500)
-
-	finished := false
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-newLoop:
-	idToDelete := []*transaction.Transaction{}
-
-	d.badger.View(func(txn *badger.Txn) error {
-		opt := badger.DefaultIteratorOptions
-		opt.PrefetchValues = false
-		iter := txn.NewIterator(opt)
-		defer iter.Close()
-
-		for iter.Seek(prefix); iter.ValidForPrefix(prefix); iter.Next() {
-			item := iter.Item()
-			var key []byte
-			key = item.KeyCopy(key)
-
-			tx := transaction.New(ctx)
-			tx.AddOperation(
-				transaction.NewOperation("", nil, key, nil, true, false),
-			)
-			idToDelete = append(idToDelete, tx)
-
-			if len(idToDelete) > 10000 {
-				return nil
-			}
-		}
-
-		finished = true
-
-		return nil
-	})
-
-	for _, tx := range idToDelete {
-		select {
-		case d.writeChan <- tx:
-		case <-d.ctx.Done():
-			return
-		}
-	}
-
-	if !finished {
-		time.Sleep(time.Millisecond * 50)
-		goto newLoop
-	}
+func (d *DB) deletePrefix(prefix []byte) error {
+	return d.badger.DropPrefix(prefix)
 }

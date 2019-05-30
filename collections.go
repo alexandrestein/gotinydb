@@ -73,9 +73,22 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 	indexHash := blake2b.Sum256([]byte(name))
 	prefix = append(prefix, indexHash[:2]...)
 
+	// ok, start building a new index
+	index := newIndex(name)
+	index.Name = name
+	index.collection = c
+	index.Prefix = prefix
+	err = index.buildSignature(documentMapping)
+	if err != nil {
+		return err
+	}
+
 	// Check there is no conflict name or hash
 	for _, i := range c.BleveIndexes {
 		if i.Name == name {
+			if !bytes.Equal(i.Signature[:],index.Signature[:]) {
+				return ErrIndexAllreadyExistsWithDifferentMapping 
+			}
 			return ErrNameAllreadyExists
 		}
 		if reflect.DeepEqual(i.Prefix, prefix) {
@@ -83,11 +96,6 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 		}
 	}
 
-	// ok, start building a new index
-	index := newIndex(name)
-	index.Name = name
-	index.collection = c
-	index.Prefix = prefix
 
 	// Bleve needs to save some parts on the drive.
 	// The path is based on a part of the collection hash and the index prefix.
