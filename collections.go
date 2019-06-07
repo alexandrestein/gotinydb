@@ -5,10 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"sync"
 	"time"
-	"os"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
 	"github.com/alexandrestein/gotinydb/cipher"
@@ -86,8 +86,8 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 	// Check there is no conflict name or hash
 	for _, i := range c.BleveIndexes {
 		if i.Name == name {
-			if !bytes.Equal(i.Signature[:],index.Signature[:]) {
-				return ErrIndexAllreadyExistsWithDifferentMapping 
+			if !bytes.Equal(i.Signature[:], index.Signature[:]) {
+				return ErrIndexAllreadyExistsWithDifferentMapping
 			}
 			return ErrNameAllreadyExists
 		}
@@ -96,20 +96,19 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 		}
 	}
 
-
 	// Bleve needs to save some parts on the drive.
 	// The path is based on a part of the collection hash and the index prefix.
 	colHash := blake2b.Sum256([]byte(c.Name))
-	index.Path = fmt.Sprintf("%x%s%x",  colHash[:2], string(os.PathSeparator), indexHash[:2])
+	index.Path = fmt.Sprintf("%x%s%x", colHash[:2], string(os.PathSeparator), indexHash[:2])
 
 	// Build the index and set the given document index as default
 	bleveMapping := bleve.NewIndexMapping()
-	bleveMapping.StoreDynamic = false 
+	bleveMapping.StoreDynamic = false
 	bleveMapping.IndexDynamic = true
 	bleveMapping.DocValuesDynamic = false
 
 	for _, fieldMapping := range documentMapping.Fields {
-		fieldMapping.Store = false		
+		fieldMapping.Store = false
 		fieldMapping.Index = true
 	}
 	bleveMapping.DefaultMapping = documentMapping
@@ -530,7 +529,9 @@ func (c *Collection) SearchWithOptions(indexName string, searchRequest *bleve.Se
 		return nil, err
 	}
 
+	t0 := time.Now()
 	ret.BleveSearchResult, err = index.bleveIndex.Search(searchRequest)
+	fmt.Println("time.Since(t0)", time.Since(t0))
 	if err != nil {
 		return nil, err
 	}
