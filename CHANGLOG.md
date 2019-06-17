@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.6.3...master)
 
-## [0.6.2](https://github.com/alexandrestein/gotinydb/compare/v0.6.2...v0.6.3)
+### Changed
+
+- If Collection.Get is not found it returns the ErrNotFound instead of the badger error. [commit](https://github.com/alexandrestein/gotinydb/commit/4bb567662198294c5ddacb0ac6d906664f0f74d6)
+
+## [0.6.3](https://github.com/alexandrestein/gotinydb/compare/v0.6.2...v0.6.3)
 
 ### Changed
 
