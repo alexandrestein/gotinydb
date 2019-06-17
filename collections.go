@@ -533,9 +533,7 @@ func (c *Collection) SearchWithOptions(indexName string, searchRequest *bleve.Se
 		return nil, err
 	}
 
-	t0 := time.Now()
 	ret.BleveSearchResult, err = index.bleveIndex.Search(searchRequest)
-	fmt.Println("time.Since(t0)", time.Since(t0))
 	if err != nil {
 		return nil, err
 	}
