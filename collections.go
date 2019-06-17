@@ -380,6 +380,10 @@ func (c *Collection) Get(id string, dest interface{}) (contentAsBytes []byte, er
 		return nil
 	})
 
+	if err == badger.ErrKeyNotFound {
+		return nil, ErrNotFound
+	}
+
 	return
 }
 
