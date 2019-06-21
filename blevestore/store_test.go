@@ -22,7 +22,7 @@ import (
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transaction"
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 
 	"github.com/blevesearch/bleve/index/store"
 	"github.com/blevesearch/bleve/index/store/test"
@@ -109,7 +109,9 @@ func goRoutineLoopForWrites(testCtx context.Context) {
 					if op.Delete {
 						err = txn.Delete(op.DBKey)
 					} else if op.CleanHistory {
-						err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value), 0)
+						entry := badger.NewEntry(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value))
+						entry.WithDiscard()
+						err = txn.SetEntry(entry)
 					} else {
 						err = txn.Set(op.DBKey, cipher.Encrypt(testKey, op.DBKey, op.Value))
 					}

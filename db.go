@@ -26,7 +26,7 @@ import (
 	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/mapping"
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -211,7 +211,7 @@ func (d *DB) Load(r io.Reader) error {
 		return err
 	}
 
-	err = d.badger.Load(r)
+	err = d.badger.Load(r, 1000)
 	if err != nil {
 		return err
 	}
@@ -306,7 +306,9 @@ func (d *DB) goRoutineLoopForWrites() {
 						err = txn.Delete(op.DBKey)
 					} else {
 						if op.CleanHistory {
-							err = txn.SetWithDiscard(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value), 0)
+							entry := badger.NewEntry(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
+							entry.WithDiscard()
+							err = txn.SetEntry(entry)
 						} else {
 							err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
 						}

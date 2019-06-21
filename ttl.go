@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/alexandrestein/gotinydb/transaction"
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 )
 
 type (
