@@ -17,7 +17,7 @@ import (
 	"github.com/blevesearch/bleve/index/upsidedown"
 	"github.com/blevesearch/bleve/mapping"
 	"github.com/blevesearch/bleve/search/query"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
 

@@ -26,7 +26,7 @@ import (
 	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/mapping"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -79,16 +79,14 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 
 	db.FileStore = &FileStore{db}
 
-	options := badger.DefaultOptions
-	options.Dir = path
-	options.ValueDir = path
+	options := badger.DefaultOptions(path)
 
-	options.MaxTableSize = int64(FileChuckSize) / 5     // 1MB
-	options.ValueLogFileSize = int64(FileChuckSize) * 4 // 20MB
-	options.NumCompactors = runtime.NumCPU()
-	options.Truncate = true
+	options.WithMaxTableSize( int64(FileChuckSize) / 5     )// 1MB
+	options.WithValueLogFileSize( int64(FileChuckSize) * 4 )// 20MB
+	options.WithNumCompactors( runtime.NumCPU())
+	options.WithTruncate( true)
 	// Keep as much version as possible
-	options.NumVersionsToKeep = math.MaxInt32
+	options.WithNumVersionsToKeep(math.MaxInt32)
 
 	db.writeChan = make(chan *transaction.Transaction, 1000)
 

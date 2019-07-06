@@ -21,7 +21,7 @@ import (
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transaction"
 	"github.com/blevesearch/bleve/index/store"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 )
 
 // Writer implement the blevestore writer interface

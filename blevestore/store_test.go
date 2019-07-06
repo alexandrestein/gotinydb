@@ -22,7 +22,7 @@ import (
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transaction"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 
 	"github.com/blevesearch/bleve/index/store"
 	"github.com/blevesearch/bleve/index/store/test"
@@ -43,9 +43,7 @@ func init() {
 }
 
 func open(testCtx context.Context, t *testing.T, mo store.MergeOperator) store.KVStore {
-	opt := badger.DefaultOptions
-	opt.Dir = testPath
-	opt.ValueDir = testPath
+	opt := badger.DefaultOptions(testPath)
 
 	var err error
 	testDB, err = badger.Open(opt)

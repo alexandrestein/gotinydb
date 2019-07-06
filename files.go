@@ -10,7 +10,7 @@ import (
 
 	"github.com/alexandrestein/gotinydb/cipher"
 	"github.com/alexandrestein/gotinydb/transaction"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
 )
 

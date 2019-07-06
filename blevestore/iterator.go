@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/alexandrestein/gotinydb/cipher"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 )
 
 // Iterator is self explained

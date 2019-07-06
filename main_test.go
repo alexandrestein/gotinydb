@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/blevesearch/bleve"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger"
 )
 
 var (

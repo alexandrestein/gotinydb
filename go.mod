@@ -12,7 +12,7 @@ require (
 	github.com/cznic/b v0.0.0-20181122101859-a26611c4d92d // indirect
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548 // indirect
 	github.com/cznic/strutil v0.0.0-20181122101858-275e90344537 // indirect
-	github.com/dgraph-io/badger/v2 v2.0.0-20190620211019-41d170b5158f
+	github.com/dgraph-io/badger v1.6.0
 	github.com/edsrzf/mmap-go v0.0.0-20170320065105-0bce6a688712 // indirect
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
 	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
@@ -31,3 +31,5 @@ require (
 	github.com/willf/bitset v1.1.9 // indirect
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 )
+
+go 1.13
