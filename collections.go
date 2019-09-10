@@ -64,6 +64,11 @@ func (c *Collection) buildIndexPrefix() []byte {
 	return prefix
 }
 
+// GetName returns the collection name
+func (c *Collection) GetName() string {
+	return c.Name
+}
+
 // SetBleveIndex adds a bleve index to the collection.
 // It build a new index with the given index mapping.
 func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.DocumentMapping) (err error) {

@@ -28,6 +28,10 @@ import (
 	"github.com/blevesearch/bleve/mapping"
 	"github.com/dgraph-io/badger"
 	"golang.org/x/crypto/blake2b"
+
+	_ "github.com/blevesearch/bleve/analysis/analyzer/keyword"
+	_ "github.com/blevesearch/bleve/analysis/analyzer/simple"
+	_ "github.com/blevesearch/bleve/analysis/analyzer/standard"
 )
 
 type (
@@ -72,6 +76,18 @@ func init() {
 // The path defines the place the data will be saved and the configuration key
 // permit to decrypt existing configuration and to encrypt new one.
 func Open(path string, configKey [32]byte) (db *DB, err error) {
+	return open(path, configKey, nil)
+}
+
+// OpenReadOnly open the given database in readonly mode
+func OpenReadOnly(path string, configKey [32]byte) (db *DB, err error) {
+	option := badger.DefaultOptions(path)
+	option.ReadOnly = true
+
+	return open(path, configKey, &option)
+}
+
+func open(path string, configKey [32]byte, badgerOptions *badger.Options) (db *DB, err error) {
 	db = new(DB)
 	db.path = path
 	db.configKey = configKey
@@ -79,18 +95,21 @@ func Open(path string, configKey [32]byte) (db *DB, err error) {
 
 	db.FileStore = &FileStore{db}
 
-	options := badger.DefaultOptions(path)
+	if badgerOptions == nil {
+		tmpOption := badger.DefaultOptions(path)
+		badgerOptions = &tmpOption
 
-	options.WithMaxTableSize( int64(FileChuckSize) / 5     )// 1MB
-	options.WithValueLogFileSize( int64(FileChuckSize) * 4 )// 20MB
-	options.WithNumCompactors( runtime.NumCPU())
-	options.WithTruncate( true)
-	// Keep as much version as possible
-	options.WithNumVersionsToKeep(math.MaxInt32)
+		badgerOptions.WithMaxTableSize(int64(FileChuckSize) / 5)     // 1MB
+		badgerOptions.WithValueLogFileSize(int64(FileChuckSize) * 4) // 20MB
+		badgerOptions.WithNumCompactors(runtime.NumCPU())
+		badgerOptions.WithTruncate(true)
+		// Keep as much version as possible
+		badgerOptions.WithNumVersionsToKeep(math.MaxInt32)
+	}
 
 	db.writeChan = make(chan *transaction.Transaction, 1000)
 
-	db.badger, err = badger.Open(options)
+	db.badger, err = badger.Open(*badgerOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -425,11 +444,15 @@ func (d *DB) loadCollections() (err error) {
 			config := blevestore.NewConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.badger, d.writeChan)
 			index.bleveIndex, err = bleve.OpenUsing(d.path+string(os.PathSeparator)+index.Path, config)
 			if err != nil {
+				// if index.bleveIndex == nil {
+				// 	return
+				// }
 				return
 			}
 		}
 	}
-	return
+
+	return nil
 }
 
 // DeleteCollection removes every document and indexes and the collection itself
