@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 
@@ -24,13 +25,15 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+
+	"github.com/alexandrestein/gotinydb"
 )
 
 var (
 	cfgFile string
 
-	sourceDbDir string
-	dbKey       string
+	dbDir string
+	dbKey string
 
 	logLevel string
 )
@@ -73,26 +76,13 @@ func init() {
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.gotinydb.yaml)")
 
-	rootCmd.PersistentFlags().StringVarP(&sourceDbDir, "db-dir", "d", "", "Defines the directory to read (required)")
+	rootCmd.PersistentFlags().StringVarP(&dbDir, "db-dir", "d", "", "Defines the directory to read (required)")
 	rootCmd.PersistentFlags().StringVarP(&dbKey, "key", "k", "", "Defines the database master key as base64 encoded (required)")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log", "l", "", "Defines the log level wanted (info|warn|err)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
-
-func setLogs() {
-	switch logLevel {
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "warn":
-		log.SetLevel(log.WarnLevel)
-	case "err":
-		log.SetLevel(log.ErrorLevel)
-	default:
-		log.SetLevel(log.TraceLevel)
-	}
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -119,4 +109,48 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func setLogs() {
+	switch logLevel {
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "err":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.SetLevel(log.TraceLevel)
+	}
+}
+
+func openDB(cmd *cobra.Command,readOnly bool) (*gotinydb.DB, error) {
+	if dbDir == "" || dbKey == "" {
+		cmd.Help()
+		return nil, fmt.Errorf("")
+	}
+
+	setLogs()
+
+	tmpKey, err := base64.RawStdEncoding.DecodeString(dbKey)
+	if err != nil {
+		log.Warningln("Can't parse the key properly:", err.Error())
+	}
+
+	log.Traceln("parsed key is:", tmpKey)
+
+	key := [32]byte{}
+	copy(key[:], tmpKey)
+
+	var db *gotinydb.DB
+	if readOnly {
+		db, err = gotinydb.OpenReadOnly(dbDir, key)
+	} else {
+		db, err = gotinydb.Open(dbDir, key)
+	}
+	if err != nil {
+		log.Errorln("Can't open database:", err.Error())
+		return nil, err
+	}
+	return db, nil
 }

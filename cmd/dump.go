@@ -16,13 +16,11 @@ limitations under the License.
 package cmd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"os"
 	"time"
 
-	"github.com/alexandrestein/gotinydb"
 	"github.com/spf13/cobra"
 
 	log "github.com/sirupsen/logrus"
@@ -65,28 +63,15 @@ type (
 var dumpCmd = &cobra.Command{
 	Use:   "dump",
 	Short: "Open the database and dump it's content into an archive",
-	Long:  `Open the database and dump it's content into an archive`,
+	Long: `Open the database and dump it's content into an archive. You can build full archive or a JSON archive which has actual stat but no history.
+
+The JSON format decrypt the data and make it readable and exportable to other systems.
+
+In comparison the binary export is fully encrypted and keeps everything (history, indexes files and all metas).
+To use this dump you need to inject the backup in a database using the same encryption key as the one used for the "dump".`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if sourceDbDir == "" || dbKey == "" {
-			cmd.Help()
-			return
-		}
-
-		setLogs()
-
-		tmpKey, err := base64.RawStdEncoding.DecodeString(dbKey)
+		db, err := openDB(cmd, true)
 		if err != nil {
-			log.Warningln("Can't parse the key properly:", err.Error())
-		}
-
-		log.Traceln("parsed key is:", tmpKey)
-
-		key := [32]byte{}
-		copy(key[:], tmpKey)
-
-		db, err := gotinydb.OpenReadOnly(sourceDbDir, key)
-		if err != nil {
-			log.Errorln("Can't open database:", err.Error())
 			return
 		}
 		defer db.Close()
@@ -192,7 +177,7 @@ var dumpCmd = &cobra.Command{
 
 func init() {
 	dumpCmd.Flags().StringVarP(&dumpTarget, "target", "t", "./db-archive", "Defines the dump destination")
-	dumpCmd.Flags().BoolVar(&dumpJSON, "json", false, "Saves a JSON content instead of the encrypted database. This can consume lots of memory to keep all records of all collections to build the output JSON.")
+	dumpCmd.Flags().BoolVar(&dumpJSON, "json", false, "Saves a JSON content instead of the encrypted stream. This can consume lots of memory to keep all records of all collections to build the output JSON.")
 	dumpCmd.Flags().BoolVar(&dumpJSONPretty, "pretty", false, "Needs --json to work. It returns the JSON in a readable form")
 	dumpCmd.Flags().BoolVar(&dumpJSONFile, "files", false, "Needs --json to work. Add files to output")
 

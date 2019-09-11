@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased](https://github.com/alexandrestein/gotinydb/compare/v0.6.3...master)
 
 - Badger upgrade to [1.6](https://github.com/dgraph-io/badger/commit/2fa005c9d4bf695277ab5214c1fbce3735b9562a [commit](https://github.com/alexandrestein/gotinydb/commit/287292bfdef2b47b44a98ae7b7bf18faef0d3174)
+- Add command line to export and import databases.
 
 ### Changed
 
