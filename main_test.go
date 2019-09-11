@@ -66,7 +66,7 @@ func init() {
 	os.RemoveAll(testPath)
 }
 
-func open(t *testing.T) (err error) {
+func openT(t *testing.T) (err error) {
 	testDB, err = Open(testPath, testConfigKey)
 	if err != nil {
 		t.Error(err)
@@ -117,7 +117,7 @@ func clean() {
 
 func TestHistory(t *testing.T) {
 	defer clean()
-	open(t)
+	openT(t)
 
 	testID := "the history test ID"
 	testCol.Put(testID, []byte("value 10"))
@@ -183,7 +183,7 @@ func TestHistory(t *testing.T) {
 
 func TestDeleteParts(t *testing.T) {
 	defer clean()
-	open(t)
+	openT(t)
 
 	bleveIndex, _ := testCol.GetBleveIndex(testIndexName)
 	prefix := bleveIndex.Prefix
@@ -226,4 +226,70 @@ func TestDeleteParts(t *testing.T) {
 
 		return nil
 	})
+}
+
+func TestChangeKey(t *testing.T) {
+	var key1, key2 [32]byte
+
+	if tmpKey, err := base64.StdEncoding.DecodeString("uTMZvHtVB7JhQhQnokUpUdnJA3Gn/iDnzpLNYpJiKI4="); err != nil {
+		t.Error(err)
+		return
+	} else {
+		copy(key1[:], tmpKey)
+	}
+	if tmpKey, err := base64.StdEncoding.DecodeString("OPvAVDfcqZed3YHrKJZVr+2gxjV0mnalnLcT9rJRJHc="); err != nil {
+		t.Error(err)
+		return
+	} else {
+		copy(key2[:], tmpKey)
+	}
+	fmt.Println("key1", key1)
+	fmt.Println("key2", key2)
+
+	changeKeyDBPath := "./changeKeyDBPath"
+	defer os.RemoveAll(changeKeyDBPath)
+
+	testDB, err := Open(changeKeyDBPath, key1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer testDB.Close()
+
+	col, _ := testDB.Use("test")
+	err = col.Put("test", []byte("hello"))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = testDB.UpdateKey(key2)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	err = testDB.Close()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	testDB, err = Open(changeKeyDBPath, key2)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer testDB.Close()
+
+	col, _ = testDB.Use("test")
+	savedContent, err := col.Get("test", nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if string(savedContent) != "hello" {
+		t.Errorf("The returned value %q is not expected (%q)", string(savedContent), "hello")
+		return
+	}
 }

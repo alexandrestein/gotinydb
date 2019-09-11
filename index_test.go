@@ -9,7 +9,7 @@ import (
 
 func TestIndexExistingValue(t *testing.T) {
 	defer clean()
-	open(t)
+	openT(t)
 
 	complexObjectID := "complex object ID"
 	complexObject := &struct {
@@ -73,7 +73,7 @@ func TestIndexExistingValue(t *testing.T) {
 
 func TestIndexResultNext(t *testing.T) {
 	defer clean()
-	open(t)
+	openT(t)
 
 	testCol.Delete(testUserID)
 

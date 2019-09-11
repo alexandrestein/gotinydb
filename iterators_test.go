@@ -10,7 +10,7 @@ import (
 
 func TestCollectionIterator(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}
@@ -55,7 +55,7 @@ func TestCollectionIterator(t *testing.T) {
 
 func TestFileIterator(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}

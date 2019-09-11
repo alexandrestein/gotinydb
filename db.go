@@ -171,7 +171,14 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 	return
 }
 
-// Close close the database and all subcomposants. It returns the error if any
+// UpdateKey updates the database master key
+func (d *DB) UpdateKey(newKey [32]byte) (err error) {
+	d.configKey = newKey
+
+	return d.saveConfig()
+}
+
+// Close closes the database and all subcomposants. It returns the error if any
 func (d *DB) Close() (err error) {
 	d.cancel()
 

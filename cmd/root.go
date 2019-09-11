@@ -137,7 +137,7 @@ func openDB(cmd *cobra.Command,readOnly bool) (*gotinydb.DB, error) {
 		log.Warningln("Can't parse the key properly:", err.Error())
 	}
 
-	log.Traceln("parsed key is:", tmpKey)
+	log.Traceln("Parsed key used for opening the database is:", tmpKey)
 
 	key := [32]byte{}
 	copy(key[:], tmpKey)

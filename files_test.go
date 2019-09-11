@@ -14,7 +14,7 @@ import (
 
 func TestFiles(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}
@@ -113,7 +113,7 @@ func TestFiles(t *testing.T) {
 
 func TestFilesMultipleWriteSameID(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}
@@ -166,7 +166,7 @@ func TestFilesMultipleWriteSameID(t *testing.T) {
 
 func TestFilesReaderInterface(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}
@@ -251,7 +251,7 @@ func interfaceReadTestAfterSeek(t *testing.T, reader Reader, randBuff []byte, re
 
 func TestFilesWriterInterface(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}
@@ -329,7 +329,7 @@ func testWriteFileParts(t *testing.T, fileID string, expected []byte, at int64) 
 
 func TestRelatedPutFiles(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		t.Error(err)
 		return
@@ -375,7 +375,7 @@ func TestRelatedPutFiles(t *testing.T) {
 
 func TestRelatedFilesWriterInterface(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		t.Error(err)
 		return
@@ -435,7 +435,7 @@ func TestWriteFileCopy(t *testing.T) {
 	}
 
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		t.Error(err)
 		return

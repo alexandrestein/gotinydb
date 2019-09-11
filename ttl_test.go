@@ -13,7 +13,7 @@ func TestTTLDocument(t *testing.T) {
 	}
 
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}
@@ -117,7 +117,7 @@ func TestTTLFile(t *testing.T) {
 	}
 
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}

@@ -13,7 +13,7 @@ import (
 
 func TestMain(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}
@@ -135,7 +135,7 @@ func TestMain(t *testing.T) {
 
 func TestBackup(t *testing.T) {
 	defer clean()
-	err := open(t)
+	err := openT(t)
 	if err != nil {
 		return
 	}

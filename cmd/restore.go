@@ -118,8 +118,8 @@ fill-up the database with the given archive (JSON or full archive)`,
 }
 
 func init() {
-	dumpCmd.Flags().StringVarP(&restoreSource, "source", "s", "./db-archive", "Defines the restore source")
-	dumpCmd.Flags().BoolVar(&restoreJSON, "json", false, "import a JSON content instead of the encrypted stream.")
+	restoreCmd.Flags().StringVarP(&restoreSource, "source", "s", "./db-archive", "Defines the restore source")
+	restoreCmd.Flags().BoolVar(&restoreJSON, "json", false, "import a JSON content instead of the encrypted stream.")
 
 	rootCmd.AddCommand(restoreCmd)
 
