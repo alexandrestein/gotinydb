@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -30,6 +31,8 @@ var (
 
 	sourceDbDir string
 	dbKey       string
+
+	logLevel string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -40,6 +43,7 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
+	TraverseChildren: true,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -54,18 +58,41 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.TextFormatter{})
+
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+
+	// Only log the warning severity or above.
+
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.gotinydb.yaml)")
 
-	rootCmd.PersistentFlags().StringVarP(&sourceDbDir, "db-dir", "d", "", "define the directory to read (required)")
-	rootCmd.PersistentFlags().StringVarP(&dbKey, "key", "k", "", "define the database master key as base64 encoded (required)")
+	rootCmd.PersistentFlags().StringVarP(&sourceDbDir, "db-dir", "d", "", "Defines the directory to read (required)")
+	rootCmd.PersistentFlags().StringVarP(&dbKey, "key", "k", "", "Defines the database master key as base64 encoded (required)")
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log", "l", "", "Defines the log level wanted (info|warn|err)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func setLogs() {
+	switch logLevel {
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "err":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.SetLevel(log.TraceLevel)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.
