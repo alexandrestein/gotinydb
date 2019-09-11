@@ -19,6 +19,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/alexandrestein/gotinydb/blevestore"
@@ -40,6 +41,8 @@ type (
 	DB struct {
 		ctx    context.Context
 		cancel context.CancelFunc
+
+		lock *sync.RWMutex
 
 		// Only used to save database settup
 		configKey [32]byte
@@ -91,20 +94,25 @@ func open(path string, configKey [32]byte, badgerOptions *badger.Options) (db *D
 	db = new(DB)
 	db.path = path
 	db.configKey = configKey
+
+	db.lock = new(sync.RWMutex)
+
 	db.ctx, db.cancel = context.WithCancel(context.Background())
 
 	db.FileStore = &FileStore{db}
 
 	if badgerOptions == nil {
 		tmpOption := badger.DefaultOptions(path)
-		badgerOptions = &tmpOption
 
-		badgerOptions.WithMaxTableSize(int64(FileChuckSize) / 5)     // 1MB
-		badgerOptions.WithValueLogFileSize(int64(FileChuckSize) * 4) // 20MB
-		badgerOptions.WithNumCompactors(runtime.NumCPU())
-		badgerOptions.WithTruncate(true)
+		tmpOption = tmpOption.WithMaxTableSize(int64(FileChuckSize) / 5)     // 1MB
+		tmpOption = tmpOption.WithValueLogFileSize(int64(FileChuckSize) * 4) // 20MB
+		tmpOption = tmpOption.WithNumCompactors(runtime.NumCPU())
+		tmpOption = tmpOption.WithTruncate(true)
 		// Keep as much version as possible
-		badgerOptions.WithNumVersionsToKeep(math.MaxInt32)
+		tmpOption = tmpOption.WithNumVersionsToKeep(math.MaxInt32)
+		tmpOption = tmpOption.WithLogger(new(fakeLogger))
+
+		badgerOptions = &tmpOption
 	}
 
 	db.writeChan = make(chan *transaction.Transaction, 1000)
@@ -235,10 +243,12 @@ func (d *DB) Load(r io.Reader) error {
 		return err
 	}
 
+	d.lock.Lock()
 	err = d.badger.Load(r, 1000)
 	if err != nil {
 		return err
 	}
+	d.lock.Unlock()
 
 	err = d.loadConfig()
 	if err != nil {
@@ -279,17 +289,23 @@ func (d *DB) goRoutineLoopForWrites() {
 	limitSizeOfWriteOperation := 100 * 1000 * 1000 // 100MB
 	limitWaitBeforeWriteStart := time.Millisecond * 50
 
+	d.lock.RLock()
+	badgerStore := d.badger
+	localCtx := d.ctx
+	writeChan := d.writeChan
+	d.lock.RUnlock()
+
 	for {
 		writeSizeCounter := 0
 
 		var trans *transaction.Transaction
 		var ok bool
 		select {
-		case trans, ok = <-d.writeChan:
+		case trans, ok = <-writeChan:
 			if !ok {
 				return
 			}
-		case <-d.ctx.Done():
+		case <-localCtx.Done():
 			return
 		}
 
@@ -304,7 +320,7 @@ func (d *DB) goRoutineLoopForWrites() {
 	tryToGetAnOtherRequest:
 		select {
 		// There is an other request in the queue
-		case nextWrite := <-d.writeChan:
+		case nextWrite := <-writeChan:
 			// And save the response channel
 			waitingWrites = append(waitingWrites, nextWrite)
 
@@ -316,13 +332,13 @@ func (d *DB) goRoutineLoopForWrites() {
 				goto tryToGetAnOtherRequest
 			}
 			// This continue if there is no more request in the queue
-		case <-d.ctx.Done():
+		case <-localCtx.Done():
 			return
 			// Stop waiting and do present operations
 		default:
 		}
 
-		err := d.badger.Update(func(txn *badger.Txn) error {
+		err := badgerStore.Update(func(txn *badger.Txn) error {
 			for _, transaction := range waitingWrites {
 				for _, op := range transaction.Operations {
 					var err error
@@ -340,7 +356,7 @@ func (d *DB) goRoutineLoopForWrites() {
 
 					// Returns the write error to the caller
 					if err != nil {
-						go d.nonBlockingResponseChan(transaction, err)
+						go d.nonBlockingResponseChan(localCtx, transaction, err)
 					}
 
 				}
@@ -350,15 +366,19 @@ func (d *DB) goRoutineLoopForWrites() {
 
 		// Dispatch the commit response to all callers
 		for _, op := range waitingWrites {
-			go d.nonBlockingResponseChan(op, err)
+			go d.nonBlockingResponseChan(localCtx, op, err)
 		}
 	}
 }
 
-func (d *DB) nonBlockingResponseChan(tx *transaction.Transaction, err error) {
+func (d *DB) nonBlockingResponseChan(ctx context.Context, tx *transaction.Transaction, err error) {
+	// d.lock.RLock()
+	// localCtx := d.ctx
+	// d.lock.RUnlock()
+
 	select {
 	case tx.ResponseChan <- err:
-	case <-d.ctx.Done():
+	case <-ctx.Done():
 	case <-tx.Ctx.Done():
 	}
 }
@@ -410,6 +430,9 @@ func (d *DB) getConfig() (db *DB, err error) {
 		db = new(DB)
 		return json.Unmarshal(dbAsBytes, db)
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	if db != nil {
 		db.configKey = d.configKey
@@ -424,18 +447,21 @@ func (d *DB) loadConfig() error {
 		return err
 	}
 
+	d.lock.Lock()
+
 	d.cancel()
 
-	time.Sleep(time.Millisecond * 500)
-
-	// db.cancel = d.cancel
+	db.cancel = d.cancel
 	db.badger = d.badger
 	db.ctx, db.cancel = context.WithCancel(context.Background())
 	db.writeChan = d.writeChan
 	db.path = d.path
 	db.FileStore = d.FileStore
+	db.lock = d.lock
 
 	*d = *db
+
+	d.lock.Unlock()
 
 	d.startBackgroundLoops()
 

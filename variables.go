@@ -44,3 +44,10 @@ var (
 	// left open by mistake.
 	ReaderWriterTimeout = time.Minute * 10
 )
+
+type fakeLogger struct{}
+
+func (fl *fakeLogger) Errorf(base string, elems ...interface{})   {}
+func (fl *fakeLogger) Warningf(base string, elems ...interface{}) {}
+func (fl *fakeLogger) Infof(base string, elems ...interface{})    {}
+func (fl *fakeLogger) Debugf(base string, elems ...interface{})   {}

@@ -243,8 +243,6 @@ func TestChangeKey(t *testing.T) {
 	} else {
 		copy(key2[:], tmpKey)
 	}
-	fmt.Println("key1", key1)
-	fmt.Println("key2", key2)
 
 	changeKeyDBPath := "./changeKeyDBPath"
 	defer os.RemoveAll(changeKeyDBPath)
@@ -268,20 +266,21 @@ func TestChangeKey(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
 	err = testDB.Close()
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	testDB, err = Open(changeKeyDBPath, key2)
+	testDB2, err := Open(changeKeyDBPath, key2)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer testDB.Close()
+	defer testDB2.Close()
 
-	col, _ = testDB.Use("test")
+	col, _ = testDB2.Use("test")
 	savedContent, err := col.Get("test", nil)
 	if err != nil {
 		t.Error(err)

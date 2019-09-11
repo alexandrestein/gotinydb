@@ -52,11 +52,16 @@ func (d *DB) goWatchForTTLToClean() {
 start:
 	var nextRun time.Duration
 
-	ctx, cancel := context.WithTimeout(d.ctx, time.Second*10)
+	d.lock.RLock()
+	badgerStore := d.badger
+	localCtx := d.ctx
+	d.lock.RUnlock()
+
+	ctx, cancel := context.WithTimeout(localCtx, time.Second*10)
 	defer cancel()
 	tr := transaction.New(ctx)
 
-	d.badger.View(func(txn *badger.Txn) (err error) {
+	badgerStore.View(func(txn *badger.Txn) (err error) {
 		iterOp := badger.DefaultIteratorOptions
 		iterOp.AllVersions = true
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -121,14 +126,14 @@ start:
 	})
 
 	// DB closed
-	if closed := d.ctx.Err(); closed != nil {
+	if closed := localCtx.Err(); closed != nil {
 		return
 	}
 
 	// Do the writing:
 	select {
 	case d.writeChan <- tr:
-	case <-d.ctx.Done():
+	case <-localCtx.Done():
 		return
 	}
 
@@ -146,7 +151,7 @@ start:
 	select {
 	case <-time.After(nextRun):
 		goto start
-	case <-d.ctx.Done():
+	case <-localCtx.Done():
 		return
 	}
 }
