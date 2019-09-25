@@ -140,23 +140,28 @@ func TestBackup(t *testing.T) {
 
 	var backup bytes.Buffer
 
-	err = testDB.Backup(&backup)
+	var tm uint64
+	tm, err = testDB.BackupClearSince(&backup)
 	if err != nil {
 		t.Error(err)
 		return
+	}
+
+	if testing.Verbose() {
+		t.Log(tm)
 	}
 
 	restoredDBPath := os.TempDir() + "/restoredDB"
 	defer os.RemoveAll(restoredDBPath)
 
 	var restoredDB *DB
-	restoredDB, err = Open(restoredDBPath, testConfigKey)
+	restoredDB, err = Open(restoredDBPath, [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	err = restoredDB.Load(&backup)
+	err = restoredDB.LoadClear(&backup)
 	if err != nil {
 		t.Error(err)
 		return

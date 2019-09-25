@@ -11,9 +11,13 @@ It relais on Bleve and Badger to do the job.
 package gotinydb
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -28,6 +32,7 @@ import (
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/mapping"
 	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/pb"
 	"golang.org/x/crypto/blake2b"
 
 	_ "github.com/blevesearch/bleve/analysis/analyzer/keyword"
@@ -48,26 +53,36 @@ type (
 		configKey [32]byte
 		// PrivateKey is public for marshaling reason and should never by used or changes.
 		// This is the primary key used to derive every records.
-		PrivateKey [32]byte
+		privateKey [32]byte
 
 		path   string
 		badger *badger.DB
 		// Collection is public for marshaling reason and should never be used.
 		// It contains the collections pointers used to manage the documents.
-		Collections []*Collection
+		collections []*Collection
 
 		// FileStore provides all accessibility to the file storage facilities
-		FileStore *FileStore
+		fileStore *FileStore
 
 		writeChan chan *transaction.Transaction
 	}
 
+	dbExport struct {
+		Collections []*Collection
+		PrivateKey  [32]byte
+	}
+
 	dbElement struct {
-		Name string
+		name string
 		// Prefix defines the all prefix to the values
-		Prefix []byte
+		prefix []byte
 	}
 )
+
+// Name simply returns the name of the element
+func (dr *dbElement) Name() string {
+	return dr.name
+}
 
 func init() {
 	// This should prevent indexing the not indexed values
@@ -99,7 +114,7 @@ func open(path string, configKey [32]byte, badgerOptions *badger.Options) (db *D
 
 	db.ctx, db.cancel = context.WithCancel(context.Background())
 
-	db.FileStore = &FileStore{db}
+	db.fileStore = &FileStore{db}
 
 	if badgerOptions == nil {
 		tmpOption := badger.DefaultOptions(path)
@@ -125,11 +140,7 @@ func open(path string, configKey [32]byte, badgerOptions *badger.Options) (db *D
 
 	err = db.loadConfig()
 	if err != nil {
-		if err != badger.ErrKeyNotFound {
-			return nil, err
-		}
-		// It's the first start of the database
-		rand.Read(db.PrivateKey[:])
+		return nil, err
 	} else {
 		err = db.loadCollections()
 		if err != nil {
@@ -146,17 +157,38 @@ func (d *DB) startBackgroundLoops() {
 	go d.goWatchForTTLToClean()
 }
 
+// GetCollections returns a slice of the collections name
+func (d *DB) GetCollections() []string {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+
+	ret := make([]string, len(d.collections))
+	for i, col := range d.collections {
+		ret[i] = col.GetName()
+	}
+
+	return ret
+}
+
+// GetFileStore returns a slice of the collections name
+func (d *DB) GetFileStore() *FileStore {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+
+	return d.fileStore
+}
+
 // Use build a new collection or open an existing one.
 func (d *DB) Use(colName string) (col *Collection, err error) {
 	tmpHash := blake2b.Sum256([]byte(colName))
 	prefix := append([]byte{prefixCollections}, tmpHash[:2]...)
-	for _, savedCol := range d.Collections {
-		if savedCol.Name == colName {
+	for _, savedCol := range d.collections {
+		if savedCol.name == colName {
 			if savedCol.db == nil {
 				savedCol.db = d
 			}
 			col = savedCol
-		} else if reflect.DeepEqual(savedCol.Prefix, prefix) {
+		} else if reflect.DeepEqual(savedCol.prefix, prefix) {
 			return nil, ErrHashCollision
 		}
 	}
@@ -166,10 +198,10 @@ func (d *DB) Use(colName string) (col *Collection, err error) {
 	}
 
 	col = newCollection(colName)
-	col.Prefix = prefix
+	col.prefix = prefix
 	col.db = d
 
-	d.Collections = append(d.Collections, col)
+	d.collections = append(d.collections, col)
 
 	err = d.saveConfig()
 	if err != nil {
@@ -197,7 +229,7 @@ func (d *DB) Close() (err error) {
 		}
 	}()
 
-	for _, col := range d.Collections {
+	for _, col := range d.collections {
 		for _, i := range col.BleveIndexes {
 			err = i.close()
 			if err != nil {
@@ -211,9 +243,130 @@ func (d *DB) Close() (err error) {
 
 // Backup perform a full backup of the database.
 // It fills up the io.Writer with all data indexes and configurations.
-func (d *DB) Backup(w io.Writer) error {
-	_, err := d.badger.Backup(w, 0)
+func (d *DB) BackupClearSince(w io.Writer) (lastTimeStamp uint64, _ error) {
+	stream := d.badger.NewStream()
+	stream.KeyToList = func(key []byte, itr *badger.Iterator) (*pb.KVList, error) {
+		list := &pb.KVList{}
+		for ; itr.Valid(); itr.Next() {
+			item := itr.Item()
+			if !bytes.Equal(item.Key(), key) {
+				return list, nil
+			}
+
+			id := item.KeyCopy(nil)
+
+			var valCopy []byte
+			if !item.IsDeletedOrExpired() {
+				if len(id) == 1 && id[0] == prefixConfig {
+					conf, err := d.getConfigValue()
+					if err != nil {
+						return nil, err
+					}
+					fmt.Println("conf", conf.Collections)
+
+					continue
+				}
+
+				// No need to copy value, if item is deleted or expired.
+				encryptedValCopy, err := item.ValueCopy(nil)
+				if err != nil {
+					return nil, err
+				}
+
+				valCopy, err = d.decryptData(id, encryptedValCopy)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			kv := &pb.KV{
+				Key:       id,
+				Value:     valCopy,
+				UserMeta:  []byte{item.UserMeta()},
+				Version:   item.Version(),
+				ExpiresAt: item.ExpiresAt(),
+			}
+			list.Kv = append(list.Kv, kv)
+
+			if item.IsDeletedOrExpired() {
+
+				return list, nil
+			}
+		}
+		return list, nil
+	}
+
+	var maxVersion uint64
+	stream.Send = func(list *pb.KVList) error {
+		for _, kv := range list.Kv {
+			if maxVersion < kv.Version {
+				maxVersion = kv.Version
+			}
+		}
+		return writeTo(list, w)
+	}
+
+	if err := stream.Orchestrate(context.Background()); err != nil {
+		return 0, err
+	}
+	return maxVersion, nil
+}
+
+func writeTo(list *pb.KVList, w io.Writer) error {
+	if err := binary.Write(w, binary.LittleEndian, uint64(list.Size())); err != nil {
+		return err
+	}
+	buf, err := list.Marshal()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(buf)
 	return err
+}
+
+func (d *DB) loadClear(r io.Reader) error {
+	br := bufio.NewReaderSize(r, 16<<10)
+	unmarshalBuf := make([]byte, 1<<10)
+
+	ldr := d.badger.NewKVLoader(1000)
+	for {
+		var sz uint64
+		err := binary.Read(br, binary.LittleEndian, &sz)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		if cap(unmarshalBuf) < int(sz) {
+			unmarshalBuf = make([]byte, sz)
+		}
+
+		if _, err = io.ReadFull(br, unmarshalBuf[:sz]); err != nil {
+			return err
+		}
+
+		list := &pb.KVList{}
+		if err := list.Unmarshal(unmarshalBuf[:sz]); err != nil {
+			return err
+		}
+
+		for _, kv := range list.Kv {
+			clearValue := make([]byte, len(kv.Value))
+			copy(clearValue, kv.Value)
+
+			kv.Value = cipher.Encrypt(d.privateKey, kv.GetKey(), clearValue)
+
+			if err := ldr.Set(kv); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := ldr.Finish(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // GarbageCollection provides access to the garbage collection for the underneath database storeage (Badger).
@@ -231,11 +384,16 @@ func (d *DB) GarbageCollection(discardRatio float64) error {
 		discardRatio = 0.5
 	}
 
-	return d.badger.RunValueLogGC(discardRatio)
+	err := d.badger.RunValueLogGC(discardRatio)
+	if err != nil {
+		return err
+	}
+
+	return d.badger.Sync()
 }
 
 // Load recover an existing database from a backup generated with *DB.Backup
-func (d *DB) Load(r io.Reader) error {
+func (d *DB) LoadClear(r io.Reader) error {
 	err := d.badger.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte{prefixConfig})
 	})
@@ -244,7 +402,7 @@ func (d *DB) Load(r io.Reader) error {
 	}
 
 	d.lock.Lock()
-	err = d.badger.Load(r, 1000)
+	err = d.loadClear(r)
 	if err != nil {
 		return err
 	}
@@ -255,7 +413,7 @@ func (d *DB) Load(r io.Reader) error {
 		return err
 	}
 
-	for _, col := range d.Collections {
+	for _, col := range d.collections {
 		col.db = d
 		for _, index := range col.BleveIndexes {
 			index.collection = col
@@ -346,11 +504,11 @@ func (d *DB) goRoutineLoopForWrites() {
 						err = txn.Delete(op.DBKey)
 					} else {
 						if op.CleanHistory {
-							entry := badger.NewEntry(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
+							entry := badger.NewEntry(op.DBKey, cipher.Encrypt(d.privateKey, op.DBKey, op.Value))
 							entry.WithDiscard()
 							err = txn.SetEntry(entry)
 						} else {
-							err = txn.Set(op.DBKey, cipher.Encrypt(d.PrivateKey, op.DBKey, op.Value))
+							err = txn.Set(op.DBKey, cipher.Encrypt(d.privateKey, op.DBKey, op.Value))
 						}
 					}
 
@@ -384,11 +542,14 @@ func (d *DB) nonBlockingResponseChan(ctx context.Context, tx *transaction.Transa
 }
 
 func (d *DB) decryptData(dbKey, encryptedData []byte) (clear []byte, err error) {
-	return cipher.Decrypt(d.PrivateKey, dbKey, encryptedData)
+	return cipher.Decrypt(d.privateKey, dbKey, encryptedData)
 }
 
 // saveConfig save the database configuration with collections and indexes
 func (d *DB) saveConfig() (err error) {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+
 	return d.badger.Update(func(txn *badger.Txn) error {
 		// Convert to JSON
 		dbToSaveAsBytes, err := json.Marshal(d)
@@ -406,7 +567,12 @@ func (d *DB) saveConfig() (err error) {
 	})
 }
 
-func (d *DB) getConfig() (db *DB, err error) {
+func (d *DB) getConfigValue() (config *dbExport, err error) {
+	var dbAsBytes []byte
+
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+
 	err = d.badger.View(func(txn *badger.Txn) error {
 		dbKey := []byte{prefixConfig}
 
@@ -416,7 +582,6 @@ func (d *DB) getConfig() (db *DB, err error) {
 			return err
 		}
 
-		var dbAsBytes []byte
 		dbAsBytes, err = item.ValueCopy(dbAsBytes)
 		if err != nil {
 			return err
@@ -427,15 +592,38 @@ func (d *DB) getConfig() (db *DB, err error) {
 			return err
 		}
 
-		db = new(DB)
-		return json.Unmarshal(dbAsBytes, db)
+		return nil
 	})
+
+	config = new(dbExport)
+
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			n, err := rand.Read(config.PrivateKey[:])
+			if err != nil {
+				return nil, err
+			}
+			if n != 32 {
+				return nil, fmt.Errorf("generate internal key is %d length instead of %d", n, 32)
+			}
+
+			return config, nil
+		}
+		return nil, err
+	}
+
+	err = json.Unmarshal(dbAsBytes, config)
 	if err != nil {
 		return nil, err
 	}
 
-	if db != nil {
-		db.configKey = d.configKey
+	return config, nil
+}
+
+func (d *DB) getConfig() (db *dbExport, err error) {
+	db, err = d.getConfigValue()
+	if err != nil {
+		return nil, err
 	}
 
 	return
@@ -448,20 +636,23 @@ func (d *DB) loadConfig() error {
 	}
 
 	d.lock.Lock()
-
-	d.cancel()
-
-	db.cancel = d.cancel
-	db.badger = d.badger
-	db.ctx, db.cancel = context.WithCancel(context.Background())
-	db.writeChan = d.writeChan
-	db.path = d.path
-	db.FileStore = d.FileStore
-	db.lock = d.lock
-
-	*d = *db
-
+	d.collections = db.Collections
+	d.privateKey = db.PrivateKey
 	d.lock.Unlock()
+
+	// d.cancel()
+
+	// db.cancel = d.cancel
+	// db.badger = d.badger
+	// db.ctx, db.cancel = context.WithCancel(context.Background())
+	// db.writeChan = d.writeChan
+	// db.path = d.path
+	// db.FileStore = d.FileStore
+	// db.lock = d.lock
+	// d.lock.Lock()
+
+	// *d = *db
+	// d.lock.Unlock()
 
 	d.startBackgroundLoops()
 
@@ -469,12 +660,12 @@ func (d *DB) loadConfig() error {
 }
 
 func (d *DB) loadCollections() (err error) {
-	for _, col := range d.Collections {
+	for _, col := range d.collections {
 		for _, index := range col.BleveIndexes {
 			index.collection = col
-			indexPrefix := make([]byte, len(index.Prefix))
-			copy(indexPrefix, index.Prefix)
-			config := blevestore.NewConfigMap(d.ctx, index.Path, d.PrivateKey, indexPrefix, d.badger, d.writeChan)
+			indexPrefix := make([]byte, len(index.prefix))
+			copy(indexPrefix, index.prefix)
+			config := blevestore.NewConfigMap(d.ctx, index.Path, d.privateKey, indexPrefix, d.badger, d.writeChan)
 			index.bleveIndex, err = bleve.OpenUsing(d.path+string(os.PathSeparator)+index.Path, config)
 			if err != nil {
 				// if index.bleveIndex == nil {
@@ -491,24 +682,23 @@ func (d *DB) loadCollections() (err error) {
 // DeleteCollection removes every document and indexes and the collection itself
 func (d *DB) DeleteCollection(colName string) {
 	var col *Collection
-	for i, tmpCol := range d.Collections {
-		if tmpCol.Name == colName {
+	for i, tmpCol := range d.collections {
+		if tmpCol.name == colName {
 			col = tmpCol
 
-			copy(d.Collections[i:], d.Collections[i+1:])
-			d.Collections[len(d.Collections)-1] = nil // or the zero value of T
-			d.Collections = d.Collections[:len(d.Collections)-1]
+			copy(d.collections[i:], d.collections[i+1:])
+			d.collections[len(d.collections)-1] = nil // or the zero value of T
+			d.collections = d.collections[:len(d.collections)-1]
 
 			break
 		}
 	}
 
 	for _, index := range col.BleveIndexes {
-		index.close()
-		index.delete()
+		col.DeleteIndex(index.name)
 	}
 
-	d.deletePrefix(col.Prefix)
+	d.deletePrefix(col.prefix)
 }
 
 func (d *DB) deletePrefix(prefix []byte) error {

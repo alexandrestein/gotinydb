@@ -229,7 +229,7 @@ func (fs *FileStore) getFileMetaWithTxn(txn *badger.Txn, id, name string) (meta 
 	}
 
 	var valAsBytes []byte
-	valAsBytes, err = cipher.Decrypt(fs.db.PrivateKey, item.Key(), valAsEncryptedBytes)
+	valAsBytes, err = cipher.Decrypt(fs.db.privateKey, item.Key(), valAsEncryptedBytes)
 	if err != nil {
 		return
 	}
@@ -298,7 +298,7 @@ func (fs *FileStore) buildRelatedID(colName, documentID string) []byte {
 		return nil
 	}
 	id := []byte{prefixFilesRelated}
-	id = append(id, col.Prefix...)
+	id = append(id, col.prefix...)
 	id = append(id, []byte(documentID)...)
 
 	return id
@@ -321,7 +321,7 @@ func (fs *FileStore) getRelatedFileIDsInternal(colName, documentID string, txn *
 	}
 
 	var valAsBytes []byte
-	valAsBytes, err = cipher.Decrypt(fs.db.PrivateKey, item.Key(), valAsEncryptedBytes)
+	valAsBytes, err = cipher.Decrypt(fs.db.privateKey, item.Key(), valAsEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -453,7 +453,7 @@ func (fs *FileStore) ReadFile(id string, writer io.Writer) error {
 			}
 
 			var valAsBytes []byte
-			valAsBytes, err = cipher.Decrypt(fs.db.PrivateKey, it.Item().Key(), valAsEncryptedBytes)
+			valAsBytes, err = cipher.Decrypt(fs.db.privateKey, it.Item().Key(), valAsEncryptedBytes)
 			if err != nil {
 				return err
 			}
@@ -693,7 +693,7 @@ func (r *readWriter) Read(dest []byte) (n int, err error) {
 			return 0, err
 		}
 
-		valAsBytes, err = cipher.Decrypt(r.fs.db.PrivateKey, it.Item().Key(), valAsEncryptedBytes)
+		valAsBytes, err = cipher.Decrypt(r.fs.db.privateKey, it.Item().Key(), valAsEncryptedBytes)
 		if err != nil {
 			return 0, err
 		}
@@ -763,7 +763,7 @@ func (r *readWriter) getExistingBlock(blockN int) (ret []byte, err error) {
 		return nil, err
 	}
 
-	return cipher.Decrypt(r.fs.db.PrivateKey, item.Key(), valAsEncryptedBytes)
+	return cipher.Decrypt(r.fs.db.privateKey, item.Key(), valAsEncryptedBytes)
 }
 
 func (r *readWriter) Write(p []byte) (n int, err error) {
@@ -889,7 +889,7 @@ func (r *readWriter) getWrittenSize() (n int64) {
 	}
 
 	var valAsBytes []byte
-	valAsBytes, err = cipher.Decrypt(r.fs.db.PrivateKey, item.Key(), encryptedValue)
+	valAsBytes, err = cipher.Decrypt(r.fs.db.privateKey, item.Key(), encryptedValue)
 	if err != nil {
 		return
 	}
@@ -1024,7 +1024,7 @@ func (i *FileIterator) decrypt() ([]byte, error) {
 	}
 
 	var valAsBytes []byte
-	valAsBytes, err = cipher.Decrypt(i.fs.db.PrivateKey, i.item.Key(), valAsEncryptedBytes)
+	valAsBytes, err = cipher.Decrypt(i.fs.db.privateKey, i.item.Key(), valAsEncryptedBytes)
 	if err != nil {
 		return nil, err
 	}

@@ -37,7 +37,7 @@ type (
 func newIndex(name string) *BleveIndex {
 	return &BleveIndex{
 		dbElement: dbElement{
-			Name: name,
+			name: name,
 		},
 	}
 }

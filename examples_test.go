@@ -1,4 +1,4 @@
-package gotinydb_test
+package gotinydb
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/alexandrestein/gotinydb"
 	"github.com/blevesearch/bleve"
 )
 
@@ -26,8 +25,8 @@ var (
 	dbPath string
 	dbKey  [32]byte
 
-	exampleDB         *gotinydb.DB
-	exampleCollection *gotinydb.Collection
+	exampleDB         *DB
+	exampleCollection *Collection
 )
 
 func init() {
@@ -42,7 +41,7 @@ func init() {
 
 	var err error
 	// Open or create the database at the given path and with the given encryption key
-	exampleDB, err = gotinydb.Open(dbPath, dbKey)
+	exampleDB, err = Open(dbPath, dbKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,8 +61,8 @@ func init() {
 	}
 	exampleCollection.Put("index X document", doc)
 
-	var writer gotinydb.Writer
-	writer, err = exampleDB.FileStore.GetFileWriter("read file", "txt")
+	var writer Writer
+	writer, err = exampleDB.GetFileStore().GetFileWriter("read file", "txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,14 +72,14 @@ func init() {
 
 func Example() {
 	// Open or create the database at the given path and with the given encryption key
-	db, err := gotinydb.Open(os.TempDir()+"/package_example", dbKey)
+	db, err := Open(os.TempDir()+"/package_example", dbKey)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	// Open a collection
-	var c *gotinydb.Collection
+	var c *Collection
 	c, err = db.Use("users")
 	if err != nil {
 		log.Fatal(err)
@@ -98,7 +97,7 @@ func Example() {
 	// Save the bleve indexexes
 	err = c.SetBleveIndex("email", userDocumentMapping)
 	if err != nil {
-		if err != gotinydb.ErrNameAllreadyExists {
+		if err != ErrNameAllreadyExists {
 			log.Fatal(err)
 		}
 	}
@@ -118,7 +117,7 @@ func Example() {
 	// Build the query
 	query := bleve.NewQueryStringQuery(record.Email)
 	// Add the query to the search
-	var searchResult *gotinydb.SearchResult
+	var searchResult *SearchResult
 	searchResult, err = c.Search("email", query)
 	if err != nil {
 		log.Fatal(err)
@@ -142,7 +141,7 @@ func Example() {
 
 func ExampleOpen() {
 	// Open or create the database at the given path and with the given encryption key
-	db, err := gotinydb.Open("path_to_database_directory", dbKey)
+	db, err := Open("path_to_database_directory", dbKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -161,10 +160,8 @@ func ExampleDB_Use() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(col.Name)
-	fmt.Println(col.Prefix)
+	fmt.Println(col.Name())
 	// Output: collection name
-	// [1 20 101]
 }
 
 func ExampleCollection_Put() {
@@ -198,7 +195,7 @@ func ExampleCollection_Get() {
 }
 
 func ExampleWriter() {
-	writer, err := exampleDB.FileStore.GetFileWriter("file example", "test.txt")
+	writer, err := exampleDB.GetFileStore().GetFileWriter("file example", "test.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -241,7 +238,7 @@ func ExampleWriter() {
 }
 
 func ExampleReader() {
-	reader, err := exampleDB.FileStore.GetFileReader("read file")
+	reader, err := exampleDB.GetFileStore().GetFileReader("read file")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -285,7 +282,7 @@ func ExampleCollection_Search() {
 	}
 
 	dest := &struct{ Name string }{}
-	var resp *gotinydb.Response
+	var resp *Response
 	resp, err = response.NextResponse(dest)
 	if err != nil {
 		log.Fatal(err)
@@ -347,7 +344,7 @@ func ExampleCollectionIterator() {
 }
 
 func ExampleFileIterator() {
-	iter := exampleDB.FileStore.GetFileIterator()
+	iter := exampleDB.GetFileStore().GetFileIterator()
 	defer iter.Close()
 
 	for ; iter.Valid(); iter.Next() {

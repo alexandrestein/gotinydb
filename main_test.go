@@ -186,7 +186,7 @@ func TestDeleteParts(t *testing.T) {
 	openT(t)
 
 	bleveIndex, _ := testCol.GetBleveIndex(testIndexName)
-	prefix := bleveIndex.Prefix
+	prefix := bleveIndex.prefix
 	testCol.DeleteIndex(testIndexName)
 
 	time.Sleep(time.Second)
@@ -209,7 +209,7 @@ func TestDeleteParts(t *testing.T) {
 		return
 	}
 
-	prefix = testCol.Prefix
+	prefix = testCol.prefix
 	testDB.DeleteCollection(testColName)
 
 	time.Sleep(time.Second)
