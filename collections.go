@@ -28,7 +28,13 @@ type (
 
 		db *DB
 		// BleveIndexes in public for marshalling reason and should never be used directly
-		BleveIndexes []*BleveIndex
+		bleveIndexes []*BleveIndex
+	}
+
+	collectionExport struct {
+		dbExportElement
+
+		BleveIndexes []*bleveIndexExport
 	}
 
 	// Batch is a simple struct to manage multiple write in one commit
@@ -65,8 +71,17 @@ func (c *Collection) buildIndexPrefix() []byte {
 }
 
 // GetName returns the collection name
-func (c *Collection) GetName() string {
-	return c.name
+func (c *Collection) GetBleveIndexes() []string {
+	c.db.lock.RLock()
+	defer c.db.lock.RUnlock()
+
+	ret := make([]string, len(c.bleveIndexes))
+
+	for i, index := range c.bleveIndexes {
+		ret[i] = index.Name()
+	}
+
+	return ret
 }
 
 // SetBleveIndex adds a bleve index to the collection.
@@ -89,9 +104,9 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 	}
 
 	// Check there is no conflict name or hash
-	for _, i := range c.BleveIndexes {
+	for _, i := range c.bleveIndexes {
 		if i.name == name {
-			if !bytes.Equal(i.Signature[:], index.Signature[:]) {
+			if !bytes.Equal(i.signature[:], index.signature[:]) {
 				return ErrIndexAllreadyExistsWithDifferentMapping
 			}
 			return ErrNameAllreadyExists
@@ -104,7 +119,7 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 	// Bleve needs to save some parts on the drive.
 	// The path is based on a part of the collection hash and the index prefix.
 	colHash := blake2b.Sum256([]byte(c.name))
-	index.Path = fmt.Sprintf("%x%s%x", colHash[:2], string(os.PathSeparator), indexHash[:2])
+	index.path = fmt.Sprintf("%x%s%x", colHash[:2], string(os.PathSeparator), indexHash[:2])
 
 	// Build the index and set the given document index as default
 	bleveMapping := bleve.NewIndexMapping()
@@ -119,20 +134,20 @@ func (c *Collection) SetBleveIndex(name string, documentMapping *mapping.Documen
 	bleveMapping.DefaultMapping = documentMapping
 
 	// Build the configuration to use the local bleve storage and initialize the index
-	config := blevestore.NewConfigMap(c.db.ctx, index.Path, c.db.privateKey, prefix, c.db.badger, c.db.writeChan)
-	index.bleveIndex, err = bleve.NewUsing(c.db.path+string(os.PathSeparator)+index.Path, bleveMapping, upsidedown.Name, blevestore.Name, config)
+	config := blevestore.NewConfigMap(c.db.ctx, index.path, c.db.privateKey, prefix, c.db.badger, c.db.writeChan)
+	index.bleveIndex, err = bleve.NewUsing(c.db.path+string(os.PathSeparator)+index.path, bleveMapping, upsidedown.Name, blevestore.Name, config)
 	if err != nil {
 		return
 	}
 
 	// Save the on drive bleve element into the index struct itself
-	index.BleveIndexAsBytes, err = index.indexZipper()
+	index.bleveIndexAsBytes, err = index.indexZipper()
 	if err != nil {
 		return err
 	}
 
 	// Add the new index to the list of index of this collection
-	c.BleveIndexes = append(c.BleveIndexes, index)
+	c.bleveIndexes = append(c.bleveIndexes, index)
 
 	// Index all existing values
 	err = c.db.badger.View(func(txn *badger.Txn) error {
@@ -189,7 +204,7 @@ func (c *Collection) putSendToWriteAndWaitForResponse(tr *transaction.Transactio
 }
 
 func (c *Collection) putLoopForIndexes(tr *transaction.Transaction) (err error) {
-	for _, index := range c.BleveIndexes {
+	for _, index := range c.bleveIndexes {
 		for _, op := range tr.Operations {
 			// If remove the content no need to index it
 			if op.Delete || op.Content == nil && op.CollectionID == "" {
@@ -479,7 +494,7 @@ func (c *Collection) Delete(id string) (err error) {
 	}
 
 	// Deletes from index
-	for _, index := range c.BleveIndexes {
+	for _, index := range c.bleveIndexes {
 		err = index.bleveIndex.Delete(id)
 		if err != nil {
 			return err
@@ -501,7 +516,11 @@ func (c *Collection) deleteRelatedFiles(id string) {
 }
 
 func (c *Collection) buildDBKey(id string) []byte {
-	key := append(c.prefix, prefixCollectionsData)
+	// Copy the prefix to prevent race
+	prefix := make([]byte, len(c.prefix))
+	copy(prefix, c.prefix)
+
+	key := append(prefix, prefixCollectionsData)
 	return append(key, []byte(id)...)
 }
 
@@ -513,7 +532,7 @@ func (c *Collection) buildJustTooBigDBPrefix() []byte {
 
 // GetBleveIndex gives an  easy way to interact directly with bleve
 func (c *Collection) GetBleveIndex(name string) (*BleveIndex, error) {
-	for _, bi := range c.BleveIndexes {
+	for _, bi := range c.bleveIndexes {
 		if bi.name == name {
 			return bi, nil
 		}
@@ -603,13 +622,13 @@ func (c *Collection) History(id string, limit int) (valuesAsBytes [][]byte, err 
 // DeleteIndex delete the index and all references
 func (c *Collection) DeleteIndex(name string) {
 	var index *BleveIndex
-	for i, tmpIndex := range c.BleveIndexes {
+	for i, tmpIndex := range c.bleveIndexes {
 		if tmpIndex.name == name {
 			index = tmpIndex
 
-			copy(c.BleveIndexes[i:], c.BleveIndexes[i+1:])
-			c.BleveIndexes[len(c.BleveIndexes)-1] = nil // or the zero value of T
-			c.BleveIndexes = c.BleveIndexes[:len(c.BleveIndexes)-1]
+			copy(c.bleveIndexes[i:], c.bleveIndexes[i+1:])
+			c.bleveIndexes[len(c.bleveIndexes)-1] = nil // or the zero value of T
+			c.bleveIndexes = c.bleveIndexes[:len(c.bleveIndexes)-1]
 
 			break
 		}
@@ -618,7 +637,7 @@ func (c *Collection) DeleteIndex(name string) {
 	index.close()
 	index.delete()
 
-	c.db.deletePrefix(index.prefix)
+	c.db.badger.DropPrefix(index.prefix)
 }
 
 func (c *Collection) getIterator(reverted bool) *CollectionIterator {

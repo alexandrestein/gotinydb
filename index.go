@@ -23,13 +23,21 @@ type (
 
 		// Signature provide a way to check if the index definition
 		// has been updated since initialization.
-		Signature [blake2b.Size256]byte
+		signature [blake2b.Size256]byte
 
 		collection *Collection
 
 		bleveIndex bleve.Index
-		Path       string
+		path       string
 
+		bleveIndexAsBytes []byte
+	}
+
+	bleveIndexExport struct {
+		Name              string
+		Signature         [blake2b.Size256]byte
+		Path              string
+		Prefix            []byte
 		BleveIndexAsBytes []byte
 	}
 )
@@ -47,7 +55,7 @@ func (i *BleveIndex) close() error {
 }
 
 func (i *BleveIndex) delete() {
-	os.RemoveAll(i.collection.db.path + string(os.PathSeparator) + i.Path)
+	os.RemoveAll(i.collection.db.path + string(os.PathSeparator) + i.path)
 }
 
 func (i *BleveIndex) indexZipper() ([]byte, error) {
@@ -61,7 +69,7 @@ func (i *BleveIndex) indexZipper() ([]byte, error) {
 	})
 
 	// Add some files to the archive.
-	err := i.addFiles(w, i.collection.db.path+string(os.PathSeparator)+i.Path, "")
+	err := i.addFiles(w, i.collection.db.path+string(os.PathSeparator)+i.path, "")
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +121,7 @@ func (i *BleveIndex) addFiles(w *zip.Writer, basePath, baseInZip string) error {
 }
 
 func (i *BleveIndex) indexUnzipper() error {
-	buff := bytes.NewReader(i.BleveIndexAsBytes)
+	buff := bytes.NewReader(i.bleveIndexAsBytes)
 	// Open a zip archive for reading.
 	r, err := zip.NewReader(buff, int64(buff.Len()))
 	if err != nil {
@@ -138,7 +146,7 @@ func (i *BleveIndex) indexUnzipper() error {
 			return err
 		}
 
-		filePath := i.collection.db.path + string(os.PathSeparator) + i.Path + string(os.PathSeparator) + f.Name
+		filePath := i.collection.db.path + string(os.PathSeparator) + i.path + string(os.PathSeparator) + f.Name
 
 		err = os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
 		if err != nil {
@@ -164,6 +172,6 @@ func (i *BleveIndex) buildSignature(documentMapping *mapping.DocumentMapping) er
 		return err
 	}
 
-	i.Signature = blake2b.Sum256(resp)
+	i.signature = blake2b.Sum256(resp)
 	return nil
 }

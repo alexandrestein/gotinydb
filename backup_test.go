@@ -141,7 +141,7 @@ func TestBackup(t *testing.T) {
 	var backup bytes.Buffer
 
 	var tm uint64
-	tm, err = testDB.BackupClearSince(&backup)
+	tm, err = testDB.BackupClear(&backup)
 	if err != nil {
 		t.Error(err)
 		return
