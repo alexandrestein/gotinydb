@@ -288,10 +288,6 @@ func (d *DB) Backup(w io.Writer) error {
 					return nil, err
 				}
 				valCopy = confAsJSON
-				// valCopy, err = cipher.Decrypt(d.configKey, id, encryptedValCopy)
-				// if err != nil {
-				// 	return nil, err
-				// }
 			} else {
 				valCopy, err = d.decryptData(id, encryptedValCopy)
 				if err != nil {
@@ -454,13 +450,6 @@ func (d *DB) GarbageCollection(discardRatio float64) error {
 
 // Load recover an existing database from a backup generated with *DB.Backup
 func (d *DB) Load(r io.Reader) error {
-	err := d.badger.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte{prefixConfig})
-	})
-	if err != nil {
-		return err
-	}
-
 	return d.load(r)
 }
 
@@ -628,6 +617,7 @@ func (d *DB) saveConfig() (err error) {
 			Key:   dbKey,
 			Value: cipher.Encrypt(d.configKey, dbKey, confAsBytes),
 		}
+		e = e.WithDiscard()
 
 		return txn.SetEntry(e)
 	})

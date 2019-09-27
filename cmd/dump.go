@@ -65,7 +65,7 @@ var dumpCmd = &cobra.Command{
 	Short: "Open the database and dump it's content into an archive",
 	Long: `Open the database and dump it's content into an archive. You can build full archive or a JSON archive which has actual stat but no history.
 
-The JSON format read the data and make it readable and exportable to other tools.
+The JSON format read the data and make it readable and exportable to other tools. (indexes are not included)
 
 In comparison the binary export is tries to keep everything (history, indexes files and all metas).`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -81,102 +81,103 @@ In comparison the binary export is tries to keep everything (history, indexes fi
 			return
 		}
 
+		// If not a JSON
 		if !dumpJSON {
 			err = db.Backup(destFile)
 			if err != nil {
 				log.Errorln("Can't backup database:", err.Error())
-				return
 			}
-		} else {
-			ret := new(Dump)
-			ret.Collections = []*Collection{}
-			for _, colName := range db.GetCollections() {
-				col, err := db.Use(colName)
+			return
+		}
+
+		ret := new(Dump)
+		ret.Collections = []*Collection{}
+		for _, colName := range db.GetCollections() {
+			col, err := db.Use(colName)
+			if err != nil {
+				log.Warningf("err opening collection %q: %s\n", colName, err.Error())
+				continue
+			}
+
+			dumpCol := new(Collection)
+			dumpCol.Name = colName
+			dumpCol.Records = []*Record{}
+			ret.Collections = append(ret.Collections, dumpCol)
+
+			iter := col.GetIterator()
+			for ; iter.Valid(); iter.Next() {
+				rec := new(Record)
+				rec.ID = iter.GetID()
+
+				content := iter.GetBytes()
+
+				// Make sure the content is a JSON.
+				// Otherways it's send to RawContent.
+				err := json.Unmarshal(content, new(struct{}))
+				if err == nil {
+					rec.Content = content
+				} else {
+					rec.RawContent = content
+				}
+
+				dumpCol.Records = append(dumpCol.Records, rec)
+			}
+			iter.Close()
+		}
+
+		if dumpJSONFile {
+			ret.Files = []*File{}
+			iter := db.GetFileStore().GetFileIterator()
+			for ; iter.Valid(); iter.Next() {
+				meta := iter.GetMeta()
+				dumpFile := new(File)
+				dumpFile.ID = meta.ID
+				dumpFile.Name = meta.Name
+				dumpFile.Size = meta.Size
+				dumpFile.LastModified = meta.LastModified
+				dumpFile.RelatedDocumentID = meta.RelatedDocumentID
+				dumpFile.RelatedDocumentCollection = meta.RelatedDocumentCollection
+
+				reader, err := db.GetFileStore().GetFileReader(meta.ID)
 				if err != nil {
-					log.Warningf("err opening collection %q: %s\n", colName, err.Error())
+					log.Warningln("err opening file:", err.Error())
 					continue
 				}
 
-				dumpCol := new(Collection)
-				dumpCol.Name = colName
-				dumpCol.Records = []*Record{}
-				ret.Collections = append(ret.Collections, dumpCol)
-
-				iter := col.GetIterator()
-				for ; iter.Valid(); iter.Next() {
-					rec := new(Record)
-					rec.ID = iter.GetID()
-
-					content := iter.GetBytes()
-
-					// Make sure the content is a JSON.
-					// Otherways it's send to RawContent.
-					err := json.Unmarshal(content, new(struct{}))
-					if err == nil {
-						rec.Content = content
-					} else {
-						rec.RawContent = content
-					}
-
-					dumpCol.Records = append(dumpCol.Records, rec)
+				buff, err := ioutil.ReadAll(reader)
+				if err != nil {
+					log.Warningln("err reading file:", err.Error())
+					continue
 				}
-				iter.Close()
+				dumpFile.Content = buff
+
+				ret.Files = append(ret.Files, dumpFile)
 			}
+			iter.Close()
+		}
 
-			if dumpJSONFile {
-				ret.Files = []*File{}
-				iter := db.GetFileStore().GetFileIterator()
-				for ; iter.Valid(); iter.Next() {
-					meta := iter.GetMeta()
-					dumpFile := new(File)
-					dumpFile.ID = meta.ID
-					dumpFile.Name = meta.Name
-					dumpFile.Size = meta.Size
-					dumpFile.LastModified = meta.LastModified
-					dumpFile.RelatedDocumentID = meta.RelatedDocumentID
-					dumpFile.RelatedDocumentCollection = meta.RelatedDocumentCollection
+		var buff []byte
+		if !dumpJSONPretty {
+			buff, err = json.Marshal(ret)
+		} else {
+			buff, err = json.MarshalIndent(ret, "", "	")
+		}
+		if err != nil {
+			log.Errorln("err marshaling dump:", err.Error())
+			return
+		}
 
-					reader, err := db.GetFileStore().GetFileReader(meta.ID)
-					if err != nil {
-						log.Warningln("err opening file:", err.Error())
-						continue
-					}
-
-					buff, err := ioutil.ReadAll(reader)
-					if err != nil {
-						log.Warningln("err reading file:", err.Error())
-						continue
-					}
-					dumpFile.Content = buff
-
-					ret.Files = append(ret.Files, dumpFile)
-				}
-				iter.Close()
-			}
-
-			var buff []byte
-			if !dumpJSONPretty {
-				buff, err = json.Marshal(ret)
-			} else {
-				buff, err = json.MarshalIndent(ret, "", "	")
-			}
-			if err != nil {
-				log.Errorln("err marshaling dump:", err.Error())
-				return
-			}
-
-			_, err = destFile.Write(buff)
-			if err != nil {
-				log.Errorln("err writing JSON dump:", err.Error())
-				return
-			}
+		_, err = destFile.Write(buff)
+		if err != nil {
+			log.Errorln("err writing JSON dump:", err.Error())
+			return
 		}
 	},
 }
 
 func init() {
 	dumpCmd.Flags().StringVarP(&dumpTarget, "target", "t", "./db-archive", "Defines the dump destination")
-	dumpCmd.Flags().BoolVar(&dumpJSON, "json", false, "Saves a JSON content instead of the encrypted stream. This can consume lots of memory to keep all records of all collections to build the output JSON.")
+	dumpCmd.Flags().BoolVar(&dumpJSON, "json", false, "Saves a JSON content instead binary stream.\nThis can consume lots of memory to keep all records of all collections to build the output JSON.\nNote that indexes are not included.")
 	dumpCmd.Flags().BoolVar(&dumpJSONPretty, "pretty", false, "Needs --json to work. It returns the JSON in a readable form")
 	dumpCmd.Flags().BoolVar(&dumpJSONFile, "files", false, "Needs --json to work. Add files to output")
 
