@@ -108,7 +108,7 @@ fill-up the database with the given archive (JSON or full archive)`,
 
 			for _, savedFile := range dumpObj.Files {
 				buff := bytes.NewBuffer(savedFile.Content)
-				_, err = db.FileStore.PutFile(savedFile.ID, savedFile.Name, buff)
+				_, err = db.GetFileStore().PutFile(savedFile.ID, savedFile.Name, buff)
 				if err != nil {
 					log.Warningf("Can't put file %q with ID %q because: %s\n", savedFile.Name, savedFile.ID, err.Error())
 				}

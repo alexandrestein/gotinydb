@@ -65,10 +65,9 @@ var dumpCmd = &cobra.Command{
 	Short: "Open the database and dump it's content into an archive",
 	Long: `Open the database and dump it's content into an archive. You can build full archive or a JSON archive which has actual stat but no history.
 
-The JSON format decrypt the data and make it readable and exportable to other systems.
+The JSON format read the data and make it readable and exportable to other tools.
 
-In comparison the binary export is fully encrypted and keeps everything (history, indexes files and all metas).
-To use this dump you need to inject the backup in a database using the same encryption key as the one used for the "dump".`,
+In comparison the binary export is tries to keep everything (history, indexes files and all metas).`,
 	Run: func(cmd *cobra.Command, args []string) {
 		db, err := openDB(cmd, true)
 		if err != nil {
@@ -91,15 +90,15 @@ To use this dump you need to inject the backup in a database using the same encr
 		} else {
 			ret := new(Dump)
 			ret.Collections = []*Collection{}
-			for _, col := range db.Collections {
-				col, err := db.Use(col.GetName())
+			for _, colName := range db.GetCollections() {
+				col, err := db.Use(colName)
 				if err != nil {
-					log.Warningf("err opening collection %q: %s\n", col.GetName(), err.Error())
+					log.Warningf("err opening collection %q: %s\n", colName, err.Error())
 					continue
 				}
 
 				dumpCol := new(Collection)
-				dumpCol.Name = col.GetName()
+				dumpCol.Name = colName
 				dumpCol.Records = []*Record{}
 				ret.Collections = append(ret.Collections, dumpCol)
 
@@ -126,7 +125,7 @@ To use this dump you need to inject the backup in a database using the same encr
 
 			if dumpJSONFile {
 				ret.Files = []*File{}
-				iter := db.FileStore.GetFileIterator()
+				iter := db.GetFileStore().GetFileIterator()
 				for ; iter.Valid(); iter.Next() {
 					meta := iter.GetMeta()
 					dumpFile := new(File)
@@ -137,7 +136,7 @@ To use this dump you need to inject the backup in a database using the same encr
 					dumpFile.RelatedDocumentID = meta.RelatedDocumentID
 					dumpFile.RelatedDocumentCollection = meta.RelatedDocumentCollection
 
-					reader, err := db.FileStore.GetFileReader(meta.ID)
+					reader, err := db.GetFileStore().GetFileReader(meta.ID)
 					if err != nil {
 						log.Warningln("err opening file:", err.Error())
 						continue

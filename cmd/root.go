@@ -124,7 +124,7 @@ func setLogs() {
 	}
 }
 
-func openDB(cmd *cobra.Command,readOnly bool) (*gotinydb.DB, error) {
+func openDB(cmd *cobra.Command, readOnly bool) (*gotinydb.DB, error) {
 	if dbDir == "" || dbKey == "" {
 		cmd.Help()
 		return nil, fmt.Errorf("")
@@ -132,9 +132,11 @@ func openDB(cmd *cobra.Command,readOnly bool) (*gotinydb.DB, error) {
 
 	setLogs()
 
-	tmpKey, err := base64.RawStdEncoding.DecodeString(dbKey)
+	// Try to solve the key with standad encoding
+	tmpKey, err := base64.StdEncoding.DecodeString(dbKey)
 	if err != nil {
-		log.Warningln("Can't parse the key properly:", err.Error())
+		log.Errorln("Can't parse the key properly:", err.Error())
+		return nil, err
 	}
 
 	log.Traceln("Parsed key used for opening the database is:", tmpKey)

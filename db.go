@@ -249,12 +249,12 @@ func (d *DB) Close() (err error) {
 	return d.badger.Close()
 }
 
-// BackupClear perform a full backup of the database.
+// Backup perform a full backup of the database.
 // It fills up the io.Writer with all data indexes and configurations.
-func (d *DB) BackupClear(w io.Writer) (lastTimeStamp uint64, _ error) {
+func (d *DB) Backup(w io.Writer) error {
 	presentConfig, err := d.getConfigValue()
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	presentConfig.PrivateKey = [32]byte{}
@@ -312,20 +312,14 @@ func (d *DB) BackupClear(w io.Writer) (lastTimeStamp uint64, _ error) {
 		return list, nil
 	}
 
-	var maxVersion uint64
 	stream.Send = func(list *pb.KVList) error {
-		for _, kv := range list.Kv {
-			if maxVersion < kv.Version {
-				maxVersion = kv.Version
-			}
-		}
 		return writeTo(list, w)
 	}
 
 	if err := stream.Orchestrate(context.Background()); err != nil {
-		return 0, err
+		return err
 	}
-	return maxVersion, nil
+	return nil
 }
 
 func writeTo(list *pb.KVList, w io.Writer) error {
@@ -340,11 +334,18 @@ func writeTo(list *pb.KVList, w io.Writer) error {
 	return err
 }
 
-func (d *DB) loadClear(r io.Reader) error {
+func (d *DB) load(r io.Reader) error {
 	presentConfig, err := d.getConfigValue()
 	if err != nil {
 		return err
 	}
+
+	// Used at the end to prevent "key not found"
+	var timeStampAtTheStart uint64
+	d.badger.View(func(txn *badger.Txn) error {
+		timeStampAtTheStart = txn.ReadTs()
+		return nil
+	})
 
 	br := bufio.NewReaderSize(r, 16<<10)
 	unmarshalBuf := make([]byte, 1<<10)
@@ -394,7 +395,12 @@ func (d *DB) loadClear(r io.Reader) error {
 				kv.Value = cipher.Encrypt(d.privateKey, kv.GetKey(), clearValue)
 			}
 
-			kv.Version = 1
+			// Set the version at most to the possibly actual timestamp.
+			// If the timestamp of the value is bigger than.
+			// Next reads won't found those values.
+			if kv.Version > timeStampAtTheStart {
+				kv.Version = timeStampAtTheStart
+			}
 			if err := ldr.Set(kv); err != nil {
 				return err
 			}
@@ -404,28 +410,6 @@ func (d *DB) loadClear(r io.Reader) error {
 	if err := ldr.Finish(); err != nil {
 		return err
 	}
-
-	// if err := d.badger.Update(func(txn *badger.Txn) error {
-	// 	newConfig, err := d.getConfigValue()
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	newConfig.PrivateKey = presentConfig.PrivateKey
-	// 	buff, err := json.Marshal(newConfig)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	err = txn.Set([]byte{0}, buff)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	return nil
-	// }); err != nil {
-	// 	return fmt.Errorf("can't update config: %s", err.Error())
-	// }
 
 	if err := d.loadConfig(); err != nil {
 		return err
@@ -469,7 +453,7 @@ func (d *DB) GarbageCollection(discardRatio float64) error {
 }
 
 // Load recover an existing database from a backup generated with *DB.Backup
-func (d *DB) LoadClear(r io.Reader) error {
+func (d *DB) Load(r io.Reader) error {
 	err := d.badger.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte{prefixConfig})
 	})
@@ -477,7 +461,7 @@ func (d *DB) LoadClear(r io.Reader) error {
 		return err
 	}
 
-	return d.loadClear(r)
+	return d.load(r)
 }
 
 func (d *DB) goRoutineLoopForGC() {
